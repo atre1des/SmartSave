@@ -1,0 +1,71 @@
+# Gitleaks Configuration for SmartSave
+# Detects secrets, API keys, and sensitive information in code
+
+[default]
+  # Default detection rules
+  allowlist = []
+
+# Custom rules for SmartSave
+[[rules]]
+  id = "openrouter-api-key"
+  description = "OpenRouter API Key"
+  regex = '''(sk-or-v1-[a-zA-Z0-9-_]{32,})'''
+  tags = ["key", "api", "openrouter"]
+  entropy = 4.5
+
+[[rules]]
+  id = "firebase-service-account"
+  description = "Firebase Service Account Key"
+  regex = '''(?i)(firebase|service.account|service-account).*(private.key|private_key|client.email|client_email|project.id|project_id).*'''
+  tags = ["key", "firebase", "service-account"]
+  entropy = 3.5
+
+[[rules]]
+  id = "google-api-key"
+  description = "Google API Key"
+  regex = '''(AIza[0-9A-Za-z-_]{35})'''
+  tags = ["key", "api", "google"]
+
+[[rules]]
+  id = "generic-secret"
+  description = "Generic Secret (password, token, secret, key)"
+  regex = '''(?i)(password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?token|auth[_-]?token)\s*[:=]\s*["']?[a-zA-Z0-9-_]{8,}["']?'''
+  tags = ["secret", "password", "token"]
+  entropy = 3.0
+
+[[rules]]
+  id = "private-key"
+  description = "Private Key (RSA, EC, etc.)"
+  regex = '''(-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)'''
+  tags = ["key", "private", "ssh", "rsa", "ec"]
+
+[[rules]]
+  id = "jwt-token"
+  description = "JWT Token"
+  regex = '''(eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})'''
+  tags = ["token", "jwt"]
+
+[[rules]]
+  id = "database-url"
+  description = "Database Connection String"
+  regex = '''(?i)(mongodb|postgres|mysql|redis|sqlite)://[^\s]{10,}'''
+  tags = ["database", "connection", "url"]
+
+# Allowlist for known false positives in this project
+[allowlist]
+  # Example: Allow test fixtures that look like keys
+  # paths = ["**/*_test.dart", "**/test/**"]
+  # regexes = ['''test[_-]?key.*''']
+
+  # Allow Firebase client config files (these are PUBLIC configs, not secrets)
+  # google-services.json and GoogleService-Info.plist are safe to commit
+  paths = [
+    "**/google-services.json",
+    "**/GoogleService-Info.plist",
+    "**/firebase_options.dart"
+  ]
+
+  # Allow the backend .env.example template
+  paths = [
+    "backend/.env.example"
+  ]
