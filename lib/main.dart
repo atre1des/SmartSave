@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 
@@ -29,14 +31,28 @@ Future<void> main() async {
   /// fall back to a fresh demo database path so the app reaches its Home screen.
   FinanceRepository? _repository;
   try {
-    _repository = await FinanceRepository.open();
+    _repository = await FinanceRepository.open(
+      currentUid: () =>
+          Firebase.apps.isEmpty ? null : FirebaseAuth.instance.currentUser?.uid,
+    );
   } catch (e, st) {
     print('[main] SQLite open failed first attempt: $e\n$st');
     try {
-      _repository = await FinanceRepository.open();
+      _repository = await FinanceRepository.open(
+        currentUid: () => Firebase.apps.isEmpty
+            ? null
+            : FirebaseAuth.instance.currentUser?.uid,
+      );
     } catch (e2, st2) {
-      print('[main] SQLite still unavailable; launching with demo fallback: $e2\n$st2');
-      _repository = await FinanceRepository.open(databasePath: p.join(Directory.systemTemp.path, 'smartsave_demo.db'));
+      print(
+        '[main] SQLite still unavailable; launching with demo fallback: $e2\n$st2',
+      );
+      _repository = await FinanceRepository.open(
+        databasePath: p.join(Directory.systemTemp.path, 'smartsave_demo.db'),
+        currentUid: () => Firebase.apps.isEmpty
+            ? null
+            : FirebaseAuth.instance.currentUser?.uid,
+      );
     }
   }
 

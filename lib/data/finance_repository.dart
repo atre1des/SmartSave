@@ -130,10 +130,14 @@ class DepositProduct {
 }
 
 class FinanceRepository {
-  FinanceRepository._(this._db);
+  FinanceRepository._(this._db, this._currentUid);
   final Database _db;
+  final String? Function() _currentUid;
 
-  static Future<FinanceRepository> open({String? databasePath}) async {
+  static Future<FinanceRepository> open({
+    String? databasePath,
+    String? Function()? currentUid,
+  }) async {
     final path =
         databasePath ??
         paths.join(await getDatabasesPath(), 'smartsave_demo.db');
@@ -202,14 +206,19 @@ class FinanceRepository {
         await _createInvestmentTables(db);
         await _createAIMessagesTable(db);
         await _seed(db);
+        await _ensureSyncColumns(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) await _createInvestmentTables(db);
         if (oldVersion < 3) await _createAIMessagesTable(db);
+        await _ensureSyncColumns(db);
       },
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
     );
-    return FinanceRepository._(db);
+    // Ensure sync columns exist for existing databases (version bump doesn't
+    // trigger onCreate/onUpgrade when version is unchanged).
+    await _ensureSyncColumns(db);
+    return FinanceRepository._(db, currentUid ?? () => null);
   }
 
   static Future<void> _createInvestmentTables(DatabaseExecutor db) async {
@@ -273,7 +282,9 @@ class FinanceRepository {
     )''');
   }
 
-  static Future<void> _createInvestmentAllocationsTable(DatabaseExecutor db) async {
+  static Future<void> _createInvestmentAllocationsTable(
+    DatabaseExecutor db,
+  ) async {
     await db.execute('''CREATE TABLE investment_allocations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       security_type TEXT NOT NULL,
@@ -643,19 +654,50 @@ class FinanceRepository {
     if (transaction.amount <= 0) {
       throw ArgumentError('Amount must be greater than zero.');
     }
-    final values = transaction.toMap();
-    if (transaction.id == null) return _db.insert('transactions', values);
-    await _db.update(
-      'transactions',
-      values,
-      where: 'id = ?',
-      whereArgs: [transaction.id],
+    final values = Map<String, Object?>.from(transaction.toMap());
+    // When updating an existing record, mark it as no longer synced so it is
+    // re-uploaded on the next push. Keep cloud_id so conflict detection can
+    // still find the matching remote record. Do not touch the id column.
+    if (transaction.id != null) {
+      values['is_synced'] = 0;
+      values['synced_at'] = null;
+    }
+    final id = transaction.id == null
+        ? await _db.insert('transactions', values)
+        : (await _db.update(
+            'transactions',
+            values,
+            where: 'id = ?',
+            whereArgs: [transaction.id],
+          )).toDouble().toInt();
+    await _recordSyncOp(
+      entityType: 'transaction',
+      entityId: id.toString(),
+      operation: transaction.id == null ? 'create' : 'update',
+      payload: values,
     );
-    return transaction.id!;
+    return id;
   }
 
-  Future<void> deleteTransaction(int id) =>
-      _db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+  Future<void> deleteTransaction(int id) async {
+    await _db.transaction((txn) async {
+      final rows = await txn.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+      await _recordSyncOp(
+        executor: txn,
+        entityType: 'transaction',
+        entityId: id.toString(),
+        operation: 'delete',
+        payload: rows.first,
+      );
+      await txn.delete('transactions', where: 'id = ?', whereArgs: [id]);
+    });
+  }
 
   Future<List<SavingsGoal>> goals() async {
     final rows = await _db.query('goals', orderBy: 'deadline ASC');
@@ -666,18 +708,39 @@ class FinanceRepository {
     if (goal.name.trim().isEmpty || goal.target <= 0) {
       throw ArgumentError('Enter a goal name and a positive target.');
     }
-    if (goal.id == null) return _db.insert('goals', goal.toMap());
-    await _db.update(
-      'goals',
-      goal.toMap(),
-      where: 'id = ?',
-      whereArgs: [goal.id],
+    final id = goal.id == null
+        ? await _db.insert('goals', goal.toMap())
+        : (await _db.update(
+            'goals',
+            goal.toMap(),
+            where: 'id = ?',
+            whereArgs: [goal.id],
+          )).toDouble().toInt();
+    await _recordSyncOp(
+      entityType: 'goal',
+      entityId: id.toString(),
+      operation: goal.id == null ? 'create' : 'update',
+      payload: goal.toMap(),
     );
-    return goal.id!;
+    return id;
   }
 
   Future<void> deleteGoal(int id) async {
     await _db.transaction((txn) async {
+      final rows = await txn.query(
+        'goals',
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+      await _recordSyncOp(
+        executor: txn,
+        entityType: 'goal',
+        entityId: id.toString(),
+        operation: 'delete',
+        payload: rows.first,
+      );
       await txn.delete(
         'goal_contributions',
         where: 'goal_id = ?',
@@ -780,6 +843,12 @@ class FinanceRepository {
       'category': category,
       'monthly_limit': limit,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _recordSyncOp(
+      entityType: 'budget',
+      entityId: category,
+      operation: 'create',
+      payload: {'category': category, 'monthly_limit': limit},
+    );
   }
 
   Future<List<DepositProduct>> deposits({
@@ -839,16 +908,21 @@ class FinanceRepository {
     if (thesis.securityName.trim().isEmpty || thesis.ticker.trim().isEmpty) {
       throw ArgumentError('Enter a security name and ticker.');
     }
-    if (thesis.id == null) {
-      return _db.insert('investment_theses', thesis.toMap());
-    }
-    await _db.update(
-      'investment_theses',
-      thesis.toMap(),
-      where: 'id = ?',
-      whereArgs: [thesis.id],
+    final id = thesis.id == null
+        ? await _db.insert('investment_theses', thesis.toMap())
+        : (await _db.update(
+            'investment_theses',
+            thesis.toMap(),
+            where: 'id = ?',
+            whereArgs: [thesis.id],
+          )).toDouble().toInt();
+    await _recordSyncOp(
+      entityType: 'investment_thesis',
+      entityId: id.toString(),
+      operation: thesis.id == null ? 'create' : 'update',
+      payload: thesis.toMap(),
     );
-    return thesis.id!;
+    return id;
   }
 
   Future<List<ThesisCondition>> thesisConditions(int thesisId) async {
@@ -877,8 +951,29 @@ class FinanceRepository {
     return condition.id!;
   }
 
-  Future<void> deleteInvestmentThesis(int thesisId) =>
-      _db.delete('investment_theses', where: 'id = ?', whereArgs: [thesisId]);
+  Future<void> deleteInvestmentThesis(int thesisId) async {
+    await _db.transaction((txn) async {
+      final rows = await txn.query(
+        'investment_theses',
+        where: 'id = ?',
+        whereArgs: [thesisId],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+      await _recordSyncOp(
+        executor: txn,
+        entityType: 'investment_thesis',
+        entityId: thesisId.toString(),
+        operation: 'delete',
+        payload: rows.first,
+      );
+      await txn.delete(
+        'investment_theses',
+        where: 'id = ?',
+        whereArgs: [thesisId],
+      );
+    });
+  }
 
   Future<int> saveThesisAssessment(ThesisAssessment assessment) =>
       _db.insert('thesis_assessments', assessment.toMap());
@@ -906,20 +1001,46 @@ class FinanceRepository {
         'Enter a security name, ticker and non-negative KZT value.',
       );
     }
-    if (holding.id == null) {
-      return _db.insert('portfolio_holdings', holding.toMap());
-    }
-    await _db.update(
-      'portfolio_holdings',
-      holding.toMap(),
-      where: 'id = ?',
-      whereArgs: [holding.id],
+    final id = holding.id == null
+        ? await _db.insert('portfolio_holdings', holding.toMap())
+        : (await _db.update(
+            'portfolio_holdings',
+            holding.toMap(),
+            where: 'id = ?',
+            whereArgs: [holding.id],
+          )).toDouble().toInt();
+    await _recordSyncOp(
+      entityType: 'portfolio_holding',
+      entityId: id.toString(),
+      operation: holding.id == null ? 'create' : 'update',
+      payload: holding.toMap(),
     );
-    return holding.id!;
+    return id;
   }
 
-  Future<void> deletePortfolioHolding(int holdingId) =>
-      _db.delete('portfolio_holdings', where: 'id = ?', whereArgs: [holdingId]);
+  Future<void> deletePortfolioHolding(int holdingId) async {
+    await _db.transaction((txn) async {
+      final rows = await txn.query(
+        'portfolio_holdings',
+        where: 'id = ?',
+        whereArgs: [holdingId],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+      await _recordSyncOp(
+        executor: txn,
+        entityType: 'portfolio_holding',
+        entityId: holdingId.toString(),
+        operation: 'delete',
+        payload: rows.first,
+      );
+      await txn.delete(
+        'portfolio_holdings',
+        where: 'id = ?',
+        whereArgs: [holdingId],
+      );
+    });
+  }
 
   Future<Map<String, String>> investmentSettings() async {
     final rows = await _db.query('investment_settings');
@@ -933,6 +1054,12 @@ class FinanceRepository {
       'key': key,
       'value': value,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _recordSyncOp(
+      entityType: 'investment_setting',
+      entityId: key,
+      operation: 'create',
+      payload: {'key': key, 'value': value},
+    );
   }
 
   Future<List<AIMessage>> aiMessages() async {
@@ -968,8 +1095,9 @@ class FinanceRepository {
 
   // ===== Sync-related methods =====
 
-  /// Add sync metadata columns to tables
-  Future<void> _ensureSyncColumns() async {
+  /// Add sync metadata columns to tables and create the sync operations queue.
+  /// Idempotent: safe to call on a new or existing database without losing data.
+  static Future<void> _ensureSyncColumns(DatabaseExecutor db) async {
     final tables = [
       'transactions',
       'goals',
@@ -983,28 +1111,34 @@ class FinanceRepository {
     ];
 
     for (final table in tables) {
-      final columns = await _db.rawQuery("PRAGMA table_info($table)");
+      final columns = await db.rawQuery("PRAGMA table_info($table)");
       final columnNames = columns.map((c) => c['name'] as String).toSet();
 
       if (!columnNames.contains('cloud_id')) {
-        await _db.execute('ALTER TABLE $table ADD COLUMN cloud_id TEXT');
+        await db.execute('ALTER TABLE $table ADD COLUMN cloud_id TEXT');
       }
       if (!columnNames.contains('synced_at')) {
-        await _db.execute('ALTER TABLE $table ADD COLUMN synced_at TEXT');
+        await db.execute('ALTER TABLE $table ADD COLUMN synced_at TEXT');
       }
       if (!columnNames.contains('sync_version')) {
-        await _db.execute('ALTER TABLE $table ADD COLUMN sync_version INTEGER DEFAULT 1');
+        await db.execute(
+          'ALTER TABLE $table ADD COLUMN sync_version INTEGER DEFAULT 1',
+        );
       }
       if (!columnNames.contains('is_synced')) {
-        await _db.execute('ALTER TABLE $table ADD COLUMN is_synced INTEGER DEFAULT 0');
+        await db.execute(
+          'ALTER TABLE $table ADD COLUMN is_synced INTEGER DEFAULT 0',
+        );
       }
       if (!columnNames.contains('local_version')) {
-        await _db.execute('ALTER TABLE $table ADD COLUMN local_version INTEGER DEFAULT 1');
+        await db.execute(
+          'ALTER TABLE $table ADD COLUMN local_version INTEGER DEFAULT 1',
+        );
       }
     }
 
     // Create sync_operations table if not exists
-    await _db.execute('''
+    await db.execute('''
       CREATE TABLE IF NOT EXISTS sync_operations (
         id TEXT PRIMARY KEY,
         entity_type TEXT NOT NULL,
@@ -1014,14 +1148,65 @@ class FinanceRepository {
         created_at TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending',
         error_message TEXT,
-        retry_count INTEGER DEFAULT 0
+        retry_count INTEGER DEFAULT 0,
+        owner_uid TEXT
       )
     ''');
+    final queueColumns = await db.rawQuery(
+      'PRAGMA table_info(sync_operations)',
+    );
+    if (!queueColumns.any((column) => column['name'] == 'owner_uid')) {
+      await db.execute('ALTER TABLE sync_operations ADD COLUMN owner_uid TEXT');
+    }
   }
 
   /// Initialize sync columns on repository open
+  /// Safe to call multiple times — idempotent.
   Future<void> initializeSync() async {
-    await _ensureSyncColumns();
+    await _ensureSyncColumns(_db);
+  }
+
+  /// Record a local change to the pending sync queue.
+  /// Used by mutating repository methods to queue uploads to Firestore.
+  Future<void> _recordSyncOp({
+    DatabaseExecutor? executor,
+    required String entityType,
+    required String entityId,
+    required String operation,
+    required Map<String, dynamic> payload,
+  }) async {
+    final db = executor ?? _db;
+    final ownerUid = _currentUid();
+    final opId =
+        '${entityType}_${entityId}_${DateTime.now().microsecondsSinceEpoch}';
+    await db.insert('sync_operations', {
+      'id': opId,
+      'entity_type': entityType,
+      'entity_id': entityId,
+      'operation': operation,
+      'payload': jsonEncode(payload),
+      'created_at': DateTime.now().toIso8601String(),
+      'status': 'pending',
+      'owner_uid': ownerUid?.trim().isNotEmpty == true ? ownerUid : null,
+    });
+  }
+
+  /// Mark a sync operation as successfully completed by deleting it from the queue.
+  Future<void> _deleteSyncOperation(String operationId) async {
+    await _db.delete(
+      'sync_operations',
+      where: 'id = ?',
+      whereArgs: [operationId],
+    );
+  }
+
+  /// Mark a sync operation as failed, incrementing its retry counter.
+  /// Called by SyncService when an upload/download attempt fails.
+  Future<void> _failSyncOperation(String operationId, String error) async {
+    await _db.rawUpdate(
+      'UPDATE sync_operations SET status = ?, error_message = ?, retry_count = retry_count + 1 WHERE id = ?',
+      ['error', error, operationId],
+    );
   }
 
   // ===== Transaction sync methods =====
@@ -1115,6 +1300,240 @@ class FinanceRepository {
     return InvestmentThesis.fromMap(rows.first);
   }
 
+  // ===== Cloud-to-local application (download) =====
+  // These methods apply remote Firestore data to local SQLite WITHOUT
+  // recording sync operations, preventing infinite sync loops.
+
+  /// Apply a cloud transaction to local SQLite.
+  /// Returns true if applied, false if conflict (local has unsynced changes).
+  Future<bool> applyCloudTransaction(
+    FinanceTransaction cloudTx,
+    String cloudId,
+  ) async {
+    final existing = await _db.query(
+      'transactions',
+      where: 'cloud_id = ?',
+      whereArgs: [cloudId],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      final row = existing.first;
+      if ((row['is_synced'] as int? ?? 0) == 0) return false; // conflict
+      await _db.update(
+        'transactions',
+        {
+          ...cloudTx.toMap(),
+          'cloud_id': cloudId,
+          'is_synced': 1,
+          'synced_at': DateTime.now().toIso8601String(),
+        },
+        where: 'cloud_id = ?',
+        whereArgs: [cloudId],
+      );
+      return true;
+    }
+    await _db.insert('transactions', {
+      ...cloudTx.toMap(),
+      'cloud_id': cloudId,
+      'is_synced': 1,
+      'synced_at': DateTime.now().toIso8601String(),
+    });
+    return true;
+  }
+
+  /// Apply a cloud savings goal to local SQLite.
+  Future<bool> applyCloudGoal(SavingsGoal cloudGoal, String cloudId) async {
+    final existing = await _db.query(
+      'goals',
+      where: 'cloud_id = ?',
+      whereArgs: [cloudId],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      final row = existing.first;
+      if ((row['is_synced'] as int? ?? 0) == 0) return false; // conflict
+      await _db.update(
+        'goals',
+        {
+          ...cloudGoal.toMap(),
+          'cloud_id': cloudId,
+          'is_synced': 1,
+          'synced_at': DateTime.now().toIso8601String(),
+        },
+        where: 'cloud_id = ?',
+        whereArgs: [cloudId],
+      );
+      return true;
+    }
+    await _db.insert('goals', {
+      ...cloudGoal.toMap(),
+      'cloud_id': cloudId,
+      'is_synced': 1,
+      'synced_at': DateTime.now().toIso8601String(),
+    });
+    return true;
+  }
+
+  /// Apply a cloud portfolio holding to local SQLite.
+  Future<bool> applyCloudHolding(
+    PortfolioHolding cloudHolding,
+    String cloudId,
+  ) async {
+    final existing = await _db.query(
+      'portfolio_holdings',
+      where: 'cloud_id = ?',
+      whereArgs: [cloudId],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      final row = existing.first;
+      if ((row['is_synced'] as int? ?? 0) == 0) return false; // conflict
+      await _db.update(
+        'portfolio_holdings',
+        {
+          ...cloudHolding.toMap(),
+          'cloud_id': cloudId,
+          'is_synced': 1,
+          'synced_at': DateTime.now().toIso8601String(),
+        },
+        where: 'cloud_id = ?',
+        whereArgs: [cloudId],
+      );
+      return true;
+    }
+    await _db.insert('portfolio_holdings', {
+      ...cloudHolding.toMap(),
+      'cloud_id': cloudId,
+      'is_synced': 1,
+      'synced_at': DateTime.now().toIso8601String(),
+    });
+    return true;
+  }
+
+  /// Apply a cloud investment thesis to local SQLite.
+  Future<bool> applyCloudThesis(
+    InvestmentThesis cloudThesis,
+    String cloudId,
+  ) async {
+    final existing = await _db.query(
+      'investment_theses',
+      where: 'cloud_id = ?',
+      whereArgs: [cloudId],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      final row = existing.first;
+      if ((row['is_synced'] as int? ?? 0) == 0) return false; // conflict
+      await _db.update(
+        'investment_theses',
+        {
+          ...cloudThesis.toMap(),
+          'cloud_id': cloudId,
+          'is_synced': 1,
+          'synced_at': DateTime.now().toIso8601String(),
+        },
+        where: 'cloud_id = ?',
+        whereArgs: [cloudId],
+      );
+      return true;
+    }
+    await _db.insert('investment_theses', {
+      ...cloudThesis.toMap(),
+      'cloud_id': cloudId,
+      'is_synced': 1,
+      'synced_at': DateTime.now().toIso8601String(),
+    });
+    return true;
+  }
+
+  /// Apply a cloud budget to local SQLite (remote-wins for budgets).
+  Future<bool> applyCloudBudget(String category, int monthlyLimit) async {
+    final existing = await _db.query(
+      'budgets',
+      where: 'category = ?',
+      whereArgs: [category],
+      limit: 1,
+    );
+    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0)
+      return false;
+    await _db.insert('budgets', {
+      'category': category,
+      'monthly_limit': monthlyLimit,
+      'cloud_id': category,
+      'is_synced': 1,
+      'synced_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    return true;
+  }
+
+  /// Apply a cloud investment setting unless it has a pending local edit.
+  Future<bool> applyCloudSetting(String key, String value) async {
+    final existing = await _db.query(
+      'investment_settings',
+      where: 'key = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0)
+      return false;
+    await _db.insert('investment_settings', {
+      'key': key,
+      'value': value,
+      'cloud_id': key,
+      'is_synced': 1,
+      'synced_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    return true;
+  }
+
+  /// Get all pending sync operations with retry count info.
+  Future<List<Map<String, dynamic>>> getPendingOpsWithRetry() async {
+    final rows = await _db.query(
+      'sync_operations',
+      where: 'status IN (?, ?)',
+      whereArgs: ['pending', 'error'],
+      orderBy: 'created_at',
+    );
+    return rows;
+  }
+
+  /// Get a single local entity by cloud_id for upload verification.
+  Future<Map<String, Object?>?> getLocalRowByCloudId(
+    String table,
+    String cloudId,
+  ) async {
+    final rows = await _db.query(
+      table,
+      where: 'cloud_id = ?',
+      whereArgs: [cloudId],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  /// Delete a completed sync operation from the queue.
+  Future<void> removeSyncOperation(String operationId) async {
+    await _deleteSyncOperation(operationId);
+  }
+
+  /// Mark a sync operation as failed (increments retry count).
+  Future<void> failSyncOperation(String operationId, String error) async {
+    await _failSyncOperation(operationId, error);
+  }
+
+  Future<void> markInvestmentThesisSynced(int localId, String cloudId) async {
+    await _db.update(
+      'investment_theses',
+      {
+        'cloud_id': cloudId,
+        'synced_at': DateTime.now().toIso8601String(),
+        'is_synced': 1,
+      },
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
+  }
+
   // ===== Sync Operations =====
 
   /// Record a sync operation for offline queue
@@ -1124,6 +1543,7 @@ class FinanceRepository {
     required String entityId,
     required String operation,
     required Map<String, dynamic> payload,
+    String? ownerUid,
   }) async {
     await _db.insert('sync_operations', {
       'id': id,
@@ -1133,6 +1553,7 @@ class FinanceRepository {
       'payload': jsonEncode(payload),
       'created_at': DateTime.now().toIso8601String(),
       'status': 'pending',
+      'owner_uid': ownerUid,
     });
   }
 
@@ -1145,15 +1566,20 @@ class FinanceRepository {
       orderBy: 'created_at',
     );
 
-    return rows.map((row) => SyncOperation(
-      id: row['id'] as String,
-      entityType: row['entity_type'] as String,
-      entityId: row['entity_id'] as String,
-      operation: row['operation'] as String,
-      payload: jsonDecode(row['payload'] as String),
-      createdAt: DateTime.parse(row['created_at'] as String),
-      status: row['status'] as String,
-    )).toList();
+    return rows
+        .map(
+          (row) => SyncOperation(
+            id: row['id'] as String,
+            entityType: row['entity_type'] as String,
+            entityId: row['entity_id'] as String,
+            operation: row['operation'] as String,
+            payload: jsonDecode(row['payload'] as String),
+            createdAt: DateTime.parse(row['created_at'] as String),
+            status: row['status'] as String,
+            ownerUid: row['owner_uid'] as String?,
+          ),
+        )
+        .toList();
   }
 
   /// Get pending sync count
@@ -1201,6 +1627,7 @@ class SyncOperation {
   final Map<String, dynamic> payload;
   final DateTime createdAt;
   final String status;
+  final String? ownerUid;
 
   const SyncOperation({
     required this.id,
@@ -1210,5 +1637,6 @@ class SyncOperation {
     required this.payload,
     required this.createdAt,
     this.status = 'pending',
+    this.ownerUid,
   });
 }
