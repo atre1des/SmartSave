@@ -9,14 +9,20 @@ import 'data/providers.dart';
 import 'data/finance_repository.dart';
 import 'features/app/app.dart';
 import 'features/advice/assistant_session.dart';
-import 'features/advice/ai_assistant_screen.dart';
-import 'features/invest/invest_hub_screen.dart';
-import 'features/invest/invest_screen.dart';
-import 'features/profile/my_account_screen.dart';
+import 'services/auth_service.dart';
+import 'services/firebase_service.dart';
 import 'shared/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase with graceful error handling
+  // This is non-blocking - if Firebase is not configured or fails, the app continues
+  final firebaseInitialized = await firebaseService.initialize();
+  if (!firebaseInitialized && firebaseService.errorMessage != null) {
+    // Log the error but don't block app startup
+    print('[main] Firebase initialization: ${firebaseService.errorMessage}');
+  }
 
   /// Opens the local SQLite database. On failure this no longer blocks app startup:
   /// we retry once (common transient SQFLITE lock error) and, if it persists,
@@ -34,11 +40,16 @@ Future<void> main() async {
     }
   }
 
+  final prefs = await SharedPreferences.getInstance();
+  final authService = AuthService(prefs);
+  await authService.initialize();
+
   runApp(
     ProviderScope(
       overrides: [
         financeRepositoryProvider.overrideWithValue(_repository!),
-        sharedPreferencesProvider.overrideWithValue(await SharedPreferences.getInstance()),
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        authServiceProvider.overrideWithValue(authService),
       ],
       child: const SmartSaveApp(),
     ),

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:path/path.dart' as paths;
 import 'package:sqflite/sqflite.dart';
 
@@ -964,6 +966,223 @@ class FinanceRepository {
     });
   }
 
+  // ===== Sync-related methods =====
+
+  /// Add sync metadata columns to tables
+  Future<void> _ensureSyncColumns() async {
+    final tables = [
+      'transactions',
+      'goals',
+      'goal_contributions',
+      'budgets',
+      'investment_theses',
+      'thesis_conditions',
+      'thesis_assessments',
+      'portfolio_holdings',
+      'investment_settings',
+    ];
+
+    for (final table in tables) {
+      final columns = await _db.rawQuery("PRAGMA table_info($table)");
+      final columnNames = columns.map((c) => c['name'] as String).toSet();
+
+      if (!columnNames.contains('cloud_id')) {
+        await _db.execute('ALTER TABLE $table ADD COLUMN cloud_id TEXT');
+      }
+      if (!columnNames.contains('synced_at')) {
+        await _db.execute('ALTER TABLE $table ADD COLUMN synced_at TEXT');
+      }
+      if (!columnNames.contains('sync_version')) {
+        await _db.execute('ALTER TABLE $table ADD COLUMN sync_version INTEGER DEFAULT 1');
+      }
+      if (!columnNames.contains('is_synced')) {
+        await _db.execute('ALTER TABLE $table ADD COLUMN is_synced INTEGER DEFAULT 0');
+      }
+      if (!columnNames.contains('local_version')) {
+        await _db.execute('ALTER TABLE $table ADD COLUMN local_version INTEGER DEFAULT 1');
+      }
+    }
+
+    // Create sync_operations table if not exists
+    await _db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_operations (
+        id TEXT PRIMARY KEY,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        error_message TEXT,
+        retry_count INTEGER DEFAULT 0
+      )
+    ''');
+  }
+
+  /// Initialize sync columns on repository open
+  Future<void> initializeSync() async {
+    await _ensureSyncColumns();
+  }
+
+  // ===== Transaction sync methods =====
+
+  Future<FinanceTransaction?> getTransactionById(int id) async {
+    final rows = await _db.query(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return FinanceTransaction.fromMap(rows.first);
+  }
+
+  Future<void> markTransactionSynced(int localId, String cloudId) async {
+    await _db.update(
+      'transactions',
+      {
+        'cloud_id': cloudId,
+        'synced_at': DateTime.now().toIso8601String(),
+        'is_synced': 1,
+      },
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
+  }
+
+  // ===== Goal sync methods =====
+
+  Future<SavingsGoal?> getGoalById(int id) async {
+    final rows = await _db.query(
+      'goals',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return SavingsGoal.fromMap(rows.first);
+  }
+
+  Future<void> markGoalSynced(int localId, String cloudId) async {
+    await _db.update(
+      'goals',
+      {
+        'cloud_id': cloudId,
+        'synced_at': DateTime.now().toIso8601String(),
+        'is_synced': 1,
+      },
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
+  }
+
+  // ===== Portfolio Holding sync methods =====
+
+  Future<PortfolioHolding?> getPortfolioHoldingById(int id) async {
+    final rows = await _db.query(
+      'portfolio_holdings',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return PortfolioHolding.fromMap(rows.first);
+  }
+
+  Future<void> markHoldingSynced(int localId, String cloudId) async {
+    await _db.update(
+      'portfolio_holdings',
+      {
+        'cloud_id': cloudId,
+        'synced_at': DateTime.now().toIso8601String(),
+        'is_synced': 1,
+      },
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
+  }
+
+  // ===== Investment Thesis sync methods =====
+
+  Future<InvestmentThesis?> getInvestmentThesisById(int id) async {
+    final rows = await _db.query(
+      'investment_theses',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return InvestmentThesis.fromMap(rows.first);
+  }
+
+  // ===== Sync Operations =====
+
+  /// Record a sync operation for offline queue
+  Future<void> recordSyncOperation({
+    required String id,
+    required String entityType,
+    required String entityId,
+    required String operation,
+    required Map<String, dynamic> payload,
+  }) async {
+    await _db.insert('sync_operations', {
+      'id': id,
+      'entity_type': entityType,
+      'entity_id': entityId,
+      'operation': operation,
+      'payload': jsonEncode(payload),
+      'created_at': DateTime.now().toIso8601String(),
+      'status': 'pending',
+    });
+  }
+
+  /// Get pending sync operations
+  Future<List<SyncOperation>> getPendingSyncOperations() async {
+    final rows = await _db.query(
+      'sync_operations',
+      where: 'status IN (?, ?)',
+      whereArgs: ['pending', 'error'],
+      orderBy: 'created_at',
+    );
+
+    return rows.map((row) => SyncOperation(
+      id: row['id'] as String,
+      entityType: row['entity_type'] as String,
+      entityId: row['entity_id'] as String,
+      operation: row['operation'] as String,
+      payload: jsonDecode(row['payload'] as String),
+      createdAt: DateTime.parse(row['created_at'] as String),
+      status: row['status'] as String,
+    )).toList();
+  }
+
+  /// Get pending sync count
+  Future<int> getPendingSyncCount() async {
+    final result = await _db.rawQuery(
+      'SELECT COUNT(*) as count FROM sync_operations WHERE status IN (?, ?)',
+      ['pending', 'error'],
+    );
+    return (result.first['count'] as int?) ?? 0;
+  }
+
+  /// Mark sync operation as failed
+  Future<void> markSyncOperationFailed(String operationId, String error) async {
+    await _db.rawUpdate(
+      'UPDATE sync_operations SET status = ?, error_message = ?, retry_count = retry_count + 1 WHERE id = ?',
+      ['error', error, operationId],
+    );
+  }
+
+  /// Clear sync conflict
+  Future<void> clearSyncConflict(String operationId) async {
+    await _db.update(
+      'sync_operations',
+      {'status': 'pending'},
+      where: 'id = ?',
+      whereArgs: [operationId],
+    );
+  }
+
   Future<void> close() => _db.close();
 }
 
@@ -971,4 +1190,25 @@ int _roundedPercentChange(int current, int previous) {
   final difference = current - previous;
   final magnitude = (difference.abs() * 100 + previous ~/ 2) ~/ previous;
   return difference < 0 ? -magnitude : magnitude;
+}
+
+/// Sync operation model for offline queue
+class SyncOperation {
+  final String id;
+  final String entityType;
+  final String entityId;
+  final String operation;
+  final Map<String, dynamic> payload;
+  final DateTime createdAt;
+  final String status;
+
+  const SyncOperation({
+    required this.id,
+    required this.entityType,
+    required this.entityId,
+    required this.operation,
+    required this.payload,
+    required this.createdAt,
+    this.status = 'pending',
+  });
 }

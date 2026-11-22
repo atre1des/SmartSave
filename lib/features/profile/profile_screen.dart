@@ -3,29 +3,136 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/providers.dart';
+import '../../services/auth_service.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
 import '../app/app.dart';
 import '../app/demo_flow_screens.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
   @override
-  Widget build(BuildContext context) => Scaffold(body: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(24, 8, 24, 24), children: [
-    Row(children: [const CircleAvatar(backgroundColor: AppColors.mintLight, foregroundColor: AppColors.firefly, child: Text('Y')), const SizedBox(width: 12), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Your name', style: Theme.of(context).textTheme.titleLarge), const Text('Moderate investor · Kazakhstan', style: TextStyle(color: AppColors.muted, fontSize: 12))])]),
-    const SizedBox(height: 20),
-    _SettingRow(title: 'Profile', subtitle: 'Name, country, currency', icon: Icons.person_outline, onTap: () => _push(context, const ProfileDetailsScreen())),
-    _SettingRow(title: 'Connected accounts', subtitle: 'Cards and banks · demo only', icon: Icons.credit_card_outlined, onTap: () => _push(context, const ConnectedAccountsScreen())),
-    _SettingRow(title: 'Notifications', subtitle: 'Reminders and alerts', icon: Icons.notifications_none, onTap: () => _push(context, const NotificationsScreen())),
-    _SettingRow(title: 'Advice history', subtitle: 'Past recommendations', icon: Icons.history, onTap: () => _push(context, const AdviceHistoryScreen())),
-    _SettingRow(title: 'Privacy & data', subtitle: 'Consent, export, delete account', icon: Icons.lock_outline, onTap: () => _push(context, const PrivacyDataScreen())),
-    _SettingRow(title: 'Subscription', subtitle: 'Free plan · demo', icon: Icons.workspace_premium_outlined, onTap: () => _push(context, const SubscriptionScreen())),
-    _SettingRow(title: 'Help & support', subtitle: 'FAQ, contact', icon: Icons.help_outline, onTap: () => _push(context, const HelpScreen())),
-    const SizedBox(height: 10),
-    TextButton(onPressed: () async { final prefs = await SharedPreferences.getInstance(); await prefs.clear(); if (context.mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const WelcomeScreen()), (_) => false); }, child: const Text('Log out')),
-    const Divider(),
-    TextButton.icon(onPressed: () async { await showDialog<void>(context: context, builder: (dialogContext) => AlertDialog(title: const Text('Reset sample data?'), content: const Text('Replaces local demo records with the original fictional examples.'), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')), FilledButton(onPressed: () async { Navigator.pop(dialogContext); await _reset(context); }, child: const Text('Reset'))])); }, icon: const Icon(Icons.restart_alt), label: const Text('Reset demo data')),
-  ])));
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          children: [
+            Row(
+              children: [
+                const CircleAvatar(
+                  backgroundColor: AppColors.mintLight,
+                  foregroundColor: AppColors.firefly,
+                  child: Text('Y'),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Your name', style: Theme.of(context).textTheme.titleLarge),
+                    const Text(
+                      'Moderate investor · Kazakhstan',
+                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _SettingRow(
+              title: 'Profile',
+              subtitle: 'Name, country, currency',
+              icon: Icons.person_outline,
+              onTap: () => _push(context, const ProfileDetailsScreen()),
+            ),
+            _SettingRow(
+              title: 'Connected accounts',
+              subtitle: 'Cards and banks · demo only',
+              icon: Icons.credit_card_outlined,
+              onTap: () => _push(context, const ConnectedAccountsScreen()),
+            ),
+            _SettingRow(
+              title: 'Notifications',
+              subtitle: 'Reminders and alerts',
+              icon: Icons.notifications_none,
+              onTap: () => _push(context, const NotificationsScreen()),
+            ),
+            _SettingRow(
+              title: 'Advice history',
+              subtitle: 'Past recommendations',
+              icon: Icons.history,
+              onTap: () => _push(context, const AdviceHistoryScreen()),
+            ),
+            _SettingRow(
+              title: 'Privacy & data',
+              subtitle: 'Consent, export, delete account',
+              icon: Icons.lock_outline,
+              onTap: () => _push(context, const PrivacyDataScreen()),
+            ),
+            _SettingRow(
+              title: 'Subscription',
+              subtitle: 'Free plan · demo',
+              icon: Icons.workspace_premium_outlined,
+              onTap: () => _push(context, const SubscriptionScreen()),
+            ),
+            _SettingRow(
+              title: 'Help & support',
+              subtitle: 'FAQ, contact',
+              icon: Icons.help_outline,
+              onTap: () => _push(context, const HelpScreen()),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () async {
+                final authService = ref.read(authServiceProvider);
+                final result = await authService.signOut();
+                if (context.mounted) {
+                  if (result.success) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                      (_) => false,
+                    );
+                  } else {
+                    showMessage(context, result.errorMessage ?? 'Sign out failed.');
+                  }
+                }
+              },
+              child: const Text('Log out'),
+            ),
+            const Divider(),
+            TextButton.icon(
+              onPressed: () async {
+                await showDialog<void>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text('Reset sample data?'),
+                    content: const Text(
+                        'Replaces local demo records with the original fictional examples.'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Cancel')),
+                      FilledButton(
+                        onPressed: () async {
+                          Navigator.pop(dialogContext);
+                          await _reset(context);
+                        },
+                        child: const Text('Reset'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              icon: const Icon(Icons.restart_alt),
+              label: const Text('Reset demo data'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _reset(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
@@ -41,12 +148,12 @@ class _SettingRow extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(contentPadding: const EdgeInsets.symmetric(vertical: 3), leading: Icon(icon, color: AppColors.firefly), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)), subtitle: Text(subtitle, style: const TextStyle(color: AppColors.muted, fontSize: 11)), trailing: const Icon(Icons.chevron_right), onTap: onTap);
 }
 
-class ProfileDetailsScreen extends StatefulWidget {
+class ProfileDetailsScreen extends ConsumerStatefulWidget {
   const ProfileDetailsScreen({super.key});
   @override
-  State<ProfileDetailsScreen> createState() => _ProfileDetailsScreenState();
+  ConsumerState<ProfileDetailsScreen> createState() => _ProfileDetailsScreenState();
 }
-class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
+class _ProfileDetailsScreenState extends ConsumerState<ProfileDetailsScreen> {
   final _name = TextEditingController(text: 'Your name');
   final _contact = TextEditingController(text: 'name@example.com');
   String _country = 'Kazakhstan';
@@ -64,7 +171,20 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     const SizedBox(height: 14), _choice('Currency', _currency, ['Tenge (KZT)', 'US dollar (USD)'], (v) => setState(() => _currency = v)),
     const SizedBox(height: 14), _choice('Language', _language, ['English', 'Русский', 'Қазақша'], (v) => setState(() => _language = v)),
     const SizedBox(height: 12), const Text('Country determines the local sample deposits and stocks shown.', style: TextStyle(color: AppColors.muted, fontSize: 11)),
-    const SizedBox(height: 20), PrimaryAction(label: 'Save', onPressed: () async { final prefs = await SharedPreferences.getInstance(); await prefs.setString('profile_name', _name.text.trim()); if (context.mounted) { showMessage(context, 'Profile saved locally.'); Navigator.pop(context); } }),
+    const SizedBox(height: 20), PrimaryAction(label: 'Save', onPressed: () async {
+      final authService = ref.read(authServiceProvider);
+      final profileData = {
+        'profile_name': _name.text.trim(),
+        'profile_country': _country,
+        'profile_currency': _currency,
+        'profile_language': _language,
+      };
+      await authService.saveLocalProfile(profileData);
+      if (context.mounted) {
+        showMessage(context, 'Profile saved.');
+        Navigator.pop(context);
+      }
+    }),
   ])));
 }
 
@@ -129,31 +249,84 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
   ])));
 }
 
-class DeleteAccountScreen extends StatefulWidget {
+class DeleteAccountScreen extends ConsumerStatefulWidget {
   const DeleteAccountScreen({super.key});
   @override
-  State<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
+  ConsumerState<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
 }
-class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
+class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   final _password = TextEditingController();
+  bool _busy = false;
+
   @override
-  void dispose() { _password.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Delete account')), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    const Icon(Icons.warning_amber_rounded, size: 48, color: AppColors.wine), const SizedBox(height: 8), Text('Delete your account?', style: Theme.of(context).textTheme.headlineMedium), const Text('This cannot be undone in the demo.', style: TextStyle(color: AppColors.muted)),
-    const SizedBox(height: 16), const SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('• Your local goals and advice history are deleted'), SizedBox(height: 8), Text('• Sample card connection is removed'), SizedBox(height: 8), Text('• Local SmartSave data is reset')])),
-    const SizedBox(height: 16), TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm with your password')),
-    const SizedBox(height: 20),
-    PrimaryAction(label: 'Delete permanently', onPressed: _delete),
-    const SizedBox(height: 8), OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-    const SizedBox(height: 10), const Text('Demo authentication is not secure; this only clears local demo state.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted, fontSize: 11)),
-  ])));
-  Future<void> _delete() async {
-    if (_password.text.length < 8) { showMessage(context, 'Enter the demo password (at least 8 characters) to confirm.'); return; }
-    await ProviderScope.containerOf(context, listen: false).read(financeControllerProvider).resetDemoData();
-    final prefs = await SharedPreferences.getInstance(); await prefs.clear();
-    if (mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const WelcomeScreen()), (_) => false);
+  void dispose() {
+    _password.dispose();
+    super.dispose();
   }
+
+  Future<void> _delete() async {
+    if (_password.text.length < 8) {
+      showMessage(context, 'Enter your password (at least 8 characters) to confirm.');
+      return;
+    }
+
+    setState(() => _busy = true);
+    final authService = ref.read(authServiceProvider);
+    final result = await authService.deleteAccount(password: _password.text);
+
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    if (result.success) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+        (_) => false,
+      );
+    } else {
+      showMessage(context, result.errorMessage ?? 'Account deletion failed. Please try again.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Delete account')),
+    body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+      const Icon(Icons.warning_amber_rounded, size: 48, color: AppColors.wine),
+      const SizedBox(height: 8),
+      Text('Delete your account?', style: Theme.of(context).textTheme.headlineMedium),
+      const Text('This action cannot be undone.', style: TextStyle(color: AppColors.muted)),
+      const SizedBox(height: 16),
+      const SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('• Your account and all associated data will be permanently deleted'),
+        SizedBox(height: 8),
+        Text('• Your local goals and financial data will be removed'),
+        SizedBox(height: 8),
+        Text('• This action cannot be undone'),
+      ])),
+      const SizedBox(height: 16),
+      TextField(
+        controller: _password,
+        obscureText: true,
+        decoration: const InputDecoration(labelText: 'Confirm with your password'),
+      ),
+      const SizedBox(height: 20),
+      PrimaryAction(
+        label: 'Delete permanently',
+        busy: _busy,
+        onPressed: _delete,
+      ),
+      const SizedBox(height: 8),
+      OutlinedButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      const SizedBox(height: 10),
+      const Text(
+        'This will permanently delete your Firebase Authentication account and all associated data.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: AppColors.muted, fontSize: 11),
+      ),
+    ])));
 }
 
 class SubscriptionScreen extends StatelessWidget {

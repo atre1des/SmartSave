@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../shared/theme.dart';
 import '../../data/providers.dart';
@@ -11,36 +10,124 @@ import '../advice/ai_assistant_screen.dart';
 import '../invest/invest_hub_screen.dart';
 import '../invest/invest_screen.dart';
 import '../profile/my_account_screen.dart';
+import '../../services/auth_service.dart';
 import '../../shared/widgets.dart';
 import 'demo_flow_screens.dart';
 
-class AppEntry extends StatefulWidget {
+class AppEntry extends ConsumerWidget {
   const AppEntry({super.key});
 
   @override
-  State<AppEntry> createState() => _AppEntryState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+    final authStatus = ref.watch(authStatusProvider);
+
+    return authState.when(
+      data: (user) {
+        if (user == null) {
+          return const WelcomeScreen();
+        }
+        // Check if email is verified
+        if (!user.emailVerified) {
+          return const EmailVerificationScreen();
+        }
+        return const AppShell();
+      },
+      loading: () => const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.firefly),
+        ),
+      ),
+      error: (error, stack) => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.wine, size: 48),
+              const SizedBox(height: 16),
+              const Text('Authentication error'),
+              const SizedBox(height: 8),
+              Text(
+                'Please restart the app.',
+                style: TextStyle(color: AppColors.muted),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _AppEntryState extends State<AppEntry> {
-  late final Future<SharedPreferences> _preferences =
-      SharedPreferences.getInstance();
+class EmailVerificationScreen extends ConsumerWidget {
+  const EmailVerificationScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<SharedPreferences>(
-    future: _preferences,
-    builder: (context, snapshot) {
-      if (!snapshot.hasData) {
-        return const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(color: AppColors.firefly),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authService = ref.watch(authServiceProvider);
+
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
+              const Icon(
+                Icons.email_outlined,
+                size: 80,
+                color: AppColors.firefly,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Verify your email',
+                style: Theme.of(context).textTheme.headlineLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'We\'ve sent a verification link to your email address. '
+                'Please check your inbox and click the link to verify your account.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.muted, fontSize: 16),
+              ),
+              const SizedBox(height: 24),
+              PrimaryAction(
+                label: 'I\'ve verified my email',
+                onPressed: () async {
+                  final authService = ref.read(authServiceProvider);
+                  await authService.sendEmailVerification();
+                  if (context.mounted) {
+                    showMessage(context, 'Verification email sent again.');
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              SecondaryAction(
+                label: 'Resend verification email',
+                onPressed: () async {
+                  final authService = ref.read(authServiceProvider);
+                  await authService.sendEmailVerification();
+                  if (context.mounted) {
+                    showMessage(context, 'Verification email resent.');
+                  }
+                },
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton(
+                onPressed: () async {
+                  final authService = ref.read(authServiceProvider);
+                  await authService.signOut();
+                },
+                child: const Text('Sign out'),
+              ),
+              const Spacer(flex: 3),
+            ],
           ),
-        );
-      }
-      return snapshot.data!.getBool('demo_session') == true
-          ? const AppShell()
-          : const WelcomeScreen();
-    },
-  );
+        ),
+      ),
+    );
+  }
 }
 
 class WelcomeScreen extends StatelessWidget {
@@ -151,15 +238,15 @@ class WelcomeScreen extends StatelessWidget {
   );
 }
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key, required this.signUp});
   final bool signUp;
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _contact = TextEditingController();
   final _password = TextEditingController();
@@ -178,35 +265,80 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _continue() async {
     if (!_formKey.currentState!.validate()) return;
     if (widget.signUp && !_acceptedTerms) {
-      showMessage(context, 'Accept the demo terms to continue.');
+      showMessage(context, 'Accept the terms to continue.');
       return;
     }
     setState(() => _busy = true);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('demo_contact', _contact.text.trim());
 
+    final authService = ref.read(authServiceProvider);
+    final email = _contact.text.trim();
+    final password = _password.text;
+
+    AuthResult result;
     if (widget.signUp) {
-      // New user: go through onboarding
-      if (!mounted) return;
-      setState(() => _busy = false);
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        (_) => false,
+      // Extract display name from email (before @) or use a default
+      final displayName = email.split('@').first;
+      result = await authService.register(
+        email: email,
+        password: password,
+        displayName: displayName,
       );
     } else {
-      // Existing user: skip quiz and onboarding, seed fake quiz data
-      await prefs.setBool('demo_session', true);
-      await prefs.setBool('risk_profile_complete', true);
-      await prefs.setBool('onboarding_complete', true);
-      await prefs.setBool('quiz_completed', true);
-      await prefs.setString('risk_profile', 'moderate');
-      await prefs.setString('quiz_answers', 'wait;1-3years;some;some;balance');
-      if (!mounted) return;
-      setState(() => _busy = false);
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AppShell()),
-        (_) => false,
+      result = await authService.signIn(
+        email: email,
+        password: password,
       );
+    }
+
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    if (result.success) {
+      if (widget.signUp) {
+        // New user: go through onboarding
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          (_) => false,
+        );
+      } else {
+        // Existing user: check onboarding status
+        final authService = ref.read(authServiceProvider);
+        final onboardingComplete = await authService.isOnboardingComplete();
+        if (!mounted) return;
+        if (onboardingComplete) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const AppShell()),
+            (_) => false,
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+            (_) => false,
+          );
+        }
+      }
+    } else {
+      showMessage(context, result.errorMessage ?? 'Authentication failed. Please try again.');
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _contact.text.trim();
+    if (email.isEmpty) {
+      showMessage(context, 'Please enter your email address first.');
+      return;
+    }
+
+    final authService = ref.read(authServiceProvider);
+    setState(() => _busy = true);
+    final result = await authService.sendPasswordResetEmail(email);
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    if (result.success) {
+      showMessage(context, 'Password reset email sent. Check your inbox.');
+    } else {
+      showMessage(context, result.errorMessage ?? 'Failed to send reset email.');
     }
   }
 
@@ -243,12 +375,18 @@ class _AuthScreenState extends State<AuthScreen> {
               controller: _contact,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
-                labelText: 'Email or phone',
+                labelText: 'Email',
                 hintText: 'name@example.com',
               ),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'Enter your email or phone.'
-                  : null,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Enter your email address.';
+                }
+                if (!value.contains('@') || !value.contains('.')) {
+                  return 'Enter a valid email address.';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -289,10 +427,7 @@ class _AuthScreenState extends State<AuthScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () => showMessage(
-                    context,
-                    'Password reset is unavailable in this local demo.',
-                  ),
+                  onPressed: _forgotPassword,
                   child: const Text('Forgot password?'),
                 ),
               ),
@@ -304,7 +439,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'Demo authentication only. Credentials are not verified or stored as secure production credentials.',
+              'Your credentials are securely managed by Firebase Authentication.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted, fontSize: 11),
             ),
@@ -315,13 +450,13 @@ class _AuthScreenState extends State<AuthScreen> {
   );
 }
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _step = 0;
   static const _titles = [
     'Track every tenge',
@@ -335,8 +470,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   Future<void> _finish() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_complete', true);
+    final authService = ref.read(authServiceProvider);
+    await authService.setOnboardingComplete(true);
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
