@@ -74,7 +74,7 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Risk profile: ${ref.watch(sharedPreferencesProvider).getString('risk_profile') ?? 'moderate'} · Kazakhstan',
+                            'Risk profile: ${ref.watch(authServiceProvider).getRiskProfile() ?? 'moderate'} · Kazakhstan',
                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                           ),
                         ),

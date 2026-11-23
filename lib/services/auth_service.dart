@@ -2,6 +2,8 @@
 // Handles Firebase Authentication with proper error handling and state management
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dio/dio.dart';
+import '../data/finance_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -130,7 +132,6 @@ String _getAuthErrorMessage(AuthExceptionCode code) {
     case AuthExceptionCode.operationNotAllowed:
       return 'This operation is not allowed. Contact support.';
     case AuthExceptionCode.unknown:
-    default:
       return 'An unexpected error occurred. Please try again.';
   }
 }
@@ -146,7 +147,7 @@ class AuthService {
   FirebaseAuth get auth => _auth;
 
   /// Current user stream
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  Stream<User?> get authStateChanges => _auth.userChanges();
 
   /// Current user ID
   String? get currentUserId => _auth.currentUser?.uid;
@@ -170,8 +171,8 @@ class AuthService {
 
   /// Initialize auth service
   Future<void> initialize() async {
-    // Ensure we don't persist auth state on web (not needed for mobile)
-    await _auth.setPersistence(Persistence.LOCAL);
+    // Native Firebase manages its own authenticated session persistence.
+    if (kIsWeb) await _auth.setPersistence(Persistence.SESSION);
   }
 
   /// Register a new user with email and password
@@ -203,7 +204,6 @@ class AuthService {
       final code = _mapFirebaseAuthException(e);
       return AuthResult.failure(_getAuthErrorMessage(code), code);
     } catch (e) {
-      debugPrint('[AuthService] Register error: $e');
       return AuthResult.failure('Registration failed. Please try again.', AuthExceptionCode.unknown);
     }
   }
@@ -227,7 +227,6 @@ class AuthService {
       final code = _mapFirebaseAuthException(e);
       return AuthResult.failure(_getAuthErrorMessage(code), code);
     } catch (e) {
-      debugPrint('[AuthService] Sign in error: $e');
       return AuthResult.failure('Sign in failed. Please try again.', AuthExceptionCode.unknown);
     }
   }
@@ -240,7 +239,6 @@ class AuthService {
       await _clearLocalSession();
       return AuthResult.ok();
     } catch (e) {
-      debugPrint('[AuthService] Sign out error: $e');
       return AuthResult.failure('Sign out failed. Please try again.', AuthExceptionCode.unknown);
     }
   }
@@ -254,7 +252,6 @@ class AuthService {
       final code = _mapFirebaseAuthException(e);
       return AuthResult.failure(_getAuthErrorMessage(code), code);
     } catch (e) {
-      debugPrint('[AuthService] Password reset error: $e');
       return AuthResult.failure('Failed to send reset email. Please try again.', AuthExceptionCode.unknown);
     }
   }
@@ -272,7 +269,6 @@ class AuthService {
       final code = _mapFirebaseAuthException(e);
       return AuthResult.failure(_getAuthErrorMessage(code), code);
     } catch (e) {
-      debugPrint('[AuthService] Email verification error: $e');
       return AuthResult.failure('Failed to send verification email.', AuthExceptionCode.unknown);
     }
   }
@@ -303,39 +299,64 @@ class AuthService {
       final code = _mapFirebaseAuthException(e);
       return AuthResult.failure(_getAuthErrorMessage(code), code);
     } catch (e) {
-      debugPrint('[AuthService] Reauthenticate error: $e');
       return AuthResult.failure('Re-authentication failed.', AuthExceptionCode.unknown);
     }
   }
 
-  /// Delete user account
-  Future<AuthResult> deleteAccount({required String password}) async {
+  Future<AuthResult> deleteAccount({
+    required String password,
+    required FinanceRepository repository,
+  }) async {
+    const endpoint = String.fromEnvironment('SMARTSAVE_BACKEND_URL');
+    final base = Uri.tryParse(endpoint);
+    if (base == null || base.scheme != 'https' || base.host.isEmpty ||
+        base.userInfo.isNotEmpty) {
+      return AuthResult.failure('A configured HTTPS backend is required.', AuthExceptionCode.operationNotAllowed);
+    }
+    final user = _auth.currentUser;
+    if (user == null) return AuthResult.failure('Sign in to delete this account.', AuthExceptionCode.unknown);
+    final signedIn = await reauthenticate(password);
+    if (!signedIn.success) return signedIn;
+    final client = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      sendTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 60),
+      followRedirects: false,
+    ));
     try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        return AuthResult.failure('No user signed in.', AuthExceptionCode.unknown);
+      final token = await user.getIdToken(true);
+      if (token == null || currentUserId != user.uid) {
+        throw StateError('Your account session changed.');
       }
-
-      // Re-authenticate first (required by Firebase)
-      final reauthResult = await reauthenticate(password);
-      if (!reauthResult.success) {
-        return AuthResult.failure(reauthResult.errorMessage ?? 'Re-authentication failed.', reauthResult.errorCode);
-      }
-
-      // Delete from Firestore would happen here (in future stages)
-      // For now, just delete the auth account
+      await repository.deleteAccountData(user.uid, () async {
+        if (currentUserId != user.uid) throw StateError('Your account session changed.');
+        final response = await client.postUri<void>(
+          base.resolve('/api/account/delete-data'),
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
+        );
+        if (response.statusCode != 204) throw StateError('Cloud deletion could not be confirmed.');
+      }, clearPreferences: (removeLegacy) async {
+        for (final name in [..._profilePreferences, 'onboarding_complete', 'risk_profile_complete', 'risk_profile', 'quiz_answers']) {
+          if (!await _prefs.remove('${name}_${user.uid}')) {
+            throw StateError('Local account preferences could not be removed.');
+          }
+        }
+        if (removeLegacy && !await _prefs.remove('ai_conversations')) {
+          throw StateError('Legacy assistant history could not be removed.');
+        }
+      });
+      if (currentUserId != user.uid) throw StateError('Your account session changed.');
       await user.delete();
-
-      // Clear local session
-      await _clearLocalSession();
-
       return AuthResult.ok();
-    } on FirebaseAuthException catch (e) {
-      final code = _mapFirebaseAuthException(e);
-      return AuthResult.failure(_getAuthErrorMessage(code), code);
-    } catch (e) {
-      debugPrint('[AuthService] Delete account error: $e');
-      return AuthResult.failure('Account deletion failed. Please try again.', AuthExceptionCode.unknown);
+    } on StateError catch (error) {
+      return AuthResult.failure(error.message, AuthExceptionCode.operationNotAllowed);
+    } catch (_) {
+      return AuthResult.failure(
+        'Deletion could not be confirmed. Some cleanup may have completed. Restart SmartSave and retry while the account still exists.',
+        AuthExceptionCode.unknown,
+      );
+    } finally {
+      client.close(force: true);
     }
   }
 
@@ -362,73 +383,61 @@ class AuthService {
       final code = _mapFirebaseAuthException(e);
       return AuthResult.failure(_getAuthErrorMessage(code), code);
     } catch (e) {
-      debugPrint('[AuthService] Update profile error: $e');
       return AuthResult.failure('Failed to update profile.', AuthExceptionCode.unknown);
     }
   }
 
-  /// Get user profile data from SharedPreferences (local cache)
-  Map<String, String> getLocalProfile() {
-    final keys = [
-      'profile_name',
-      'profile_country',
-      'profile_currency',
-      'profile_language',
-      'risk_profile',
-      'quiz_answers',
-    ];
+  static const _profilePreferences = [
+    'profile_country',
+    'profile_currency',
+    'profile_language',
+  ];
 
-    final result = <String, String>{};
-    for (final key in keys) {
-      final value = _prefs.getString(key);
-      if (value != null && value.isNotEmpty) {
-        result[key] = value;
-      }
-    }
-    return result;
+  String? getProfilePreference(String key) {
+    final uid = currentUserId;
+    return uid == null || !_profilePreferences.contains(key)
+        ? null
+        : _prefs.getString('${key}_$uid');
   }
 
-  /// Save profile data to SharedPreferences
   Future<void> saveLocalProfile(Map<String, String> data) async {
-    for (final entry in data.entries) {
-      await _prefs.setString(entry.key, entry.value);
+    final uid = currentUserId;
+    if (uid == null) return;
+    for (final key in _profilePreferences) {
+      final value = data[key];
+      if (value != null) await _prefs.setString('${key}_$uid', value);
     }
   }
 
   /// Check if onboarding is complete for current user
   Future<bool> isOnboardingComplete() async {
-    return _prefs.getBool('onboarding_complete_${currentUserId}') ?? false;
+    return _prefs.getBool('onboarding_complete_$currentUserId') ?? false;
   }
 
   /// Set onboarding complete state
   Future<void> setOnboardingComplete(bool complete) async {
     if (currentUserId != null) {
-      await _prefs.setBool('onboarding_complete_${currentUserId}', complete);
+      await _prefs.setBool('onboarding_complete_$currentUserId', complete);
     }
   }
 
   /// Check if risk quiz is complete
   Future<bool> isRiskQuizComplete() async {
-    return _prefs.getBool('risk_profile_complete_${currentUserId}') ?? false;
+    return _prefs.getBool('risk_profile_complete_$currentUserId') ?? false;
   }
 
   /// Set risk quiz complete
-  Future<void> setRiskQuizComplete(bool complete, {String? profile, String? answers}) async {
-    if (currentUserId != null) {
-      await _prefs.setBool('risk_profile_complete_${currentUserId}', complete);
-      if (profile != null) {
-        await _prefs.setString('risk_profile_${currentUserId}', profile);
-      }
-      if (answers != null) {
-        await _prefs.setString('quiz_answers_${currentUserId}', answers);
-      }
-    }
+  Future<void> setRiskQuizComplete(bool complete, {String? profile}) async {
+    final uid = currentUserId;
+    if (uid == null) return;
+    await _prefs.setBool('risk_profile_complete_$uid', complete);
+    if (profile != null) await _prefs.setString('risk_profile_$uid', profile);
   }
 
   /// Get risk profile
   String? getRiskProfile() {
     if (currentUserId != null) {
-      return _prefs.getString('risk_profile_${currentUserId}');
+      return _prefs.getString('risk_profile_$currentUserId');
     }
     return null;
   }
@@ -448,16 +457,6 @@ class AuthService {
       'risk_profile_complete',
       'quiz_completed',
     ];
-
-    // Also clear user-specific keys
-    if (currentUserId != null) {
-      keys.addAll([
-        'onboarding_complete_${currentUserId}',
-        'risk_profile_complete_${currentUserId}',
-        'risk_profile_${currentUserId}',
-        'quiz_answers_${currentUserId}',
-      ]);
-    }
 
     for (final key in keys) {
       await _prefs.remove(key);

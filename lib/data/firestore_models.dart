@@ -17,6 +17,7 @@ abstract class FirestoreModel {
   bool get isSynced;
   bool get isDeleted;
   int get version;
+  SyncStatus get syncStatus;
 
   Map<String, dynamic> toFirestore();
 }
@@ -42,13 +43,17 @@ class FirestoreTransaction implements FirestoreModel {
   final DateTime occurredAt;
   final String note;
   final String source;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -131,13 +136,17 @@ class FirestoreSavingsGoal implements FirestoreModel {
   final int saved;
   final DateTime deadline;
   final String purpose;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -211,13 +220,17 @@ class FirestoreGoalContribution implements FirestoreModel {
   final int amount;
   final DateTime contributedAt;
   final String note;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -282,13 +295,17 @@ class FirestoreBudget implements FirestoreModel {
   final String id;
   final String category;
   final int monthlyLimit;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -350,13 +367,17 @@ class FirestoreInvestmentThesis implements FirestoreModel {
   final String assumptions;
   final String risks;
   final String invalidationConditions;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -395,7 +416,6 @@ class FirestoreInvestmentThesis implements FirestoreModel {
   }
 
   factory FirestoreInvestmentThesis.fromLocal(InvestmentThesis local, String localId) {
-    final now = DateTime.now();
     return FirestoreInvestmentThesis(
       id: '',
       securityName: local.securityName,
@@ -449,13 +469,17 @@ class FirestoreThesisCondition implements FirestoreModel {
   final String reportingPeriod;
   final String source;
   final String evidenceNote;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -531,13 +555,17 @@ class FirestoreThesisAssessment implements FirestoreModel {
   final List<String> overlookedRisks;
   final List<String> reconsiderationTriggers;
   final List<String> additionalInformation;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -589,13 +617,17 @@ class FirestoreConditionAssessment implements FirestoreModel {
   final String source;
   final String reportingPeriod;
   final double? observedValue;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -641,13 +673,17 @@ class FirestorePortfolioHolding implements FirestoreModel {
   final double? fxSensitivityPctPerPct;
   final double? oilSensitivityPctPerPct;
   final double? rateSensitivityPctPerPoint;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -728,13 +764,17 @@ class FirestoreInvestmentSetting implements FirestoreModel {
   final String id;
   final String key;
   final String value;
+  @override
   final String localId;
   @override
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;
@@ -781,8 +821,11 @@ class SyncMetadata implements FirestoreModel {
   final DateTime createdAt;
   @override
   final DateTime updatedAt;
+  @override
   final bool isSynced;
+  @override
   final bool isDeleted;
+  @override
   final int version;
   @override
   final SyncStatus syncStatus;

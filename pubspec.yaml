@@ -39,7 +39,9 @@ dependencies:
   flutter_riverpod: ^2.4.9
 
   # Database
-  sqflite: ^2.3.0
+  sqflite_common: ^2.5.8
+  sqflite_sqlcipher: 3.4.1
+  flutter_secure_storage: 11.2.0
   path: ^1.8.3
 
   # For simple key-value storage (authentication and onboarding flags)
@@ -64,6 +66,8 @@ dependencies:
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to

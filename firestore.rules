@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owns(uid) {
+      return request.auth != null && request.auth.uid == uid &&
+        !exists(/databases/$(database)/documents/accountDeletionLocks/$(uid));
+    }
+
+    function validOwner(uid) {
+      return request.resource.data.get('userId', uid) == uid &&
+        (!('ownerUid' in request.resource.data) ||
+         request.resource.data.ownerUid == uid) &&
+        (resource == null || !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['userId', 'ownerUid']));
+    }
+
+    function syncFields(d) {
+      return d.id is string && d.createdAt is string &&
+        (d.updatedAt is string || d.updatedAt is timestamp) &&
+        d.isSynced is bool && d.isDeleted is bool &&
+        d.version is int && d.version >= 0 &&
+        d.syncStatus in ['pending', 'synced', 'conflict', 'error', 'deleted'];
+    }
+
+    match /users/{uid} {
+      match /transactions/{id} {
+        allow read: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          syncFields(request.resource.data) &&
+          request.resource.data.amount is int && request.resource.data.amount > 0 &&
+          request.resource.data.isIncome is bool && request.resource.data.category is string &&
+          request.resource.data.merchant is string && request.resource.data.occurredAt is string;
+      }
+
+      match /goals/{id} {
+        allow read, delete: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          syncFields(request.resource.data) && request.resource.data.name is string &&
+          request.resource.data.target is int && request.resource.data.target > 0 &&
+          request.resource.data.saved is int && request.resource.data.saved >= 0 &&
+          request.resource.data.deadline is string;
+        match /contributions/{contributionId} {
+          allow read, delete: if owns(uid);
+          allow create, update: if owns(uid) && validOwner(uid) &&
+            syncFields(request.resource.data) && request.resource.data.goalId == id &&
+            request.resource.data.amount is int && request.resource.data.amount > 0 &&
+            request.resource.data.contributedAt is string;
+        }
+      }
+
+      match /budgets/{id} {
+        allow read: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          syncFields(request.resource.data) && request.resource.data.category is string &&
+          request.resource.data.monthlyLimit is int && request.resource.data.monthlyLimit >= 0;
+      }
+
+      match /investmentTheses/{id} {
+        allow read: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          syncFields(request.resource.data) && request.resource.data.securityName is string &&
+          request.resource.data.rationale is string && request.resource.data.horizon is string;
+        match /conditions/{conditionId} {
+          allow read: if owns(uid);
+          allow create, update: if owns(uid) && validOwner(uid) &&
+            syncFields(request.resource.data) && request.resource.data.thesisId == id &&
+            request.resource.data.description is string && request.resource.data.metric is string;
+        }
+        match /assessments/{assessmentId} {
+          allow read: if owns(uid);
+          allow create: if owns(uid) && validOwner(uid) &&
+            syncFields(request.resource.data) && request.resource.data.thesisId == id &&
+            request.resource.data.assessedAt is string && request.resource.data.conditions is list &&
+            request.resource.data.isDeleted == false;
+        }
+      }
+
+      match /portfolioHoldings/{id} {
+        allow read: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          syncFields(request.resource.data) && request.resource.data.securityName is string &&
+          request.resource.data.marketValueKzt is int && request.resource.data.marketValueKzt >= 0;
+      }
+
+      match /investmentSettings/{id} {
+        allow read: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          syncFields(request.resource.data) && request.resource.data.key is string &&
+          request.resource.data.value is string;
+      }
+
+      match /syncMetadata/metadata {
+        allow read: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          syncFields(request.resource.data) && request.resource.data.userId == uid &&
+          request.resource.data.lastFullSync is string &&
+          request.resource.data.pendingUploadCount is int &&
+          request.resource.data.pendingUploadCount >= 0 &&
+          request.resource.data.schemaVersion is int && request.resource.data.entityVersions is map;
+      }
+
+      match /pendingWrites/{id} {
+        allow read: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          request.resource.data.id == id && request.resource.data.entityType is string &&
+          request.resource.data.entityId is string && request.resource.data.localId is string &&
+          request.resource.data.operation is string && request.resource.data.payload is map &&
+          request.resource.data.createdAt is string && request.resource.data.retryCount is int &&
+          request.resource.data.retryCount >= 0 &&
+          request.resource.data.status in ['pending', 'synced', 'conflict', 'error', 'deleted'];
+      }
+    }
+  }
+}

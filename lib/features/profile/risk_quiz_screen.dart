@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/providers.dart';
 
 import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
@@ -63,12 +63,8 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
   Future<void> _finish() async {
     if (_answers.any((a) => a == null)) return;
 
-    final prefs = await SharedPreferences.getInstance();
     final profile = _calculateRiskProfile(_answers);
-    await prefs.setBool('risk_profile_complete', true);
-    await prefs.setBool('quiz_completed', true);
-    await prefs.setString('risk_profile', profile);
-    await prefs.setString('quiz_answers', _answers.join(';'));
+    await ref.read(authServiceProvider).setRiskQuizComplete(true, profile: profile);
 
     if (mounted) {
       showMessage(context, 'Risk profile updated: ${profile[0].toUpperCase()}${profile.substring(1)} investor');

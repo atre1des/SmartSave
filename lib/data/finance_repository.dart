@@ -1,7 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:path/path.dart' as paths;
-import 'package:sqflite/sqflite.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:sqflite_common/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart' as cipher;
 
 import 'investment_models.dart';
 import '../../ai/models.dart';
@@ -130,20 +135,150 @@ class DepositProduct {
 }
 
 class FinanceRepository {
-  FinanceRepository._(this._db, this._currentUid);
+  FinanceRepository._(this._db, this._currentUid, this._accountUid);
+  final String? _accountUid;
   final Database _db;
   final String? Function() _currentUid;
+
+  static const _secureStorage = FlutterSecureStorage(
+    mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+  );
+  static bool _mobileFactoryInitialized = false;
+  static final _mobileOpens = <String, Future<void>>{};
+
+  static bool get _usesSqlCipher =>
+      !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
+
+  static Future<FinanceRepository> openForAccount(String uid, {String? directory}) async {
+    if (uid.isEmpty) throw ArgumentError('An account UID is required');
+    final account = base64Url.encode(utf8.encode(uid));
+    if (_usesSqlCipher && !_mobileFactoryInitialized) {
+      databaseFactory = cipher.databaseFactory;
+      _mobileFactoryInitialized = true;
+    }
+    final databaseDirectory = directory ?? await getDatabasesPath();
+    final original = paths.join(databaseDirectory, 'smartsave_account_$account.db');
+    if (!_usesSqlCipher) {
+      return open(databasePath: original, currentUid: () => uid, accountUid: uid,
+        singleInstance: false);
+    }
+
+    // Serialize reads, key creation and migration for the same database path.
+    final prior = _mobileOpens[original];
+    final opening = _openEncryptedAccount(uid, account, original, prior);
+    final completion = opening.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    _mobileOpens[original] = completion;
+    try {
+      return await opening;
+    } finally {
+      if (identical(_mobileOpens[original], completion)) _mobileOpens.remove(original);
+    }
+  }
+
+  static Future<FinanceRepository> _openEncryptedAccount(
+    String uid, String account, String original, Future<void>? prior,
+  ) async {
+    if (prior != null) await prior;
+    final encrypted = '${paths.withoutExtension(original)}.encrypted.db';
+    final keyName = 'smartsave.sqlite.v1.$account';
+    FinanceRepository? repository;
+    try {
+      var key = await _secureStorage.read(key: keyName);
+      if (key == null) {
+        if (await databaseExists(encrypted)) {
+          throw StateError('The encrypted database key is unavailable.');
+        }
+        final random = Random.secure();
+        key = base64Url.encode(List<int>.generate(32, (_) => random.nextInt(256)));
+        await _secureStorage.write(key: keyName, value: key);
+        if (await _secureStorage.read(key: keyName) != key) {
+          throw StateError('The database key could not be persisted.');
+        }
+      }
+      final hasOriginal = await databaseExists(original);
+      repository = await open(databasePath: encrypted, currentUid: () => uid,
+        accountUid: uid, singleInstance: false, password: key, seed: !hasOriginal);
+      if (hasOriginal) await repository._copyPlaintextAccount(original);
+      return repository;
+    } catch (_) {
+      try {
+        await repository?.close();
+      } catch (_) {
+        // Retain both files and the key even if closing failed.
+      }
+      throw StateError('Could not open or migrate the protected account database. Original files were kept.');
+    }
+  }
+
+  Future<void> _copyPlaintextAccount(String original) async {
+    const marker = 'account_sqlcipher_migration_complete';
+    final marked = await _db.query('preferences', where: 'key IN (?, ?)',
+      whereArgs: [marker, 'account_deletion_prepared']);
+    if (marked.isNotEmpty) return;
+    final source = await openReadOnlyDatabase(original, singleInstance: false);
+    try {
+      final integrity = await source.rawQuery('PRAGMA quick_check');
+      if (integrity.length != 1 || integrity.single.values.single != 'ok') {
+        throw StateError('Original account database failed integrity verification.');
+      }
+      final sourceTables = await _tableNames(source);
+      final tables = [..._portableTables.keys, 'deposit_products', 'preferences', 'sync_operations'];
+      if (sourceTables.any((table) => !table.startsWith('sqlite_') && !tables.contains(table))) {
+        throw StateError('Original account database contains unsupported tables.');
+      }
+      await _db.transaction((txn) async {
+        for (final table in tables.where(sourceTables.contains)) {
+          final rows = await source.query(table);
+          if ((await txn.query(table, limit: 1)).isNotEmpty) {
+            throw StateError('The migration destination already contains records.');
+          }
+          final batch = txn.batch();
+          for (final row in rows) {
+            batch.insert(table, row);
+          }
+          await batch.commit(noResult: true);
+          final key = _portableTables[table] ?? (table == 'preferences' ? 'key' : 'id');
+          final copied = {
+            for (final row in await txn.query(table)) row[key]: row,
+          };
+          if (copied.length != rows.length ||
+              rows.any((row) => !mapEquals(copied[row[key]], row))) {
+            throw StateError('Migration did not preserve the original rows.');
+          }
+        }
+        if (sourceTables.contains('sqlite_sequence')) {
+          for (final row in await source.query('sqlite_sequence')) {
+            await txn.delete('sqlite_sequence', where: 'name = ?', whereArgs: [row['name']]);
+            await txn.insert('sqlite_sequence', row);
+          }
+        }
+        if ((await txn.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) {
+          throw StateError('Migrated records failed foreign-key verification.');
+        }
+        await txn.insert('preferences', {'key': marker, 'value': '1'});
+      });
+    } finally {
+      await source.close();
+    }
+  }
 
   static Future<FinanceRepository> open({
     String? databasePath,
     String? Function()? currentUid,
+    bool singleInstance = true,
+    String? accountUid,
+    String? password,
+    bool seed = true,
   }) async {
     final path =
         databasePath ??
         paths.join(await getDatabasesPath(), 'smartsave_demo.db');
-    final db = await openDatabase(
+    final db = await databaseFactory.openDatabase(
       path,
+      options: cipher.SqlCipherOpenDatabaseOptions(
+      password: password,
       version: 3,
+      singleInstance: singleInstance,
       onCreate: (db, version) async {
         await db.execute('''CREATE TABLE transactions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -205,20 +340,33 @@ class FinanceRepository {
         )''');
         await _createInvestmentTables(db);
         await _createAIMessagesTable(db);
-        await _seed(db);
+        if (seed) await _seed(db);
         await _ensureSyncColumns(db);
+        if (seed && accountUid != null) {
+          await db.insert('preferences', {
+            'key': _seedSnapshotKey,
+            'value': await _seedSnapshot(db),
+          });
+        }
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) await _createInvestmentTables(db);
         if (oldVersion < 3) await _createAIMessagesTable(db);
         await _ensureSyncColumns(db);
       },
-      onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
-    );
+      onConfigure: (db) async {
+        if (password != null) {
+          final version = await db.rawQuery('PRAGMA cipher_version');
+          if (version.isEmpty) throw StateError('SQLCipher is unavailable.');
+          await db.rawQuery('SELECT count(*) FROM sqlite_master');
+        }
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
+    ));
     // Ensure sync columns exist for existing databases (version bump doesn't
     // trigger onCreate/onUpgrade when version is unchanged).
     await _ensureSyncColumns(db);
-    return FinanceRepository._(db, currentUid ?? () => null);
+    return FinanceRepository._(db, currentUid ?? () => null, accountUid);
   }
 
   static Future<void> _createInvestmentTables(DatabaseExecutor db) async {
@@ -279,33 +427,6 @@ class FinanceRepository {
       timestamp TEXT NOT NULL,
       is_streaming INTEGER NOT NULL DEFAULT 0,
       error TEXT
-    )''');
-  }
-
-  static Future<void> _createInvestmentAllocationsTable(
-    DatabaseExecutor db,
-  ) async {
-    await db.execute('''CREATE TABLE investment_allocations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      security_type TEXT NOT NULL,
-      security_name TEXT NOT NULL,
-      ticker TEXT,
-      exchange TEXT DEFAULT 'KASE',
-      amount_kzt INTEGER NOT NULL CHECK(amount_kzt > 0),
-      current_value_kzt INTEGER NOT NULL CHECK(current_value_kzt >= 0),
-      linked_goal_id INTEGER REFERENCES goals(id) ON DELETE SET NULL,
-      created_at TEXT NOT NULL,
-      note TEXT NOT NULL DEFAULT ''
-    )''');
-  }
-
-  static Future<void> _createCashAccountsTable(DatabaseExecutor db) async {
-    await db.execute('''CREATE TABLE cash_accounts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      balance_kzt INTEGER NOT NULL DEFAULT 0,
-      is_investable INTEGER NOT NULL DEFAULT 1,
-      opened_at TEXT NOT NULL
     )''');
   }
 
@@ -1062,6 +1183,274 @@ class FinanceRepository {
     );
   }
 
+  static const _portableTables = <String, String>{
+    'transactions': 'id',
+    'goals': 'id',
+    'goal_contributions': 'id',
+    'budgets': 'category',
+    'investment_theses': 'id',
+    'thesis_conditions': 'id',
+    'thesis_assessments': 'id',
+    'portfolio_holdings': 'id',
+    'investment_settings': 'key',
+    'investment_allocations': 'id',
+    'cash_accounts': 'id',
+    'watchlist': 'ticker',
+    'advice': 'id',
+    'ai_messages': 'id',
+  };
+
+  static const _seedSnapshotKey = 'initial_demo_snapshot';
+
+  static Future<String> _seedSnapshot(DatabaseExecutor db) async {
+    final present = await _tableNames(db);
+    return jsonEncode({
+      for (final entry in _portableTables.entries)
+        if (present.contains(entry.key))
+          entry.key: await db.query(entry.key, orderBy: entry.value),
+    });
+  }
+
+  void _requireAccount(String uid) {
+    if (_accountUid == null || _accountUid != uid) {
+      throw StateError('The active account does not own this database.');
+    }
+  }
+
+  static Future<Set<String>> _tableNames(DatabaseExecutor db) async =>
+      (await db.rawQuery("SELECT name FROM sqlite_master WHERE type = 'table'"))
+          .map((row) => row['name'] as String)
+          .toSet();
+
+  /// Keep the local write lock across remote cleanup so a new queued change
+  /// cannot appear between the pending check and local deletion.
+  Future<void> deleteAccountData(
+    String uid,
+    Future<void> Function() deleteCloud, {
+    Future<void> Function(bool removeLegacy)? clearPreferences,
+  }) async {
+    _requireAccount(uid);
+    final directory = paths.dirname(_db.path);
+    final sharedPath = paths.join(directory, 'smartsave_demo.db');
+    final sharedExists = await databaseExists(sharedPath);
+    final legacyBelongsToAccount = await databaseExists(paths.join(directory, 'smartsave_legacy_claim.db')) &&
+        await _legacyClaimBelongsTo(uid, directory);
+    final removeLegacy = await _db.transaction((txn) async {
+      const deletionMarker = 'account_deletion_prepared';
+      final sealed = await txn.query('preferences', where: 'key = ?', whereArgs: [deletionMarker]);
+      if (sealed.isNotEmpty) return sealed.single['value'] == 'legacy';
+      final imported = await txn.query('preferences', where: 'key = ?',
+        whereArgs: ['legacy_account_import_complete']);
+      if (sharedExists && (!legacyBelongsToAccount || imported.isEmpty)) {
+        throw StateError('Shared legacy records require confirmed recovery before deletion.');
+      }
+      final removeLegacy = legacyBelongsToAccount && imported.isNotEmpty;
+      final pending = await txn.query('sync_operations',
+        where: 'status != ?', whereArgs: ['synced'], limit: 1);
+      if (pending.isNotEmpty) {
+        throw StateError('Unsynchronized data must be resolved before deletion.');
+      }
+      final present = await _tableNames(txn);
+      final tables = [
+        ..._portableTables.keys,
+        'preferences',
+        'sync_operations',
+        'deposit_products',
+      ].reversed.where(present.contains);
+      if (present.any((name) => !name.startsWith('sqlite_') && !tables.contains(name))) {
+        throw StateError('Local data contains unsupported tables.');
+      }
+      // The cloud callback throws on any incomplete remote cleanup.
+      await deleteCloud();
+      for (final table in tables) {
+        await txn.delete(table);
+        if (table == 'preferences') {
+          await txn.insert('preferences', {'key': deletionMarker, 'value': removeLegacy ? 'legacy' : '1'});
+        }
+        for (final operation in ['INSERT', 'UPDATE']) {
+          await txn.execute(
+            "CREATE TRIGGER IF NOT EXISTS deletion_${table}_$operation "
+            "BEFORE $operation ON $table BEGIN SELECT RAISE(ABORT, 'Account deletion in progress'); END",
+          );
+        }
+      }
+      return removeLegacy;
+    });
+    await clearPreferences?.call(removeLegacy);
+    if (removeLegacy && sharedExists) await deleteDatabase(sharedPath);
+    final activePath = _db.path;
+    final account = base64Url.encode(utf8.encode(uid));
+    final original = paths.join(directory, 'smartsave_account_$account.db');
+    await close();
+    await deleteDatabase(activePath);
+    if (activePath != original) {
+      await deleteDatabase(original);
+      await _secureStorage.delete(key: 'smartsave.sqlite.v1.$account');
+    }
+  }
+
+  Future<bool> _legacyClaimBelongsTo(String uid, String directory) async {
+    final claim = await openReadOnlyDatabase(
+      paths.join(directory, 'smartsave_legacy_claim.db'), singleInstance: false,
+    );
+    try {
+      final rows = await claim.query('legacy_claim');
+      return rows.isNotEmpty && rows.single['uid'] == uid;
+    } finally {
+      await claim.close();
+    }
+  }
+
+  /// Exports a consistent local snapshot without exporting credential/config tables.
+  Future<String> exportAccountData(String uid) async {
+    _requireAccount(uid);
+    return _db.transaction((txn) async {
+      final present = await _tableNames(txn);
+      return const JsonEncoder.withIndent('  ').convert({
+        'version': 1,
+        'source': 'local_account_cache',
+        'exportedAt': DateTime.now().toUtc().toIso8601String(),
+        'records': {
+          for (final entry in _portableTables.entries)
+            if (entry.key != 'ai_messages' && present.contains(entry.key))
+              entry.key: await txn.query(entry.key, orderBy: entry.value),
+        },
+      });
+    });
+  }
+
+  /// Imports a confirmed single-owner legacy snapshot. Conflicts abort the entire
+  /// import. The read-only source and unscoped preferences remain recoverable.
+  Future<void> importLegacyAccountData(
+    String uid, {
+    required bool ownershipConfirmed,
+    String? assistantHistory,
+  }) async {
+    _requireAccount(uid);
+    if (!ownershipConfirmed) throw StateError('Confirm ownership first.');
+    final sourcePath = paths.join(paths.dirname(_db.path), 'smartsave_demo.db');
+    final source = await databaseExists(sourcePath)
+        ? await openReadOnlyDatabase(sourcePath, singleInstance: false) : null;
+    if (source == null && assistantHistory == null) {
+      throw StateError('No legacy records are available on this device.');
+    }
+    try {
+      final tables = {..._portableTables, 'sync_operations': 'id'};
+      final snapshot = <String, List<Map<String, Object?>>>{};
+      if (source != null) {
+        final integrity = await source.rawQuery('PRAGMA quick_check');
+        if (integrity.length != 1 || integrity.single.values.single != 'ok') {
+          throw StateError('The original database failed its integrity check.');
+        }
+        final present = await _tableNames(source);
+        for (final name in tables.keys.where(present.contains)) {
+          snapshot[name] = await source.query(name);
+        }
+      }
+      final queue = snapshot['sync_operations'] ?? const [];
+      if (queue.any((row) => row['owner_uid'] != null && row['owner_uid'] != uid)) {
+        throw StateError('The legacy database has records associated with another account.');
+      }
+      if (assistantHistory != null && jsonDecode(assistantHistory) is! List) {
+        throw const FormatException('Invalid legacy assistant history.');
+      }
+      // Reserve ownership before writing the destination. If the process stops
+      // between these transactions, only the same account can resume.
+      final claim = await openDatabase(
+        paths.join(paths.dirname(sourcePath), 'smartsave_legacy_claim.db'),
+        version: 1,
+        singleInstance: false,
+        onCreate: (db, _) => db.execute(
+          'CREATE TABLE legacy_claim (id INTEGER PRIMARY KEY CHECK (id = 1), uid TEXT NOT NULL)',
+        ),
+      );
+      try {
+        await claim.transaction((txn) async {
+          final rows = await txn.query('legacy_claim');
+          if (rows.isEmpty) {
+            await txn.insert('legacy_claim', {'id': 1, 'uid': uid});
+          } else if (rows.single['uid'] != uid) {
+            throw StateError('The legacy database has already been claimed.');
+          }
+        });
+      } finally {
+        await claim.close();
+      }
+      await _db.transaction((txn) async {
+        const marker = 'legacy_account_import_complete';
+        final complete = await txn.query('preferences',
+          where: 'key = ?', whereArgs: [marker]);
+        if (complete.isNotEmpty) return;
+
+        final initial = await txn.query('preferences',
+          where: 'key = ?', whereArgs: [_seedSnapshotKey]);
+        if (initial.isNotEmpty &&
+            (await txn.query('sync_operations', limit: 1)).isEmpty &&
+            initial.single['value'] == await _seedSnapshot(txn)) {
+          for (final table in _portableTables.keys.toList().reversed) {
+            if (snapshot.containsKey(table)) await txn.delete(table);
+          }
+        }
+
+        for (final entry in snapshot.entries) {
+          final key = tables[entry.key]!;
+          for (final original in entry.value) {
+            final row = <String, Object?>{...original};
+            final id = row[key];
+            if (id == null) throw StateError('Legacy record has no stable ID.');
+            final cloudId = row['cloud_id'];
+            if (cloudId is String && cloudId.isNotEmpty &&
+                (await txn.query(entry.key, where: 'cloud_id = ? AND $key != ?',
+                    whereArgs: [cloudId, id], limit: 1)).isNotEmpty) {
+              throw StateError('A legacy record duplicates an existing cloud record.');
+            }
+            final existing = await txn.query(entry.key, where: '$key = ?', whereArgs: [id]);
+            if (existing.isEmpty) await txn.insert(entry.key, row);
+            final stored = (await txn.query(entry.key, where: '$key = ?', whereArgs: [id])).single;
+            if (row.entries.any((field) => stored[field.key] != field.value)) {
+              throw StateError('A legacy record conflicts with an existing account record.');
+            }
+          }
+        }
+        if (assistantHistory != null) {
+          const key = 'assistant_conversation_history';
+          final conflicts = await txn.query('preferences', where: 'key = ?', whereArgs: [key]);
+          if (conflicts.isEmpty) {
+            await txn.insert('preferences', {'key': key, 'value': assistantHistory});
+          } else if (conflicts.single['value'] != assistantHistory) {
+            throw StateError('Legacy assistant history conflicts with account history.');
+          }
+        }
+        if ((await txn.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) {
+          throw StateError('Legacy records failed integrity checks.');
+        }
+        await txn.delete('preferences', where: 'key = ?', whereArgs: [_seedSnapshotKey]);
+        await txn.insert('preferences', {'key': marker, 'value': '1'});
+      });
+    } finally {
+      await source?.close();
+    }
+  }
+
+  Future<String?> assistantConversationHistory() async {
+    final rows = await _db.query(
+      'preferences',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: ['assistant_conversation_history'],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.single['value'] as String;
+  }
+
+  Future<void> saveAssistantConversationHistory(String history) async {
+    await _db.insert(
+      'preferences',
+      {'key': 'assistant_conversation_history', 'value': history},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   Future<List<AIMessage>> aiMessages() async {
     final rows = await _db.query('ai_messages', orderBy: 'timestamp ASC');
     return rows.map(AIMessage.fromMap).toList();
@@ -1076,6 +1465,9 @@ class FinanceRepository {
   }
 
   Future<void> resetDemoData() async {
+    if (_currentUid() != null) {
+      throw StateError('An authenticated account cannot be reset as demo data.');
+    }
     await _db.transaction((txn) async {
       for (final table in [
         'transactions',
@@ -1454,8 +1846,9 @@ class FinanceRepository {
       whereArgs: [category],
       limit: 1,
     );
-    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0)
+    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0) {
       return false;
+    }
     await _db.insert('budgets', {
       'category': category,
       'monthly_limit': monthlyLimit,
@@ -1474,8 +1867,9 @@ class FinanceRepository {
       whereArgs: [key],
       limit: 1,
     );
-    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0)
+    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0) {
       return false;
+    }
     await _db.insert('investment_settings', {
       'key': key,
       'value': value,
@@ -1545,6 +1939,10 @@ class FinanceRepository {
     required Map<String, dynamic> payload,
     String? ownerUid,
   }) async {
+    final accountUid = _currentUid();
+    if (accountUid != null && ownerUid != accountUid) {
+      throw StateError('A queued operation must belong to the database account.');
+    }
     await _db.insert('sync_operations', {
       'id': id,
       'entity_type': entityType,

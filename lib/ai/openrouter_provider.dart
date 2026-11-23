@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 
 import 'config.dart';
 import 'models.dart';
@@ -46,10 +49,13 @@ class OpenRouterProvider {
 
   /// Get the default backend URL based on platform
   static String _getDefaultBackendUrl() {
+    const configured = String.fromEnvironment('SMARTSAVE_BACKEND_URL');
+    if (configured.isNotEmpty) return configured;
+
     // For Android emulator, use 10.0.2.2 to reach host machine
     // For iOS simulator, use localhost
     // For web/desktop, use localhost
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       return 'http://10.0.2.2:3001';
     }
     return 'http://localhost:3001';
@@ -58,6 +64,7 @@ class OpenRouterProvider {
   final Dio _dio;
   final String _baseUrl;
   final String _model;
+  final _sessionUser = Firebase.apps.isEmpty ? null : FirebaseAuth.instance.currentUser;
 
   void _configureDio() {
     _dio.options.baseUrl = _baseUrl;
@@ -67,15 +74,37 @@ class OpenRouterProvider {
       'X-Title': 'SmartSave',
     });
 
-    // Add logging interceptor for debugging
     _dio.interceptors.add(
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: false,
-        responseHeader: false,
-        error: true,
-      ),
+      InterceptorsWrapper(onRequest: (options, handler) async {
+        if (options.path != '/api/chat/completions' || _sessionUser == null) {
+          handler.next(options);
+          return;
+        }
+        try {
+          final destination = options.uri;
+          final localDevelopment = kDebugMode && destination.scheme == 'http' &&
+              const {'localhost', '127.0.0.1', '10.0.2.2'}.contains(destination.host);
+          if (destination.scheme != 'https' && !localDevelopment) {
+            throw StateError('A trusted backend transport is required.');
+          }
+          final user = _sessionUser;
+          if (FirebaseAuth.instance.currentUser?.uid != user.uid) {
+            throw StateError('The account session changed.');
+          }
+          final token = await user.getIdToken();
+          if (token == null || FirebaseAuth.instance.currentUser?.uid != user.uid) {
+            throw StateError('The account session changed.');
+          }
+          options.followRedirects = false;
+          options.headers['Authorization'] = 'Bearer $token';
+          handler.next(options);
+        } catch (_) {
+          handler.reject(DioException(
+            requestOptions: options,
+            message: 'Unable to authenticate the request.',
+          ));
+        }
+      }),
     );
   }
 
@@ -92,7 +121,6 @@ class OpenRouterProvider {
   /// Returns true if backend responds to /health endpoint.
   Future<bool> checkBackendHealth() async {
     try {
-      print('[OpenRouterProvider] Checking backend health at $_baseUrl/health');
       final response = await _dio.get(
         '/health',
         options: Options(
@@ -101,10 +129,8 @@ class OpenRouterProvider {
         ),
       );
       final isHealthy = response.statusCode == 200 && response.data['status'] == 'ok';
-      print('[OpenRouterProvider] Backend health check: $isHealthy');
       return isHealthy;
     } catch (e) {
-      print('[OpenRouterProvider] Backend health check failed: $e');
       return false;
     }
   }
@@ -181,8 +207,6 @@ class OpenRouterProvider {
     double temperature = 0.7,
     int maxTokens = 2000,
   }) async* {
-    print('[OpenRouterProvider] sendMessageStream called with model: $_model, messages: ${messages.length}');
-    print('[OpenRouterProvider] Backend URL: $_baseUrl');
     try {
       final response = await _dio.post(
         '/api/chat/completions',
@@ -199,11 +223,8 @@ class OpenRouterProvider {
         ),
       );
 
-      print('[OpenRouterProvider] Response status code: ${response.statusCode}');
-
       if (response.statusCode != 200) {
         final errorText = await _readStreamAsString(response.data.stream);
-        print('[OpenRouterProvider] Error response: $errorText');
 
         // Parse error response for structured metadata
         bool isRateLimitError = response.statusCode == 429;
@@ -252,11 +273,8 @@ class OpenRouterProvider {
         return;
       }
 
-      print('[OpenRouterProvider] Starting to parse stream');
       yield* _parseStream(response.data.stream);
-      print('[OpenRouterProvider] Stream parsing completed');
     } on DioException catch (e) {
-      print('[OpenRouterProvider] DioException: ${e.type} - ${e.message}');
       final isRateLimitError = e.response?.statusCode == 429;
       final isDailyQuota = _detectDailyQuotaFromDioError(e);
       yield AIStreamChunk(
@@ -267,7 +285,6 @@ class OpenRouterProvider {
         isDailyQuotaExhausted: isDailyQuota,
       );
     } catch (e) {
-      print('[OpenRouterProvider] Unexpected error: $e');
       yield AIStreamChunk(
         content: '',
         isDone: true,
@@ -294,7 +311,6 @@ class OpenRouterProvider {
         if (line.startsWith('data: ')) {
           final data = line.substring(6).trim();
           if (data == '[DONE]') {
-            print('[OpenRouterProvider] Received [DONE] signal');
             sawAnyData = true;
             // Flush any pending content before completing
             if (pendingContent.isNotEmpty) {
@@ -324,7 +340,6 @@ class OpenRouterProvider {
                   ? (err['message']?.toString() ?? err.toString())
                   : err.toString();
               streamError = msg;
-              print('[OpenRouterProvider] Stream error event: $msg');
               continue;
             }
 
@@ -344,7 +359,6 @@ class OpenRouterProvider {
 
                 if (shouldFlush) {
                   if (chunkCount % 10 == 1) {
-                    print('[OpenRouterProvider] Flushing chunk $chunkCount (length: ${pendingContent.length})');
                   }
                   yield AIStreamChunk(content: pendingContent, isDone: false);
                   pendingContent = '';
@@ -352,7 +366,6 @@ class OpenRouterProvider {
               }
             }
           } catch (e) {
-            print('[OpenRouterProvider] Parse error: $e, data: $data');
             // Ignore parse errors for malformed chunks
           }
         }
@@ -382,8 +395,8 @@ class OpenRouterProvider {
               }
             }
           }
-        } catch (e) {
-          print('[OpenRouterProvider] Final parse error: $e, data: $data');
+        } catch (_) {
+          // Ignore an incomplete final SSE event without logging its payload.
         }
       }
     }
@@ -395,7 +408,6 @@ class OpenRouterProvider {
 
     // If we never saw any data and no error was reported, treat as empty response error
     if (!sawAnyData && streamError == null) {
-      print('[OpenRouterProvider] Stream ended without any content or error');
       yield AIStreamChunk(
         content: '',
         isDone: true,

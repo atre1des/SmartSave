@@ -1,11 +1,9 @@
-import 'dart:io';
+import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:path/path.dart' as p;
 
 import 'data/providers.dart';
 import 'data/finance_repository.dart';
@@ -18,56 +16,136 @@ import 'shared/theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase with graceful error handling
-  // This is non-blocking - if Firebase is not configured or fails, the app continues
-  final firebaseInitialized = await firebaseService.initialize();
-  if (!firebaseInitialized && firebaseService.errorMessage != null) {
-    // Log the error but don't block app startup
-    print('[main] Firebase initialization: ${firebaseService.errorMessage}');
-  }
-
-  /// Opens the local SQLite database. On failure this no longer blocks app startup:
-  /// we retry once (common transient SQFLITE lock error) and, if it persists,
-  /// fall back to a fresh demo database path so the app reaches its Home screen.
-  FinanceRepository? _repository;
-  try {
-    _repository = await FinanceRepository.open(
-      currentUid: () =>
-          Firebase.apps.isEmpty ? null : FirebaseAuth.instance.currentUser?.uid,
+  if (!await firebaseService.initialize()) {
+    runApp(
+      const MaterialApp(home: _SessionStatus('Authentication is unavailable.')),
     );
-  } catch (e, st) {
-    print('[main] SQLite open failed first attempt: $e\n$st');
-    try {
-      _repository = await FinanceRepository.open(
-        currentUid: () => Firebase.apps.isEmpty
-            ? null
-            : FirebaseAuth.instance.currentUser?.uid,
-      );
-    } catch (e2, st2) {
-      print(
-        '[main] SQLite still unavailable; launching with demo fallback: $e2\n$st2',
-      );
-      _repository = await FinanceRepository.open(
-        databasePath: p.join(Directory.systemTemp.path, 'smartsave_demo.db'),
-        currentUid: () => Firebase.apps.isEmpty
-            ? null
-            : FirebaseAuth.instance.currentUser?.uid,
-      );
-    }
+    return;
   }
 
+  // SQLite supplies offline storage. Avoid adding a second persistent cache.
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: false,
+  );
   final prefs = await SharedPreferences.getInstance();
-  final authService = AuthService(prefs);
-  await authService.initialize();
+  final auth = AuthService(prefs);
+  await auth.initialize();
+  runApp(_AccountSessions(auth: auth, prefs: prefs));
+}
 
-  runApp(
-    ProviderScope(
-      overrides: [
-        financeRepositoryProvider.overrideWithValue(_repository!),
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        authServiceProvider.overrideWithValue(authService),
-      ],
-      child: const SmartSaveApp(),
+class _AccountSessions extends StatefulWidget {
+  const _AccountSessions({required this.auth, required this.prefs});
+
+  final AuthService auth;
+  final SharedPreferences prefs;
+
+  @override
+  State<_AccountSessions> createState() => _AccountSessionsState();
+}
+
+class _AccountSessionsState extends State<_AccountSessions> {
+  late final _uids = widget.auth.authStateChanges
+      .map((user) => user?.uid)
+      .distinct();
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<String?>(
+    stream: _uids,
+    initialData: widget.auth.currentUserId,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return const MaterialApp(
+          home: _SessionStatus('Authentication is unavailable.'),
+        );
+      }
+      return _AccountSession(
+        key: ValueKey(snapshot.data),
+        uid: snapshot.data,
+        auth: widget.auth,
+        prefs: widget.prefs,
+      );
+    },
+  );
+}
+
+class _AccountSession extends StatefulWidget {
+  const _AccountSession({
+    super.key,
+    required this.uid,
+    required this.auth,
+    required this.prefs,
+  });
+
+  final String? uid;
+  final AuthService auth;
+  final SharedPreferences prefs;
+
+  @override
+  State<_AccountSession> createState() => _AccountSessionState();
+}
+
+class _AccountSessionState extends State<_AccountSession> {
+  FinanceRepository? _repository;
+
+  late final Future<FinanceRepository?> _opening = _open();
+
+  Future<FinanceRepository?> _open() async {
+    final uid = widget.uid;
+    if (uid == null) return null;
+    final repository = await FinanceRepository.openForAccount(uid);
+    if (!mounted || widget.auth.currentUserId != uid) {
+      await repository.close();
+      return null;
+    }
+    _repository = repository;
+    return repository;
+  }
+
+  @override
+  void dispose() {
+    final repository = _repository;
+    if (repository != null) unawaited(repository.close());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<FinanceRepository?>(
+    future: _opening,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return const MaterialApp(
+          home: _SessionStatus('Could not open local financial records.'),
+        );
+      }
+      if (snapshot.connectionState != ConnectionState.done ||
+          (widget.uid != null && !snapshot.hasData)) {
+        return const MaterialApp(home: _SessionStatus());
+      }
+      final repository = snapshot.data;
+      return ProviderScope(
+        overrides: [
+          if (repository != null)
+            financeRepositoryProvider.overrideWithValue(repository),
+          sharedPreferencesProvider.overrideWithValue(widget.prefs),
+          authServiceProvider.overrideWithValue(widget.auth),
+        ],
+        child: const SmartSaveApp(),
+      );
+    },
+  );
+}
+
+class _SessionStatus extends StatelessWidget {
+  const _SessionStatus([this.message]);
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: message == null
+          ? const CircularProgressIndicator()
+          : Text(message!),
     ),
   );
 }

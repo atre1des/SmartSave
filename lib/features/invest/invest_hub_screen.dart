@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../ai/assistant_service.dart';
-import '../../ai/models.dart';
-import '../../data/finance_repository.dart';
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
-import '../advice/ai_assistant_screen.dart';
-import '../advice/assistant_session.dart';
 import 'investment_intelligence_screen.dart';
 import 'invest_screen.dart';
 import 'stocks_screen.dart';
@@ -22,39 +16,13 @@ class InvestHubScreen extends ConsumerStatefulWidget {
 }
 
 class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
-  String _userName = 'User';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserName();
-  }
-
-  Future<void> _loadUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('profile_name');
-    if (mounted && name != null && name.isNotEmpty) {
-      setState(() => _userName = name);
-    }
-  }
-
-  void _openAssistant() {
-    assistantRouteActive.value = true;
-    appNavigatorKey.currentState?.push<void>(
-      MaterialPageRoute<void>(builder: (_) => const AIAssistantScreen()),
-    ).whenComplete(() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        assistantRouteActive.value = false;
-      });
-    });
-  }
-
   void _openFeature(Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
   @override
   Widget build(BuildContext context) {
+    final userName = ref.watch(authStateProvider).valueOrNull?.displayName ?? 'User';
     final finance = ref.watch(financeControllerProvider);
 
     return Scaffold(
@@ -75,7 +43,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Should we begin, $_userName?',
+                                'Should we begin, $userName?',
                                 style: Theme.of(context).textTheme.headlineMedium,
                               ),
                               const SizedBox(height: 4),

@@ -51,21 +51,11 @@
   regex = '''(?i)(mongodb|postgres|mysql|redis|sqlite)://[^\s]{10,}'''
   tags = ["database", "connection", "url"]
 
-# Allowlist for known false positives in this project
+# These tracked files contain public Firebase client settings or example values.
 [allowlist]
-  # Example: Allow test fixtures that look like keys
-  # paths = ["**/*_test.dart", "**/test/**"]
-  # regexes = ['''test[_-]?key.*''']
-
-  # Allow Firebase client config files (these are PUBLIC configs, not secrets)
-  # google-services.json and GoogleService-Info.plist are safe to commit
-  paths = [
-    "**/google-services.json",
-    "**/GoogleService-Info.plist",
-    "**/firebase_options.dart"
-  ]
-
-  # Allow the backend .env.example template
-  paths = [
-    "backend/.env.example"
-  ]
+paths = [
+  '^android/app/google-services\.json$',
+  '^ios/Runner/GoogleService-Info\.plist$',
+  '^lib/firebase_options\.dart$',
+  '^backend/\.env\.example$'
+]

@@ -2,8 +2,28 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
-const app = express();
+export const app = express();
+const firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
+const firebaseApp = firebaseProjectId
+  ? initializeApp({ projectId: firebaseProjectId })
+  : null;
+app.locals.verifyIdToken = firebaseApp
+  ? (token) => getAuth(firebaseApp).verifyIdToken(token)
+  : null;
+if (firebaseApp && process.env.SMARTSAVE_ENABLE_ACCOUNT_DELETION === 'true') {
+  app.locals.verifyDeletionToken = (token) => getAuth(firebaseApp).verifyIdToken(token, true);
+  app.locals.deleteCloudRecords = async (uid) => {
+    const firestore = getFirestore(firebaseApp);
+    // The rules deny client access once this lock exists. Keep the lock through
+    // retries and after Auth deletion to prevent outstanding uploads.
+    await firestore.collection('accountDeletionLocks').doc(uid).set({ locked: true });
+    await firestore.recursiveDelete(firestore.collection('users').doc(uid));
+  };
+}
 const PORT = process.env.PORT || 3001;
 
 // --- Model configuration (free-tier only, no paid fallbacks) ---
@@ -26,18 +46,123 @@ function isFreeModel(modelId) {
 
 if (!isFreeModel(DEFAULT_MODEL)) {
   console.error(
-    `[SmartSave] Refusing to start: OPENROUTER_MODEL="${DEFAULT_MODEL}" is not a free-tier model. Only ":free" models are allowed.`,
+    `[SmartSave] Refusing to start: OPENROUTER_MODEL is not a free-tier model. Only ":free" models are allowed.`,
   );
   process.exit(1);
 }
 if (FALLBACK_MODEL && !isFreeModel(FALLBACK_MODEL)) {
   console.warn(
-    `[SmartSave] Warning: OPENROUTER_FALLBACK_MODEL="${FALLBACK_MODEL}" is not a free-tier model. It will NOT be used as an automatic fallback.`,
+    `[SmartSave] Warning: OPENROUTER_FALLBACK_MODEL is not a free-tier model. It will NOT be used as an automatic fallback.`,
   );
 }
 
-app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+const allowedOrigins = new Set(
+  (process.env.SMARTSAVE_ALLOWED_ORIGINS ?? '').split(',').map((value) => value.trim()).filter(Boolean),
+);
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
+app.use(cors({ origin: (origin, callback) => callback(null, allowedOrigins.has(origin)) }));
+
+const rateWindow = 60_000;
+function rateLimit(keyFor, maximum) {
+  const buckets = new Map();
+  return (req, res, next) => {
+    const now = Date.now();
+    for (const [key, bucket] of buckets) {
+      if (bucket.until <= now) buckets.delete(key);
+    }
+    const key = keyFor(req);
+    let bucket = buckets.get(key);
+    if (!bucket && buckets.size < 4096) {
+      bucket = { count: 0, until: now + rateWindow };
+      buckets.set(key, bucket);
+    }
+    if (!bucket || bucket.count >= maximum) {
+      res.setHeader('Retry-After', String(Math.ceil(((bucket?.until ?? now + rateWindow) - now) / 1000)));
+      return rejectRequest(res, 429, 'RATE_LIMITED', 'Too many requests. Please try again shortly.');
+    }
+    bucket.count++;
+    next();
+  };
+}
+
+function rejectRequest(res, status, code, message) {
+  return res.status(status).json(buildErrorResponse({
+    status, code, message, retryable: status === 429 || status >= 500,
+  }));
+}
+
+async function authenticate(req, res, next) {
+  const bearer = /^Bearer ([^\s]+)$/i.exec(req.get('authorization') ?? '');
+  if (!bearer || bearer[1].length > 8192) {
+    return rejectRequest(res, 401, 'AUTH_REQUIRED', 'A Firebase ID token is required.');
+  }
+  const verify = req.app.locals.verifyIdToken;
+  if (!verify) {
+    return rejectRequest(res, 503, 'AUTH_UNAVAILABLE', 'Authentication is unavailable.');
+  }
+  try {
+    const claims = await verify(bearer[1]);
+    if (typeof claims.uid !== 'string' || !claims.uid) throw new Error('Missing UID');
+    req.authUid = claims.uid;
+  } catch {
+    return rejectRequest(res, 401, 'AUTH_INVALID', 'The Firebase ID token could not be verified.');
+  }
+  next();
+}
+
+app.post('/api/account/delete-data', rateLimit((req) => req.ip, 12), async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const token = /^Bearer ([^\s]+)$/i.exec(req.get('authorization') ?? '')?.[1];
+  if (!token || token.length > 8192) {
+    return rejectRequest(res, 401, 'AUTH_REQUIRED', 'A Firebase ID token is required.');
+  }
+  const { verifyDeletionToken, deleteCloudRecords } = req.app.locals;
+  if (!verifyDeletionToken || !deleteCloudRecords) {
+    return rejectRequest(res, 503, 'DELETION_UNAVAILABLE', 'Account deletion is unavailable.');
+  }
+  let claims;
+  try {
+    claims = await verifyDeletionToken(token);
+  } catch {
+    return rejectRequest(res, 401, 'AUTH_INVALID', 'The Firebase ID token could not be verified.');
+  }
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof claims.uid !== 'string' || !claims.uid || /[/]/.test(claims.uid) ||
+      claims.uid === '.' || claims.uid === '..' ||
+      !Number.isInteger(claims.auth_time) || claims.auth_time > now ||
+      now - claims.auth_time >= 300) {
+    return rejectRequest(res, 403, 'RECENT_SIGN_IN_REQUIRED', 'Sign in again to delete account data.');
+  }
+  try {
+    await deleteCloudRecords(claims.uid);
+    return res.sendStatus(204);
+  } catch {
+    return rejectRequest(res, 503, 'CLOUD_CLEANUP_INCOMPLETE',
+      'Cloud cleanup could not be confirmed. Sign in and retry deletion.');
+  }
+});
+
+function validateCompletion(req, res, next) {
+  const { model, messages, temperature, max_tokens, stream } = req.body ?? {};
+  const validMessages = Array.isArray(messages) && messages.length > 0 &&
+    messages.every((message) => message &&
+      ['system', 'user', 'assistant'].includes(message.role) &&
+      typeof message.content === 'string');
+  if (!req.is('application/json') || !validMessages ||
+      (model != null && typeof model !== 'string') ||
+      (temperature != null && (!Number.isFinite(temperature) || temperature < 0 || temperature > 2)) ||
+      (max_tokens != null && (!Number.isSafeInteger(max_tokens) || max_tokens <= 0)) ||
+      (stream != null && typeof stream !== 'boolean')) {
+    return rejectRequest(res, 400, 'INVALID_REQUEST', 'Invalid chat completion request.');
+  }
+  next();
+}
 
 // Health check
 app.get('/health', (req, res) => {
@@ -148,7 +273,13 @@ function buildErrorResponse({
 }
 
 // Chat completions proxy (OpenRouter OpenAI-compatible API)
-app.post('/api/chat/completions', async (req, res) => {
+app.post('/api/chat/completions',
+  rateLimit((req) => req.ip, 120),
+  authenticate,
+  rateLimit((req) => req.authUid, 30),
+  express.json({ limit: '1mb' }),
+  validateCompletion,
+  async (req, res) => {
   try {
     const { model, messages, temperature, max_tokens, stream } = req.body;
 
@@ -224,7 +355,7 @@ app.post('/api/chat/completions', async (req, res) => {
       const parsed = parseStreamError(errorText, response.status);
 
       console.error(
-        `OpenRouter API error: ${response.status} (dailyQuota=${dailyQuotaExhausted}) ${sanitizeErrorResponse(errorText).slice(0, 400)}`,
+        `OpenRouter API error: ${response.status} (dailyQuota=${dailyQuotaExhausted})`,
       );
 
       return res.status(response.status).json(
@@ -260,7 +391,7 @@ app.post('/api/chat/completions', async (req, res) => {
         }
         if (parsed?.error) {
           console.error(
-            `OpenRouter returned 200 but body contains error: ${sanitizeErrorResponse(text).slice(0, 300)}`,
+            'OpenRouter returned 200 with an error payload',
           );
           return res.status(502).json(
             buildErrorResponse({
@@ -324,7 +455,7 @@ app.post('/api/chat/completions', async (req, res) => {
         res.write('data: [DONE]\n\n');
         res.end();
       } catch (streamErr) {
-        console.error('Stream proxy error:', streamErr);
+        console.error('Upstream stream was interrupted');
         if (!res.headersSent) {
           return res.status(502).json(
             buildErrorResponse({
@@ -359,7 +490,7 @@ app.post('/api/chat/completions', async (req, res) => {
       // Check for an error payload in an otherwise 200 response
       if (data?.error) {
         console.error(
-          `OpenRouter returned 200 with error: ${sanitizeErrorResponse(JSON.stringify(data)).slice(0, 300)}`,
+          'OpenRouter returned 200 with an error payload',
         );
         return res.status(502).json(
           buildErrorResponse({
@@ -398,17 +529,25 @@ app.post('/api/chat/completions', async (req, res) => {
       res.json(data);
     }
   } catch (error) {
-    console.error('OpenRouter proxy error:', error);
+    console.error('OpenRouter proxy request failed');
     res.status(500).json(
       buildErrorResponse({
         status: 500,
-        message: 'Proxy server error: ' + (error?.message || 'Unknown error'),
+        message: 'Proxy server error.',
         code: 'PROXY_ERROR',
         isDailyQuota: false,
         retryable: true,
       }),
     );
   }
+});
+
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+  if (error.type === 'entity.too.large') {
+    return rejectRequest(res, 413, 'REQUEST_TOO_LARGE', 'Request body exceeds the size limit.');
+  }
+  return rejectRequest(res, 400, 'INVALID_REQUEST', 'Invalid request body.');
 });
 
 // List configured models (for debugging/UI)

@@ -20,7 +20,6 @@ class AppEntry extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-    final authStatus = ref.watch(authStatusProvider);
 
     return authState.when(
       data: (user) {
@@ -31,7 +30,15 @@ class AppEntry extends ConsumerWidget {
         if (!user.emailVerified) {
           return const EmailVerificationScreen();
         }
-        return const AppShell();
+        return FutureBuilder<bool>(
+          future: ref.read(authServiceProvider).isOnboardingComplete(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+            return snapshot.data! ? const AppShell() : const OnboardingScreen();
+          },
+        );
       },
       loading: () => const Scaffold(
         body: Center(
@@ -64,7 +71,6 @@ class EmailVerificationScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authService = ref.watch(authServiceProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -96,9 +102,9 @@ class EmailVerificationScreen extends ConsumerWidget {
                 label: 'I\'ve verified my email',
                 onPressed: () async {
                   final authService = ref.read(authServiceProvider);
-                  await authService.sendEmailVerification();
-                  if (context.mounted) {
-                    showMessage(context, 'Verification email sent again.');
+                  await authService.auth.currentUser?.reload();
+                  if (context.mounted && !authService.isEmailVerified) {
+                    showMessage(context, 'Your email is not verified yet.');
                   }
                 },
               ),
@@ -293,31 +299,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
 
-    if (result.success) {
-      if (widget.signUp) {
-        // New user: go through onboarding
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-          (_) => false,
-        );
-      } else {
-        // Existing user: check onboarding status
-        final authService = ref.read(authServiceProvider);
-        final onboardingComplete = await authService.isOnboardingComplete();
-        if (!mounted) return;
-        if (onboardingComplete) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const AppShell()),
-            (_) => false,
-          );
-        } else {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-            (_) => false,
-          );
-        }
-      }
-    } else {
+    if (!result.success) {
       showMessage(context, result.errorMessage ?? 'Authentication failed. Please try again.');
     }
   }
@@ -571,7 +553,6 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   void dispose() {
-    ref.read(assistantConversationProvider.notifier).state = const [];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       appSessionActive.value = false;
     });

@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -52,7 +50,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   bool _isRateLimitError = false;
   bool _isDailyQuotaExhausted = false;
 
-  static const _conversationsKey = 'ai_conversations';
 
   static const _quickActions = [
     QuickAction(
@@ -103,24 +100,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   void initState() {
     super.initState();
 
-    // Set up error handlers for layout exceptions
-    FlutterError.onError = (FlutterErrorDetails details) {
-      if (kDebugLayout) {
-        debugPrint('[AIAssistantScreen] FlutterError: ${details.exception}');
-        debugPrint('[AIAssistantScreen] Stack trace: ${details.stack}');
-      }
-      // Forward to default handler
-      FlutterError.presentError(details);
-    };
-
-    PlatformDispatcher.instance.onError = (error, stack) {
-      if (kDebugLayout) {
-        debugPrint('[AIAssistantScreen] PlatformDispatcher error: $error');
-        debugPrint('[AIAssistantScreen] Stack trace: $stack');
-      }
-      return true;
-    };
-
     _assistantService = SmartSaveAIAssistantService(
       ref.read(financeRepositoryProvider),
     );
@@ -145,8 +124,14 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   }
 
   Future<void> _loadConversationHistory() async {
-    final prefs = ref.read(sharedPreferencesProvider);
-    final json = prefs.getString(_conversationsKey);
+    final repository = ref.read(financeRepositoryProvider);
+    String? json;
+    try {
+      json = await repository.assistantConversationHistory();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
     if (json != null) {
       final List<dynamic> decoded = jsonDecode(json);
       for (final item in decoded) {
@@ -161,18 +146,17 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
               ),
             )
             .toList();
-        _conversations[id] = messages;
+        _conversations.putIfAbsent(id, () => messages);
       }
     }
-    // Set the most recent conversation as active, or start fresh
-    _conversations.keys.isNotEmpty
-        ? (_currentConversationId = _conversations.keys.last)
-        : (_currentConversationId = null);
-    _saveConversations();
+    setState(() {
+      _currentConversationId ??=
+          _conversations.isEmpty ? null : _conversations.keys.last;
+    });
   }
 
-  void _saveConversations() {
-    final prefs = ref.read(sharedPreferencesProvider);
+  Future<void> _saveConversations() async {
+    final repository = ref.read(financeRepositoryProvider);
     final encoded = jsonEncode(
       _conversations.entries
           .map(
@@ -184,7 +168,11 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
           )
           .toList(),
     );
-    prefs.setString(_conversationsKey, encoded);
+    try {
+      await repository.saveAssistantConversationHistory(encoded);
+    } catch (_) {
+      if (mounted) debugPrint('[AIAssistantScreen] Could not save conversation history');
+    }
   }
 
   void _startNewConversation() {
@@ -267,7 +255,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     if (prompt.isEmpty || _isStreaming) return;
 
     debugPrint('[AIAssistantScreen] ===== SEND STARTED =====');
-    debugPrint('[AIAssistantScreen] User prompt: $prompt');
 
     // Clear previous error state
     setState(() {
@@ -312,7 +299,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     );
 
     try {
-      debugPrint('[AIAssistantScreen] Starting stream with prompt: $prompt');
       await for (final chunk in _assistantService!.sendMessageStream(prompt)) {
         if (!mounted) {
           debugPrint('[AIAssistantScreen] Not mounted, returning');
@@ -325,7 +311,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
         if (chunk.isDone) {
           if (chunk.error != null) {
-            debugPrint('[AIAssistantScreen] Stream error: ${chunk.error}');
             // Remove the temporary empty assistant message, if present.
             final currentMessages = ref.read(assistantAIConversationProvider);
             if (currentMessages.isNotEmpty &&
@@ -1174,7 +1159,6 @@ class _MessageBubble extends StatelessWidget {
                     selectable: true,
                     styleSheet: _assistantMarkdownStyleSheet(context),
                     onTapLink: (url, title, text) {
-                      debugPrint('Link tapped: $url');
                     },
                   ),
           );
@@ -1309,7 +1293,6 @@ class _StreamingBubble extends StatelessWidget {
                       selectable: true,
                       styleSheet: _assistantMarkdownStyleSheet(context),
                       onTapLink: (url, title, text) {
-                        debugPrint('Link tapped: $url');
                       },
                     ),
                     const SizedBox(height: 8),
@@ -1343,13 +1326,11 @@ class _ErrorBanner extends StatelessWidget {
     required this.onRetry,
     this.isRateLimitError = false,
     this.isDailyQuotaExhausted = false,
-    this.retryAfterSeconds,
   });
   final String error;
   final VoidCallback onRetry;
   final bool isRateLimitError;
   final bool isDailyQuotaExhausted;
-  final int? retryAfterSeconds;
 
   @override
   Widget build(BuildContext context) {
