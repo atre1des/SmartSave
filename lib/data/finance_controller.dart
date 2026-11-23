@@ -15,8 +15,18 @@ class FinanceController extends ChangeNotifier {
   int monthlySpend = 0;
   bool isLoading = true;
   String? loadError;
+  bool _disposed = false;
+  int _refreshGeneration = 0;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   Future<void> refresh() async {
+    if (_disposed) return;
+    final generation = ++_refreshGeneration;
     isLoading = true;
     loadError = null;
     notifyListeners();
@@ -30,6 +40,7 @@ class FinanceController extends ChangeNotifier {
         repository.totalBalance(),
         repository.spentThisMonth(),
       ]);
+      if (_disposed || generation != _refreshGeneration) return;
       transactions = values[0] as List<FinanceTransaction>;
       goals = values[1] as List<SavingsGoal>;
       spending = values[2] as Map<String, int>;
@@ -38,10 +49,14 @@ class FinanceController extends ChangeNotifier {
       balance = values[5] as int;
       monthlySpend = values[6] as int;
     } catch (error) {
-      loadError = 'Could not load local demo data. ${error.toString()}';
+      if (!_disposed && generation == _refreshGeneration) {
+        loadError = 'Could not load local financial records.';
+      }
     } finally {
-      isLoading = false;
-      notifyListeners();
+      if (!_disposed && generation == _refreshGeneration) {
+        isLoading = false;
+        notifyListeners();
+      }
     }
   }
 

@@ -18,6 +18,10 @@ service cloud.firestore {
       return resource == null || !resource.data.isDeleted || request.resource.data.isDeleted;
     }
 
+    function nextRevision() {
+      return resource == null || request.resource.data.version == resource.data.version + 1;
+    }
+
     function syncFields(d) {
       return d.id is string && d.createdAt is string &&
         (d.updatedAt is string || d.updatedAt is timestamp) &&
@@ -30,16 +34,16 @@ service cloud.firestore {
       match /transactions/{id} {
         allow read: if owns(uid);
         allow create, update: if owns(uid) && validOwner(uid) &&
-          syncFields(request.resource.data) &&
+          nextRevision() && preservesDeletion() && syncFields(request.resource.data) &&
           request.resource.data.amount is int && request.resource.data.amount > 0 &&
           request.resource.data.isIncome is bool && request.resource.data.category is string &&
           request.resource.data.merchant is string && request.resource.data.occurredAt is string;
       }
 
       match /goals/{id} {
-        allow read, delete: if owns(uid);
+        allow read: if owns(uid);
         allow create, update: if owns(uid) && validOwner(uid) &&
-          syncFields(request.resource.data) && request.resource.data.name is string &&
+          nextRevision() && preservesDeletion() && syncFields(request.resource.data) && request.resource.data.name is string &&
           request.resource.data.target is int && request.resource.data.target > 0 &&
           request.resource.data.saved is int && request.resource.data.saved >= 0 &&
           request.resource.data.deadline is string;
@@ -55,14 +59,14 @@ service cloud.firestore {
       match /budgets/{id} {
         allow read: if owns(uid);
         allow create, update: if owns(uid) && validOwner(uid) &&
-          syncFields(request.resource.data) && request.resource.data.category is string &&
+          nextRevision() && preservesDeletion() && syncFields(request.resource.data) && request.resource.data.category is string &&
           request.resource.data.monthlyLimit is int && request.resource.data.monthlyLimit >= 0;
       }
 
       match /investmentTheses/{id} {
         allow read: if owns(uid);
         allow create, update: if owns(uid) && validOwner(uid) &&
-          preservesDeletion() && syncFields(request.resource.data) && request.resource.data.securityName is string &&
+          preservesDeletion() && nextRevision() && syncFields(request.resource.data) && request.resource.data.securityName is string &&
           request.resource.data.rationale is string && request.resource.data.horizon is string;
         match /conditions/{conditionId} {
           allow read: if owns(uid);
@@ -82,14 +86,14 @@ service cloud.firestore {
       match /portfolioHoldings/{id} {
         allow read: if owns(uid);
         allow create, update: if owns(uid) && validOwner(uid) &&
-          preservesDeletion() && syncFields(request.resource.data) && request.resource.data.securityName is string &&
+          preservesDeletion() && nextRevision() && syncFields(request.resource.data) && request.resource.data.securityName is string &&
           request.resource.data.marketValueKzt is int && request.resource.data.marketValueKzt >= 0;
       }
 
       match /investmentSettings/{id} {
         allow read: if owns(uid);
         allow create, update: if owns(uid) && validOwner(uid) &&
-          syncFields(request.resource.data) && request.resource.data.key is string &&
+          nextRevision() && preservesDeletion() && syncFields(request.resource.data) && request.resource.data.key is string &&
           request.resource.data.value is string;
       }
 

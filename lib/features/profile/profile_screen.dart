@@ -268,6 +268,14 @@ class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
     const SizedBox(height: 12), const SurfaceCard(color: AppColors.mintLight, child: Text('Financial records are stored on this device. Synchronization can send records to Firebase, and the online assistant sends its conversation to OpenRouter through SmartSave’s backend.', style: TextStyle(fontSize: 12))),
     const SizedBox(height: 12),
     OutlinedButton(onPressed: _working ? null : _export, child: const Text('Export local data')),
+    OutlinedButton(
+      onPressed: _working ? null : () => ref.read(syncRequestProvider.notifier).state++,
+      child: const Text('Sync financial records'),
+    ),
+    Consumer(builder: (context, ref, _) {
+      final status = ref.watch(syncStatusMessageProvider);
+      return status == null ? const SizedBox.shrink() : Text(status);
+    }),
     OutlinedButton(onPressed: _working ? null : _showLegacyRecovery, child: const Text('Recover legacy data')),
     const SizedBox(height: 8), TextButton(onPressed: () => _push(context, const DeleteAccountScreen()), child: const Text('Delete account', style: TextStyle(color: AppColors.wine))),
   ])));

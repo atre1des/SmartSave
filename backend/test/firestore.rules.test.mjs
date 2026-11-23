@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { deleteDoc, deleteField, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteDoc, deleteField, doc, getDoc, runTransaction, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 
 let environment;
 const date = '2026-01-01T00:00:00.000Z';
@@ -106,4 +106,48 @@ test('investment tombstones cannot be reverted, and assessment history remains r
     await assertFails(deleteDoc(owner));
   }
   assert.equal((await assertSucceeds(getDoc(record('investor', assessment)))).exists(), true);
+});
+
+test('two competing transactions cannot both commit the same revision', async () => {
+  const path = 'users/revision-owner/transactions/same-record';
+  await assertSucceeds(setDoc(record('revision-owner', path), transaction));
+  const updateAtRevision = async (amount) => {
+    const ref = record('revision-owner', path);
+    return runTransaction(ref.firestore, async (txn) => {
+      const snapshot = await txn.get(ref);
+      if (snapshot.data().version !== 1) return false;
+      txn.update(ref, { amount, version: 2 });
+      return true;
+    });
+  };
+  const results = await Promise.allSettled([updateAtRevision(120), updateAtRevision(245)]);
+  assert.equal(results.filter((result) => result.status === 'fulfilled' && result.value).length, 1);
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      assert.ok(['permission-denied', 'aborted'].includes(result.reason.code));
+    }
+  }
+  const ref = record('revision-owner', path);
+  const updated = (await getDoc(ref)).data();
+  assert.equal(updated.version, 2);
+  assert.ok([120, 245].includes(updated.amount));
+  await assertFails(updateDoc(ref, { amount: 500, version: 2 }));
+  await assertSucceeds(updateDoc(ref, { isDeleted: true, version: 3 }));
+  await assertFails(updateDoc(ref, { isDeleted: false, version: 4 }));
+});
+
+test('goal deletion leaves a tombstone and the linked contribution readable', async () => {
+  const path = 'users/goal-owner/goals/goal';
+  const goal = record('goal-owner', path);
+  const contribution = record('goal-owner', `${path}/contributions/contribution`);
+  await assertSucceeds(setDoc(goal, {
+    ...sync, name: 'Fixture', target: 500, saved: 100, deadline: date,
+  }));
+  await assertSucceeds(setDoc(contribution, {
+    ...sync, goalId: 'goal', amount: 100, contributedAt: date,
+  }));
+  await assertFails(deleteDoc(goal));
+  await assertSucceeds(updateDoc(goal, { isDeleted: true, version: 2 }));
+  await assertFails(updateDoc(goal, { isDeleted: false, version: 3 }));
+  assert.equal((await getDoc(contribution)).exists(), true);
 });
