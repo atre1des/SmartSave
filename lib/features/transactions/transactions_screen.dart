@@ -29,9 +29,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final query = _search.text.trim().toLowerCase();
     final items = finance.transactions.where((item) => (_category == 'All' || item.category == _category) && (query.isEmpty || item.merchant.toLowerCase().contains(query) || item.note.toLowerCase().contains(query))).toList();
     return Scaffold(
+      appBar: AppBar(title: const Text('Transactions')),
       body: SafeArea(child: finance.isLoading ? const Center(child: CircularProgressIndicator(color: AppColors.firefly)) : ListView(padding: const EdgeInsets.fromLTRB(24, 8, 24, 92), children: [
-        Text('Transactions', style: Theme.of(context).textTheme.headlineLarge),
-        const SizedBox(height: 12),
         TextField(controller: _search, onChanged: (_) => setState(() {}), decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search merchant or note', contentPadding: EdgeInsets.symmetric(vertical: 10))),
         const SizedBox(height: 8),
         SingleChildScrollView(
@@ -141,7 +140,7 @@ class SpendingAnalyticsScreen extends ConsumerWidget {
     final colors = [AppColors.firefly, AppColors.gold, AppColors.mint, AppColors.prussianBlue, AppColors.lime];
     final sorted = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     return Scaffold(appBar: AppBar(title: const Text('Spending')), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [IconButton(onPressed: () => showMessage(context, 'Showing current month sample data.'), icon: const Icon(Icons.chevron_left)), Text('${_monthName(DateTime.now().month)} ${DateTime.now().year}', style: Theme.of(context).textTheme.titleMedium), IconButton(onPressed: () => showMessage(context, 'No future transactions yet.'), icon: const Icon(Icons.chevron_right))]),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [IconButton(onPressed: () => showMessage(context, 'Showing recorded transactions for the current month.'), icon: const Icon(Icons.chevron_left)), Text('${_monthName(DateTime.now().month)} ${DateTime.now().year}', style: Theme.of(context).textTheme.titleMedium), IconButton(onPressed: () => showMessage(context, 'No future transactions yet.'), icon: const Icon(Icons.chevron_right))]),
       const SizedBox(height: 10),
       Center(child: SizedBox(width: 190, height: 190, child: CustomPaint(painter: _DonutPainter(values: sorted.map((e) => e.value).toList(), colors: colors), child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(formatTenge(total), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)), const Text('spent', style: TextStyle(fontSize: 11, color: AppColors.muted))]))))),
       const SizedBox(height: 20),
@@ -151,6 +150,9 @@ class SpendingAnalyticsScreen extends ConsumerWidget {
       FutureBuilder<Map<String, int>>(
         future: ref.read(financeRepositoryProvider).spendingChangePercent(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Text('Could not load the spending comparison.');
+          }
           if (!snapshot.hasData) return const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator(color: AppColors.mint));
           return Column(children: [
             for (final category in ['Food', 'Shopping', 'Transport'])

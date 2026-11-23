@@ -21,14 +21,28 @@ class SectionHeading extends StatelessWidget {
   final VoidCallback? onTrailing;
 
   @override
-  Widget build(BuildContext context) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          if (trailing != null)
-            TextButton(onPressed: onTrailing, child: Text(trailing!, style: const TextStyle(color: AppColors.prussianBlue, fontSize: 12, fontWeight: FontWeight.w600))),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final heading = Text(title, style: Theme.of(context).textTheme.titleMedium);
+    final action = trailing;
+    if (action == null) return heading;
+
+    return Row(
+      children: [
+        Expanded(child: heading),
+        TextButton(
+          onPressed: onTrailing,
+          child: Text(
+            action,
+            style: const TextStyle(
+              color: AppColors.prussianBlue,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class SurfaceCard extends StatelessWidget {
