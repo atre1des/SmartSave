@@ -109,7 +109,11 @@ http.Server.prototype.listen = function (...args) {
 
 console.error = () => {}; // tests intentionally trigger error-path logging
 
-await import('../server.js');
+const { app } = await import('../server.js');
+app.locals.verifyIdToken = async (token) => {
+  if (!token.startsWith('mock-')) throw new Error('Invalid token');
+  return { uid: token };
+};
 baseUrl = `http://127.0.0.1:${server.address().port}`;
 
 beforeEach(() => {
@@ -134,10 +138,10 @@ after(() => {
   }
 });
 
-async function post(body) {
+async function post(body, token = 'mock-contract') {
   return realFetch(`${baseUrl}/api/chat/completions`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...(token && { authorization: `Bearer ${token}` }) },
     body: JSON.stringify(body),
   });
 }
@@ -388,4 +392,67 @@ test('config: /health and /api/models report free-tier-only configuration', asyn
   assert.equal(modelsBody.freeTierOnly, true);
   assert.ok(modelsBody.defaultModel.endsWith(':free'));
   assert.ok(modelsBody.fallbackModel.endsWith(':free'));
+});
+
+test('security: denies missing and invalid tokens before contacting OpenRouter', async () => {
+  const body = { messages: [{ role: 'user', content: 'Hi' }] };
+  assert.equal((await post(body, null)).status, 401);
+  assert.equal((await post(body, 'invalid')).status, 401);
+  assert.equal(upstreamCalls.length, 0);
+});
+
+test('security: validates payload types and rejects oversized bodies', async () => {
+  assert.equal((await post({ messages: ['not a message'] })).status, 400);
+  assert.equal((await post({ messages: [{ role: 'user', content: 'a'.repeat(1024 * 1024) }] })).status, 413);
+  assert.equal(upstreamCalls.length, 0);
+});
+
+test('security: limits authenticated requests per verified UID', async () => {
+  const body = { messages: [{ role: 'user', content: 'Hi' }] };
+  for (let index = 0; index < 30; index++) {
+    assert.equal((await post(body, 'mock-rate')).status, 200);
+  }
+  const response = await post(body, 'mock-rate');
+  assert.equal(response.status, 429);
+  assert.ok(response.headers.get('retry-after'));
+  assert.equal((await post(body, 'mock-another-account')).status, 200);
+});
+
+test('security: health stays public and arbitrary browser origins receive no CORS grant', async () => {
+  const response = await realFetch(`${baseUrl}/health`, { headers: { Origin: 'https://other.example' } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), null);
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('x-powered-by'), null);
+});
+
+test('deletion requires recent authentication, scopes retries to the verified UID, and reports partial failure', async () => {
+  const url = `${baseUrl}/api/account/delete-data`;
+  const request = (token) => realFetch(url, {
+    method: 'POST',
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+    body: JSON.stringify({ uid: 'ignored-other-user' }),
+  });
+  const deleted = [];
+  const now = Math.floor(Date.now() / 1000);
+  app.locals.verifyDeletionToken = async (token) => {
+    if (token === 'invalid') throw new Error('invalid');
+    return { uid: 'verified-owner', auth_time: token === 'old' ? now - 400 : now };
+  };
+  app.locals.deleteCloudRecords = async (uid) => {
+    deleted.push(uid);
+    if (deleted.length === 1) throw new Error('incomplete');
+  };
+  try {
+    assert.equal((await request()).status, 401);
+    assert.equal((await request('invalid')).status, 401);
+    assert.equal((await request('old')).status, 403);
+    assert.deepEqual(deleted, []);
+    assert.equal((await request('recent')).status, 503);
+    assert.equal((await request('recent')).status, 204);
+    assert.deepEqual(deleted, ['verified-owner', 'verified-owner']);
+  } finally {
+    delete app.locals.verifyDeletionToken;
+    delete app.locals.deleteCloudRecords;
+  }
 });

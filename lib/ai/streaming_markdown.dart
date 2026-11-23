@@ -158,7 +158,6 @@ class _StreamingMarkdownState extends State<StreamingMarkdown> {
 
   void _defaultOnTapLink(String url, String? title, String? text) {
     // Handle link taps - could open in browser, etc.
-    debugPrint('Link tapped: $url');
   }
 }
 
@@ -392,6 +391,5 @@ class _BufferedStreamingMarkdownState extends State<BufferedStreamingMarkdown> {
   }
 
   void _defaultOnTapLink(String url, String? title, String? text) {
-    debugPrint('Link tapped: $url');
   }
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../ai/assistant_service.dart';
 import '../../ai/models.dart';
@@ -22,22 +21,6 @@ class InvestHubScreen extends ConsumerStatefulWidget {
 }
 
 class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
-  String _userName = 'User';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserName();
-  }
-
-  Future<void> _loadUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('profile_name');
-    if (mounted && name != null && name.isNotEmpty) {
-      setState(() => _userName = name);
-    }
-  }
-
   void _openAssistant() {
     assistantRouteActive.value = true;
     appNavigatorKey.currentState?.push<void>(
@@ -55,6 +38,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userName = ref.watch(authStateProvider).valueOrNull?.displayName ?? 'User';
     final finance = ref.watch(financeControllerProvider);
 
     return Scaffold(
@@ -75,7 +59,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Should we begin, $_userName?',
+                                'Should we begin, $userName?',
                                 style: Theme.of(context).textTheme.headlineMedium,
                               ),
                               const SizedBox(height: 4),

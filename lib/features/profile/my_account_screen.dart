@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/finance_controller.dart';
 import '../../data/finance_repository.dart';
@@ -8,7 +7,6 @@ import '../../data/financial_math.dart';
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
-import '../app/app.dart';
 import '../app/demo_flow_screens.dart';
 import '../goals/goals_screen.dart';
 import '../transactions/transactions_screen.dart';
@@ -22,7 +20,6 @@ class MyAccountScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final finance = ref.watch(financeControllerProvider);
-    final prefs = ref.watch(sharedPreferencesProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -36,10 +33,7 @@ class MyAccountScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 children: [
                   // User identity section
-                  _UserIdentitySection(
-                    finance: finance,
-                    prefs: prefs,
-                  ),
+                  const _UserIdentitySection(),
                   const SizedBox(height: 24),
 
                   // Risk Profile / Investor Level
@@ -106,62 +100,26 @@ class MyAccountScreen extends ConsumerWidget {
                   // Log out
                   TextButton(
                     onPressed: () async {
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.clear();
-                      if (context.mounted) {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-                          (_) => false,
-                        );
+                      final result = await ref.read(authServiceProvider).signOut();
+                      if (context.mounted && !result.success) {
+                        showMessage(context, result.errorMessage ?? 'Sign out failed.');
                       }
                     },
                     child: const Text('Log out'),
-                  ),
-                  const Divider(),
-                  TextButton.icon(
-                    onPressed: () async {
-                      await showDialog<void>(
-                        context: context,
-                        builder: (dialogContext) => AlertDialog(
-                          title: const Text('Reset sample data?'),
-                          content: const Text('Replaces local demo records with the original fictional examples.'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-                            FilledButton(
-                              onPressed: () async {
-                                Navigator.pop(dialogContext);
-                                await _reset(context, ref);
-                              },
-                              child: const Text('Reset'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.restart_alt),
-                    label: const Text('Reset demo data'),
                   ),
                 ],
               ),
             ),
       );
   }
-
-  Future<void> _reset(BuildContext context, WidgetRef ref) async {
-    await ref.read(financeControllerProvider).resetDemoData();
-    if (context.mounted) showMessage(context, 'Fictional demo data restored.');
-  }
 }
 
 class _UserIdentitySection extends ConsumerWidget {
-  const _UserIdentitySection({required this.finance, required this.prefs});
-  final FinanceController finance;
-  final SharedPreferences prefs;
+  const _UserIdentitySection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final name = prefs.getString('profile_name') ?? 'Your name';
+    final name = ref.watch(authStateProvider).valueOrNull?.displayName ?? 'Your name';
 
     return Row(
       children: [
@@ -199,8 +157,7 @@ class _RiskProfileCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final prefs = ref.watch(sharedPreferencesProvider);
-    final riskProfile = prefs.getString('risk_profile') ?? 'moderate';
+    final riskProfile = ref.watch(authServiceProvider).getRiskProfile() ?? 'moderate';
     final riskLabel = riskProfile[0].toUpperCase() + riskProfile.substring(1);
 
     return SurfaceCard(

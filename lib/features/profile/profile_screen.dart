@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/providers.dart';
-import '../../services/auth_service.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
-import '../app/app.dart';
 import '../app/demo_flow_screens.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -85,59 +83,17 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             TextButton(
               onPressed: () async {
-                final authService = ref.read(authServiceProvider);
-                final result = await authService.signOut();
-                if (context.mounted) {
-                  if (result.success) {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-                      (_) => false,
-                    );
-                  } else {
-                    showMessage(context, result.errorMessage ?? 'Sign out failed.');
-                  }
+                final result = await ref.read(authServiceProvider).signOut();
+                if (context.mounted && !result.success) {
+                  showMessage(context, result.errorMessage ?? 'Sign out failed.');
                 }
               },
               child: const Text('Log out'),
-            ),
-            const Divider(),
-            TextButton.icon(
-              onPressed: () async {
-                await showDialog<void>(
-                  context: context,
-                  builder: (dialogContext) => AlertDialog(
-                    title: const Text('Reset sample data?'),
-                    content: const Text(
-                        'Replaces local demo records with the original fictional examples.'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text('Cancel')),
-                      FilledButton(
-                        onPressed: () async {
-                          Navigator.pop(dialogContext);
-                          await _reset(context);
-                        },
-                        child: const Text('Reset'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              icon: const Icon(Icons.restart_alt),
-              label: const Text('Reset demo data'),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _reset(BuildContext context) async {
-    final container = ProviderScope.containerOf(context, listen: false);
-    await container.read(financeControllerProvider).resetDemoData();
-    if (context.mounted) showMessage(context, 'Fictional demo data restored.');
   }
 }
 
@@ -160,21 +116,35 @@ class _ProfileDetailsScreenState extends ConsumerState<ProfileDetailsScreen> {
   String _currency = 'Tenge (KZT)';
   String _language = 'English';
   @override
+  void initState() {
+    super.initState();
+    final auth = ref.read(authServiceProvider);
+    _name.text = auth.auth.currentUser?.displayName ?? '';
+    _contact.text = auth.currentUserEmail ?? '';
+    _country = auth.getProfilePreference('profile_country') ?? _country;
+    _currency = auth.getProfilePreference('profile_currency') ?? _currency;
+    _language = auth.getProfilePreference('profile_language') ?? _language;
+  }
+  @override
   void dispose() { _name.dispose(); _contact.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Profile')), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
     const Center(child: CircleAvatar(radius: 34, backgroundColor: AppColors.mintLight, child: Text('Y', style: TextStyle(fontSize: 24)))),
     TextButton(onPressed: () => showMessage(context, 'Photo upload is not included in this local demo.'), child: const Text('Change photo')),
     TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name')),
-    const SizedBox(height: 14), TextField(controller: _contact, decoration: const InputDecoration(labelText: 'Email or phone')),
+    const SizedBox(height: 14), TextField(controller: _contact, readOnly: true, decoration: const InputDecoration(labelText: 'Email or phone')),
     const SizedBox(height: 14), _choice('Country', _country, ['Kazakhstan', 'Other'], (v) => setState(() => _country = v)),
     const SizedBox(height: 14), _choice('Currency', _currency, ['Tenge (KZT)', 'US dollar (USD)'], (v) => setState(() => _currency = v)),
     const SizedBox(height: 14), _choice('Language', _language, ['English', 'Русский', 'Қазақша'], (v) => setState(() => _language = v)),
     const SizedBox(height: 12), const Text('Country determines the local sample deposits and stocks shown.', style: TextStyle(color: AppColors.muted, fontSize: 11)),
     const SizedBox(height: 20), PrimaryAction(label: 'Save', onPressed: () async {
       final authService = ref.read(authServiceProvider);
+      final result = await authService.updateProfile(displayName: _name.text.trim());
+      if (!result.success) {
+        if (context.mounted) showMessage(context, result.errorMessage ?? 'Could not update profile.');
+        return;
+      }
       final profileData = {
-        'profile_name': _name.text.trim(),
         'profile_country': _country,
         'profile_currency': _currency,
         'profile_language': _language,
@@ -231,32 +201,119 @@ class AdviceHistoryScreen extends StatelessWidget {
   ])));
 }
 
-class PrivacyDataScreen extends StatefulWidget {
+class PrivacyDataScreen extends ConsumerStatefulWidget {
   const PrivacyDataScreen({super.key});
   @override
-  State<PrivacyDataScreen> createState() => _PrivacyDataScreenState();
+  ConsumerState<PrivacyDataScreen> createState() => _PrivacyDataScreenState();
 }
-class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
+class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
   bool _personalAdvice = true;
   bool _analytics = false;
+  bool _working = false;
+
+  Future<void> _export() async {
+    final auth = ref.read(authServiceProvider);
+    final uid = auth.currentUserId;
+    if (uid == null) return;
+    final repository = ref.read(financeRepositoryProvider);
+    setState(() => _working = true);
+    try {
+      final data = await repository.exportAccountData(uid);
+      if (!mounted || auth.currentUserId != uid) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialog) => AlertDialog(
+          title: const Text('Local data export'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(child: SelectableText(data)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                if (!mounted || auth.currentUserId != uid) return;
+                await Clipboard.setData(ClipboardData(text: data));
+                if (dialog.mounted) Navigator.pop(dialog);
+              },
+              child: const Text('Copy private JSON'),
+            ),
+            TextButton(onPressed: () => Navigator.pop(dialog), child: const Text('Close')),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (mounted) showMessage(context, 'Could not export local records.');
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Future<void> _importLegacy() async {
+    final auth = ref.read(authServiceProvider);
+    final uid = auth.currentUserId;
+    if (uid == null) return;
+    final repository = ref.read(financeRepositoryProvider);
+    final preferences = ref.read(sharedPreferencesProvider);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: const Text('Confirm legacy record ownership'),
+        content: const Text(
+          'Confirm that every record and assistant conversation from the previous shared installation belongs to you. If anyone else used this installation, cancel. This reserves recovery for your account on this device.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(dialog, true), child: const Text('These are my records')),
+        ],
+      ),
+    );
+    if (!mounted || auth.currentUserId != uid || confirmed != true) return;
+    setState(() => _working = true);
+    try {
+      await repository.importLegacyAccountData(
+        uid,
+        ownershipConfirmed: confirmed == true,
+        assistantHistory: preferences.getString('ai_conversations'),
+      );
+      if (mounted) {
+        await ref.read(financeControllerProvider).refresh();
+        if (mounted) showMessage(context, 'Legacy recovery is complete. The original was kept.');
+      }
+    } on StateError catch (error) {
+      if (mounted) showMessage(context, '${error.message} The original was kept.');
+    } catch (_) {
+      if (mounted) {
+        showMessage(context, 'Could not recover the legacy data. The original was kept.');
+      }
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Privacy & data')), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
     SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Use my data for personal advice'), subtitle: const Text('Needed for recommendations', style: TextStyle(fontSize: 12, color: AppColors.muted)), value: _personalAdvice, onChanged: (value) => setState(() => _personalAdvice = value)),
     SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Share anonymous usage stats'), subtitle: const Text('Helps improve the app', style: TextStyle(fontSize: 12, color: AppColors.muted)), value: _analytics, onChanged: (value) => setState(() => _analytics = value)),
-    const SizedBox(height: 12), const SurfaceCard(color: AppColors.mintLight, child: Text('The demo stores fictional records on this device only. No bank, market or analytics service receives your data.', style: TextStyle(fontSize: 12))),
-    const SizedBox(height: 12), OutlinedButton(onPressed: () => showDialog<void>(context: context, builder: (context) => AlertDialog(title: const Text('Demo data export'), content: const Text('Structured records remain local in SQLite. A downloadable export is not configured in this MVP.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))])), child: const Text('Download my data')),
+    const SizedBox(height: 12), const SurfaceCard(color: AppColors.mintLight, child: Text('Financial records are stored on this device. Synchronization can send records to Firebase, and the online assistant sends its conversation to OpenRouter through SmartSave’s backend.', style: TextStyle(fontSize: 12))),
+    const SizedBox(height: 12),
+    OutlinedButton(onPressed: _working ? null : _export, child: const Text('Export local data')),
+    OutlinedButton(onPressed: _working ? null : _importLegacy, child: const Text('Recover legacy data')),
     const SizedBox(height: 8), TextButton(onPressed: () => _push(context, const DeleteAccountScreen()), child: const Text('Delete account', style: TextStyle(color: AppColors.wine))),
   ])));
 }
 
 class DeleteAccountScreen extends ConsumerStatefulWidget {
   const DeleteAccountScreen({super.key});
+
   @override
   ConsumerState<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
 }
+
 class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   final _password = TextEditingController();
+  bool _confirmed = false;
   bool _busy = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -265,68 +322,50 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   }
 
   Future<void> _delete() async {
-    if (_password.text.length < 8) {
-      showMessage(context, 'Enter your password (at least 8 characters) to confirm.');
-      return;
-    }
-
-    setState(() => _busy = true);
-    final authService = ref.read(authServiceProvider);
-    final result = await authService.deleteAccount(password: _password.text);
-
+    setState(() { _busy = true; _error = null; });
+    final password = _password.text;
+    _password.clear();
+    final result = await ref.read(authServiceProvider).deleteAccount(
+      password: password,
+      repository: ref.read(financeRepositoryProvider),
+    );
     if (!mounted) return;
-    setState(() => _busy = false);
-
-    if (result.success) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-        (_) => false,
-      );
-    } else {
-      showMessage(context, result.errorMessage ?? 'Account deletion failed. Please try again.');
-    }
+    setState(() { _busy = false; _error = result.errorMessage; });
+    if (result.success) Navigator.pop(context);
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Delete account')),
-    body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-      const Icon(Icons.warning_amber_rounded, size: 48, color: AppColors.wine),
-      const SizedBox(height: 8),
-      Text('Delete your account?', style: Theme.of(context).textTheme.headlineMedium),
-      const Text('This action cannot be undone.', style: TextStyle(color: AppColors.muted)),
-      const SizedBox(height: 16),
-      const SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('• Your account and all associated data will be permanently deleted'),
-        SizedBox(height: 8),
-        Text('• Your local goals and financial data will be removed'),
-        SizedBox(height: 8),
-        Text('• This action cannot be undone'),
-      ])),
-      const SizedBox(height: 16),
-      TextField(
-        controller: _password,
-        obscureText: true,
-        decoration: const InputDecoration(labelText: 'Confirm with your password'),
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_busy,
+    child: Scaffold(
+      appBar: AppBar(title: const Text('Delete account')),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          const Text('This permanently removes your SmartSave account, cloud records, and account data on this device. Resolve pending changes and export any records you want to keep first.'),
+          CheckboxListTile(
+            title: const Text('Permanently delete my account and records'),
+            value: _confirmed,
+            onChanged: _busy ? null : (value) => setState(() => _confirmed = value == true),
+          ),
+          TextField(
+            controller: _password,
+            obscureText: true,
+            enableSuggestions: false,
+            autocorrect: false,
+            enabled: !_busy,
+            decoration: const InputDecoration(labelText: 'Confirm with your password'),
+            onChanged: (_) => setState(() {}),
+          ),
+          if (_error != null) Text(_error!),
+          FilledButton(
+            onPressed: _confirmed && !_busy && _password.text.isNotEmpty ? _delete : null,
+            child: Text(_busy ? 'Deleting…' : 'Delete permanently'),
+          ),
+        ],
       ),
-      const SizedBox(height: 20),
-      PrimaryAction(
-        label: 'Delete permanently',
-        busy: _busy,
-        onPressed: _delete,
-      ),
-      const SizedBox(height: 8),
-      OutlinedButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
-      const SizedBox(height: 10),
-      const Text(
-        'This will permanently delete your Firebase Authentication account and all associated data.',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: AppColors.muted, fontSize: 11),
-      ),
-    ])));
+    ),
+  );
 }
 
 class SubscriptionScreen extends StatelessWidget {
@@ -351,7 +390,7 @@ class _HelpScreenState extends State<HelpScreen> {
     ('How does SmartSave get my data?', 'The prototype uses fictional local sample data. It does not connect to your bank.'),
     ('Why did I get this recommendation?', 'Each suggestion is a sample explanation and is not personalized financial advice.'),
     ('Is this financial advice?', 'No. The app provides educational/demo information only.'),
-    ('How do I delete my account?', 'Open Profile → Privacy & data → Delete account. The demo clears local records.'),
+    ('How do I delete my account?', 'Open Profile → Privacy & data → Delete account. Deletion requires your password and blocks when local changes have not synchronized.'),
   ];
   @override
   void dispose() { _search.dispose(); super.dispose(); }

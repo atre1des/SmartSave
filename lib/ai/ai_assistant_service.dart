@@ -180,7 +180,6 @@ Response style:
   ///   removes the placeholder bubble and shows the error banner.
   /// - On backend being unreachable, yields a single local fallback chunk.
   Stream<AIStreamChunk> sendMessageStream(String prompt) async* {
-    debugPrint('[AIAssistantService] sendMessageStream called with prompt: $prompt');
     final context = await _buildFinancialContext();
     final systemPrompt = _buildSystemPrompt(context);
 
@@ -203,7 +202,6 @@ Response style:
       await for (final chunk in _provider.sendMessageStream(messages: messages)) {
         if (chunk.isDone) {
           if (chunk.error != null) {
-            debugPrint('[AIAssistantService] Stream error: ${chunk.error}');
             yield chunk;
           } else {
             debugPrint('[AIAssistantService] Stream completed successfully');
@@ -221,7 +219,6 @@ Response style:
         error: 'The AI service ended the response unexpectedly. Please try again.',
       );
     } catch (e) {
-      debugPrint('[AIAssistantService] Stream exception: $e');
       yield AIStreamChunk(
         content: '',
         isDone: true,
