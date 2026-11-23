@@ -327,17 +327,13 @@ class _AISuggestionCard extends ConsumerWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _push(context, const DepositRatesScreen()),
-                  child: const Text('Explore deposits'),
-                ),
+              OutlinedButton(
+                onPressed: () => _push(context, const DepositRatesScreen()),
+                child: const Text('Explore deposits'),
               ),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _push(context, const InvestmentIntelligenceScreen()),
-                  child: const Text('Investment scenarios'),
-                ),
+              OutlinedButton(
+                onPressed: () => _push(context, const InvestmentIntelligenceScreen()),
+                child: const Text('Investment scenarios'),
               ),
             ],
           ),

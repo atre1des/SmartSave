@@ -359,7 +359,12 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
     );
   }
 
-  void _refresh() => setState(() => _theses = _loadOverview());
+  void _refresh() {
+    final next = _loadOverview();
+    setState(() {
+      _theses = next;
+    });
+  }
 
   Future<void> _createThesis() async {
     await Navigator.push<void>(
@@ -793,7 +798,12 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
     await _repository.thesisAssessments(widget.thesis.id!),
   );
 
-  void _refresh() => setState(() => _detail = _load());
+  void _refresh() {
+    final next = _load();
+    setState(() {
+      _detail = next;
+    });
+  }
 
   Future<void> _addCondition() async {
     await Navigator.push<void>(
