@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_save/data/finance_repository.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart' as cipher;
 
@@ -149,6 +150,17 @@ void main() {
         firstKey != null && otherKey != null && firstKey != otherKey,
         isTrue,
       );
+      var attemptedCloudDeletion = false;
+      await expectLater(
+        account.deleteAccountData(uid, () async {
+          attemptedCloudDeletion = true;
+        }),
+        throwsStateError,
+      );
+      expect(attemptedCloudDeletion, isFalse);
+      final preferences = await SharedPreferences.getInstance();
+      expect(preferences.containsKey(primaryKeyName), isFalse);
+      expect(preferences.containsKey(otherKeyName), isFalse);
       expect(await File(original).exists(), isTrue);
     },
     skip: !(Platform.isAndroid || Platform.isIOS || Platform.isMacOS),

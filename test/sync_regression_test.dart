@@ -121,22 +121,24 @@ void main() {
         ),
         id,
       );
-      cloud.holdings[cloudHolding.id] = cloudHolding.copyWith(isDeleted: true);
+      cloud.holdings[cloudHolding.id] = cloudHolding.copyWith(
+        version: cloudHolding.version + 1,
+        isDeleted: true,
+      );
       expect((await sync.pullRemoteChanges()).conflicts, 1);
       expect((await local.getPortfolioHoldingById(id))?.marketValueKzt, 17000);
 
       await local.deletePortfolioHolding(id);
       await local.deleteInvestmentThesis(thesisId);
-      expect((await sync.pushLocalChanges()).uploaded, 2);
-      expect(
-        cloud.deleted,
-        containsAll([cloudHolding.id, cloud.theses.keys.single]),
-      );
+      final changes = await sync.pushLocalChanges();
+      expect(changes.uploaded, 1);
+      expect(changes.conflicts, 1);
+      expect(cloud.deleted, [cloud.theses.keys.single]);
       expect(await local.portfolioHoldings(), isEmpty);
       expect(await local.investmentTheses(), isEmpty);
       expect(await local.thesisAssessments(thesisId), hasLength(1));
-      expect(await local.getPendingSyncOperations(), isEmpty);
-      expect((await sync.pullRemoteChanges()).isSuccess, isTrue);
+      expect(await local.getPendingSyncOperations(), hasLength(2));
+      expect((await sync.pullRemoteChanges()).conflicts, 1);
       expect(await local.thesisAssessments(thesisId), hasLength(1));
     },
   );
@@ -147,14 +149,151 @@ void main() {
       final id = await local.savePortfolioHolding(holding);
       await local.deletePortfolioHolding(id);
       expect(
-        (await local.getPendingSyncOperations()).single.operation,
-        'delete',
+        (await local.getPendingSyncOperations()).map((op) => op.operation),
+        ['create', 'delete'],
       );
-      expect((await sync.pushLocalChanges()).uploaded, 1);
+      expect((await sync.pushLocalChanges()).uploaded, 2);
       expect(cloud.holdings.values.single.isDeleted, isTrue);
       expect(await local.portfolioHoldings(), isEmpty);
     },
   );
+
+  test(
+    'two offline edits to one holding preserve the losing device edit',
+    () async {
+      final holdingId = await local.savePortfolioHolding(holding);
+      await sync.pushLocalChanges();
+      final second = await FinanceRepository.open(
+        databasePath: '${directory.path}/second.db',
+        currentUid: () => 'owner',
+      );
+      addTearDown(second.close);
+      final secondSync = SyncService(
+        localRepo: second,
+        cloudRepo: cloud,
+        auth: auth,
+      );
+      addTearDown(secondSync.dispose);
+      expect((await secondSync.pullRemoteChanges()).downloaded, 1);
+      final otherId = (await second.portfolioHoldings()).single.id;
+      await local.savePortfolioHolding(
+        PortfolioHolding(
+          id: holdingId,
+          securityName: 'Fixture',
+          ticker: 'FIX',
+          marketValueKzt: 21000,
+        ),
+      );
+      await second.savePortfolioHolding(
+        PortfolioHolding(
+          id: otherId,
+          securityName: 'Fixture',
+          ticker: 'FIX',
+          marketValueKzt: 32000,
+        ),
+      );
+      expect((await sync.pushLocalChanges()).uploaded, 1);
+      expect((await secondSync.pushLocalChanges()).conflicts, 1);
+      expect((await secondSync.pullRemoteChanges()).conflicts, 1);
+      expect(cloud.holdings.values.single.marketValueKzt, 21000);
+      expect((await second.portfolioHoldings()).single.marketValueKzt, 32000);
+      expect(await second.getPendingSyncOperations(), hasLength(1));
+    },
+  );
+
+  test(
+    'transaction and goal tombstones reconcile with another device without altering unrelated rows',
+    () async {
+      final id = await local.saveTransaction(
+        FinanceTransaction(
+          amount: 75,
+          isIncome: true,
+          category: 'Income',
+          merchant: 'Remote fixture transaction',
+          occurredAt: DateTime.utc(2026, 2, 1),
+        ),
+      );
+      final goalId = await local.saveGoal(
+        SavingsGoal(
+          name: 'Remote fixture goal',
+          target: 500,
+          saved: 0,
+          deadline: DateTime.utc(2027),
+          purpose: 'Synthetic',
+        ),
+      );
+      expect((await sync.pushLocalChanges()).uploaded, 2);
+      final second = await FinanceRepository.open(
+        databasePath: '${directory.path}/second.db',
+        currentUid: () => 'owner',
+      );
+      addTearDown(second.close);
+      final secondSync = SyncService(
+        localRepo: second,
+        cloudRepo: cloud,
+        auth: auth,
+      );
+      addTearDown(secondSync.dispose);
+      final originalBalance = await second.totalBalance();
+      expect((await secondSync.pullRemoteChanges()).downloaded, 2);
+      expect(await second.totalBalance(), originalBalance + 75);
+      await local.deleteTransaction(id);
+      await local.deleteGoal(goalId);
+      expect((await sync.pushLocalChanges()).uploaded, 2);
+      expect((await secondSync.pullRemoteChanges()).downloaded, 2);
+      expect(await second.totalBalance(), originalBalance);
+      expect(
+        (await second.transactions()).any(
+          (tx) => tx.merchant == 'Remote fixture transaction',
+        ),
+        isFalse,
+      );
+      expect(
+        (await second.goals()).any(
+          (goal) => goal.name == 'Remote fixture goal',
+        ),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'an ambiguous older acknowledgement does not discard a newer local edit',
+    () async {
+      final id = await local.savePortfolioHolding(holding);
+      cloud.loseResponse = true;
+      expect((await sync.pushLocalChanges()).failed, 1);
+      await local.savePortfolioHolding(
+        PortfolioHolding(
+          id: id,
+          securityName: 'Fixture',
+          ticker: 'FIX',
+          marketValueKzt: 26000,
+        ),
+      );
+      expect(await local.getPendingSyncOperations(), hasLength(2));
+      final retry = await sync.pushLocalChanges();
+      expect(retry.uploaded, 2);
+      expect(cloud.holdings.values.single.version, 2);
+      expect(cloud.holdings.values.single.marketValueKzt, 26000);
+      expect(await local.getPendingSyncOperations(), isEmpty);
+    },
+  );
+
+  test('a later remote edit prevents acknowledging a stale replay', () async {
+    await local.savePortfolioHolding(holding);
+    cloud.loseResponse = true;
+    expect((await sync.pushLocalChanges()).failed, 1);
+    final priorCommit = cloud.holdings.values.single;
+    // Another client advanced the revision while retaining the old marker.
+    cloud.holdings[priorCommit.id] = priorCommit.copyWith(
+      version: priorCommit.version + 1,
+      marketValueKzt: 55000,
+    );
+    expect((await sync.pushLocalChanges()).conflicts, 1);
+    expect(await local.getPendingSyncOperations(), hasLength(1));
+    expect(cloud.holdings.values.single.marketValueKzt, 55000);
+  });
 
   test(
     'a response that arrives after an account switch is never applied',
@@ -210,6 +349,8 @@ class _User implements User {
 }
 
 class _Cloud implements FirestoreRepository {
+  final transactions = <String, FirestoreTransaction>{};
+  final goals = <String, FirestoreSavingsGoal>{};
   final holdings = <String, FirestorePortfolioHolding>{};
   final theses = <String, FirestoreInvestmentThesis>{};
   final deleted = <String>[];
@@ -223,21 +364,29 @@ class _Cloud implements FirestoreRepository {
     String? query,
     int? limit,
     Object? startAfter,
+    bool includeDeleted = false,
   }) async => readTransactions == null
-      ? FirestoreResult.success([])
+      ? FirestoreResult.success(
+          transactions.values
+              .where((row) => includeDeleted || !row.isDeleted)
+              .toList(),
+        )
       : readTransactions!();
 
   @override
-  Future<FirestoreResult<List<FirestoreSavingsGoal>>> getGoals() async =>
+  Future<FirestoreResult<List<FirestoreSavingsGoal>>> getGoals({
+    bool includeDeleted = false,
+  }) async => FirestoreResult.success(
+    goals.values.where((row) => includeDeleted || !row.isDeleted).toList(),
+  );
+
+  @override
+  Future<FirestoreResult<List<FirestoreBudget>>> getVersionedBudgets() async =>
       FirestoreResult.success([]);
 
   @override
-  Future<FirestoreResult<Map<String, int>>> getBudgets() async =>
-      FirestoreResult.success({});
-
-  @override
-  Future<FirestoreResult<Map<String, String>>> getInvestmentSettings() async =>
-      FirestoreResult.success({});
+  Future<FirestoreResult<List<FirestoreInvestmentSetting>>>
+  getVersionedSettings() async => FirestoreResult.success([]);
 
   @override
   Future<FirestoreResult<List<FirestorePortfolioHolding>>>
@@ -255,44 +404,55 @@ class _Cloud implements FirestoreRepository {
     theses.values.where((row) => includeDeleted || !row.isDeleted).toList(),
   );
 
+  final mutations = <String, String>{};
+
   @override
-  Future<FirestoreResult<FirestorePortfolioHolding>> savePortfolioHolding(
-    FirestorePortfolioHolding holding,
-  ) async {
-    holdings[holding.id] = holding;
+  Future<FirestoreResult<int>> commitSyncMutation({
+    required String entity,
+    required FirestoreModel record,
+    required int expectedRevision,
+    required String mutationId,
+    required bool deleted,
+  }) async {
+    final previous =
+        holdings[record.id] ??
+        theses[record.id] ??
+        transactions[record.id] ??
+        goals[record.id];
+    if (mutations[record.id] == mutationId &&
+        previous?.version == expectedRevision + 1) {
+      return FirestoreResult.success(expectedRevision + 1);
+    }
+    if ((previous?.version ?? 0) != expectedRevision ||
+        (previous?.isDeleted == true && !deleted)) {
+      return FirestoreResult.failure(
+        'Conflict',
+        FirestoreErrorCode.failedPrecondition,
+      );
+    }
+    final version = expectedRevision + 1;
+    if (record is FirestoreTransaction) {
+      transactions[record.id] = record.copyWith(
+        version: version,
+        isDeleted: deleted,
+      );
+    } else if (record is FirestoreSavingsGoal) {
+      goals[record.id] = record.copyWith(version: version, isDeleted: deleted);
+    } else if (record is FirestorePortfolioHolding) {
+      holdings[record.id] = record.copyWith(
+        version: version,
+        isDeleted: deleted,
+      );
+    } else if (record is FirestoreInvestmentThesis) {
+      theses[record.id] = record.copyWith(version: version, isDeleted: deleted);
+    }
+    mutations[record.id] = mutationId;
+    if (deleted) this.deleted.add(record.id);
     if (loseResponse) {
       loseResponse = false;
       throw StateError('Simulated lost acknowledgement');
     }
-    return FirestoreResult.success(holding);
-  }
-
-  @override
-  Future<FirestoreResult<FirestoreInvestmentThesis>> saveInvestmentThesis(
-    FirestoreInvestmentThesis thesis,
-  ) async {
-    theses[thesis.id] = thesis;
-    return FirestoreResult.success(thesis);
-  }
-
-  @override
-  Future<FirestoreResult<void>> deletePortfolioHolding(
-    FirestorePortfolioHolding snapshot,
-  ) async {
-    final id = snapshot.id;
-    deleted.add(id);
-    holdings[id] = (holdings[id] ?? snapshot).copyWith(isDeleted: true);
-    return FirestoreResult.ok();
-  }
-
-  @override
-  Future<FirestoreResult<void>> deleteInvestmentThesis(
-    FirestoreInvestmentThesis snapshot,
-  ) async {
-    final id = snapshot.id;
-    deleted.add(id);
-    theses[id] = (theses[id] ?? snapshot).copyWith(isDeleted: true);
-    return FirestoreResult.ok();
+    return FirestoreResult.success(version);
   }
 
   @override

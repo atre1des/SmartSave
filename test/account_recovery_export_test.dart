@@ -243,4 +243,44 @@ void main() {
       expect(await source.query('investment_settings'), hasLength(2));
     },
   );
+  test(
+    'an old self-claim cannot authorize erasing a shared original',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartsave-unowned-delete',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final sourcePath = path.join(directory.path, 'smartsave_demo.db');
+      final source = await databaseFactory.openDatabase(sourcePath);
+      await source.execute(
+        'CREATE TABLE investment_settings (key TEXT PRIMARY KEY, value TEXT)',
+      );
+      await source.insert('investment_settings', {
+        'key': 'fixture',
+        'value': 'preserved',
+      });
+      await source.close();
+
+      final account = await FinanceRepository.openForAccount(
+        'alice',
+        directory: directory.path,
+      );
+      addTearDown(account.close);
+      expect(await account.transactions(), isEmpty);
+      expect(await account.goals(), isEmpty);
+      expect(await account.budgets(), isEmpty);
+      await account.importLegacyAccountData('alice', ownershipConfirmed: true);
+
+      var requestedCloudDeletion = false;
+      await expectLater(
+        account.deleteAccountData('alice', () async {
+          requestedCloudDeletion = true;
+        }),
+        throwsStateError,
+      );
+      expect(requestedCloudDeletion, isFalse);
+      expect(await File(sourcePath).exists(), isTrue);
+      expect((await account.investmentSettings())['fixture'], 'preserved');
+    },
+  );
 }

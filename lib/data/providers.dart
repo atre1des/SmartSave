@@ -1,5 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -33,16 +33,19 @@ final firestoreRepositoryProvider = Provider<FirestoreRepository>((ref) {
 });
 
 // Sync service
-final syncServiceProvider = ChangeNotifierProvider<SyncService>((ref) {
+final syncServiceProvider = ChangeNotifierProvider.autoDispose<SyncService>((ref) {
   final localRepo = ref.watch(financeRepositoryProvider);
   final cloudRepo = ref.watch(firestoreRepositoryProvider);
-  final auth = FirebaseAuth.instance;
+  final auth = ref.watch(authServiceProvider).auth;
   return SyncService(
     localRepo: localRepo,
     cloudRepo: cloudRepo,
     auth: auth,
-  )..initialize();
+  );
 });
+
+final syncRequestProvider = StateProvider<int>((ref) => 0);
+final syncStatusMessageProvider = StateProvider<String?>((ref) => null);
 
 // Stream provider for auth state changes
 final authStateProvider = StreamProvider<User?>((ref) {

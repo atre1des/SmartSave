@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -136,6 +137,9 @@ class DepositProduct {
 
 class FinanceRepository {
   FinanceRepository._(this._db, this._currentUid, this._accountUid);
+  final _localChanges = StreamController<void>.broadcast();
+  Stream<void> get localChanges => _localChanges.stream;
+
   final String? _accountUid;
   final Database _db;
   final String? Function() _currentUid;
@@ -344,7 +348,7 @@ class FinanceRepository {
         )''');
         await _createInvestmentTables(db);
         await _createAIMessagesTable(db);
-        if (seed) await _seed(db);
+        if (seed) await _seed(db, includeFinancialData: accountUid == null);
         await _ensureSyncColumns(db);
         if (seed && accountUid != null) {
           await db.insert('preferences', {
@@ -434,8 +438,7 @@ class FinanceRepository {
     )''');
   }
 
-  static Future<void> _seed(DatabaseExecutor db) async {
-    final now = DateTime.now();
+  static Future<void> _seedFinancialData(DatabaseExecutor db, DateTime now) async {
     final today = DateTime(now.year, now.month, now.day);
     final seedTransactions = <FinanceTransaction>[
       FinanceTransaction(
@@ -640,6 +643,11 @@ class FinanceRepository {
       'key': 'opening_balance',
       'value': '1442266',
     });
+  }
+
+  static Future<void> _seed(DatabaseExecutor db, {bool includeFinancialData = true}) async {
+    final now = DateTime.now();
+    if (includeFinancialData) await _seedFinancialData(db, now);
     const adviceRows = [
       [
         'Savings',
@@ -756,7 +764,7 @@ class FinanceRepository {
     String? category,
     String? query,
   }) async {
-    final clauses = <String>[];
+    final clauses = <String>['local_deleted = 0'];
     final args = <Object?>[];
     if (category != null && category != 'All') {
       clauses.add('category = ?');
@@ -776,56 +784,14 @@ class FinanceRepository {
   }
 
   Future<int> saveTransaction(FinanceTransaction transaction) async {
-    if (transaction.amount <= 0) {
-      throw ArgumentError('Amount must be greater than zero.');
-    }
-    final values = Map<String, Object?>.from(transaction.toMap());
-    // When updating an existing record, mark it as no longer synced so it is
-    // re-uploaded on the next push. Keep cloud_id so conflict detection can
-    // still find the matching remote record. Do not touch the id column.
-    if (transaction.id != null) {
-      values['is_synced'] = 0;
-      values['synced_at'] = null;
-    }
-    final id = transaction.id == null
-        ? await _db.insert('transactions', values)
-        : (await _db.update(
-            'transactions',
-            values,
-            where: 'id = ?',
-            whereArgs: [transaction.id],
-          )).toDouble().toInt();
-    await _recordSyncOp(
-      entityType: 'transaction',
-      entityId: id.toString(),
-      operation: transaction.id == null ? 'create' : 'update',
-      payload: values,
-    );
-    return id;
+    if (transaction.amount <= 0) throw ArgumentError('Amount must be greater than zero.');
+    return _saveSyncRecord('transactions', 'transaction', transaction.id, transaction.toMap());
   }
 
-  Future<void> deleteTransaction(int id) async {
-    await _db.transaction((txn) async {
-      final rows = await txn.query(
-        'transactions',
-        where: 'id = ?',
-        whereArgs: [id],
-        limit: 1,
-      );
-      if (rows.isEmpty) return;
-      await _recordSyncOp(
-        executor: txn,
-        entityType: 'transaction',
-        entityId: id.toString(),
-        operation: 'delete',
-        payload: rows.first,
-      );
-      await txn.delete('transactions', where: 'id = ?', whereArgs: [id]);
-    });
-  }
+  Future<void> deleteTransaction(int id) => _deleteSyncRecord('transactions', 'transaction', id);
 
   Future<List<SavingsGoal>> goals() async {
-    final rows = await _db.query('goals', orderBy: 'deadline ASC');
+    final rows = await _db.query('goals', where: 'local_deleted = 0', orderBy: 'deadline ASC');
     return rows.map(SavingsGoal.fromMap).toList();
   }
 
@@ -833,47 +799,10 @@ class FinanceRepository {
     if (goal.name.trim().isEmpty || goal.target <= 0) {
       throw ArgumentError('Enter a goal name and a positive target.');
     }
-    final id = goal.id == null
-        ? await _db.insert('goals', goal.toMap())
-        : (await _db.update(
-            'goals',
-            goal.toMap(),
-            where: 'id = ?',
-            whereArgs: [goal.id],
-          )).toDouble().toInt();
-    await _recordSyncOp(
-      entityType: 'goal',
-      entityId: id.toString(),
-      operation: goal.id == null ? 'create' : 'update',
-      payload: goal.toMap(),
-    );
-    return id;
+    return _saveSyncRecord('goals', 'goal', goal.id, goal.toMap());
   }
 
-  Future<void> deleteGoal(int id) async {
-    await _db.transaction((txn) async {
-      final rows = await txn.query(
-        'goals',
-        where: 'id = ?',
-        whereArgs: [id],
-        limit: 1,
-      );
-      if (rows.isEmpty) return;
-      await _recordSyncOp(
-        executor: txn,
-        entityType: 'goal',
-        entityId: id.toString(),
-        operation: 'delete',
-        payload: rows.first,
-      );
-      await txn.delete(
-        'goal_contributions',
-        where: 'goal_id = ?',
-        whereArgs: [id],
-      );
-      await txn.delete('goals', where: 'id = ?', whereArgs: [id]);
-    });
-  }
+  Future<void> deleteGoal(int id) => _deleteSyncRecord('goals', 'goal', id);
 
   Future<void> addContribution(int goalId, int amount) async {
     if (amount <= 0) {
@@ -882,7 +811,7 @@ class FinanceRepository {
     await _db.transaction((txn) async {
       final rows = await txn.query(
         'goals',
-        where: 'id = ?',
+        where: 'id = ? AND local_deleted = 0',
         whereArgs: [goalId],
         limit: 1,
       );
@@ -896,10 +825,12 @@ class FinanceRepository {
       });
       await txn.update(
         'goals',
-        {'saved': goal.saved + amount},
+        {'saved': goal.saved + amount, 'is_synced': 0},
         where: 'id = ?',
         whereArgs: [goalId],
       );
+      await _recordSyncOp(executor: txn, entityType: 'goal', entityId: goalId.toString(),
+        operation: 'update', payload: {...goal.toMap(), 'saved': goal.saved + amount});
     });
   }
 
@@ -909,7 +840,7 @@ class FinanceRepository {
     final end = DateTime(date.year, date.month + 1);
     final rows = await _db.rawQuery(
       '''SELECT category, SUM(amount) AS total FROM transactions
-      WHERE is_income = 0 AND occurred_at >= ? AND occurred_at < ? GROUP BY category''',
+      WHERE local_deleted = 0 AND is_income = 0 AND occurred_at >= ? AND occurred_at < ? GROUP BY category''',
       [start.toIso8601String(), end.toIso8601String()],
     );
     return {
@@ -949,7 +880,7 @@ class FinanceRepository {
         ? 0
         : int.tryParse(baseRows.first['value'] as String) ?? 0;
     final rows = await _db.rawQuery(
-      'SELECT COALESCE(SUM(CASE WHEN is_income=1 THEN amount ELSE -amount END),0) AS net FROM transactions',
+      'SELECT COALESCE(SUM(CASE WHEN is_income=1 THEN amount ELSE -amount END),0) AS net FROM transactions WHERE local_deleted = 0',
     );
     return opening + (rows.first['net'] as num).toInt();
   }
@@ -964,16 +895,7 @@ class FinanceRepository {
 
   Future<void> saveBudget(String category, int limit) async {
     if (limit < 0) throw ArgumentError('Budget cannot be negative.');
-    await _db.insert('budgets', {
-      'category': category,
-      'monthly_limit': limit,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-    await _recordSyncOp(
-      entityType: 'budget',
-      entityId: category,
-      operation: 'create',
-      payload: {'category': category, 'monthly_limit': limit},
-    );
+    await _saveKeyedRecord('budgets', 'budget', 'category', category, 'monthly_limit', limit);
   }
 
   Future<List<DepositProduct>> deposits({
@@ -1034,24 +956,7 @@ class FinanceRepository {
     if (thesis.securityName.trim().isEmpty || thesis.ticker.trim().isEmpty) {
       throw ArgumentError('Enter a security name and ticker.');
     }
-    return _db.transaction((txn) async {
-      final values = {...thesis.toMap(), 'is_synced': 0};
-      final id = thesis.id;
-      final savedId = id ?? await txn.insert('investment_theses', {...values, 'cloud_id': _newCloudId()});
-      if (id != null) {
-        final changed = await txn.update('investment_theses', values,
-          where: 'id = ? AND local_deleted = 0', whereArgs: [id]);
-        if (changed != 1) throw StateError('The record is no longer available.');
-      }
-      await _recordSyncOp(
-        executor: txn,
-        entityType: 'investment_thesis',
-        entityId: savedId.toString(),
-        operation: id == null ? 'create' : 'update',
-        payload: thesis.toMap(),
-      );
-      return savedId;
-    });
+    return _saveSyncRecord('investment_theses', 'investment_thesis', thesis.id, thesis.toMap());
   }
 
   Future<List<ThesisCondition>> thesisConditions(int thesisId) async {
@@ -1081,7 +986,7 @@ class FinanceRepository {
   }
 
   Future<void> deleteInvestmentThesis(int thesisId) =>
-      _deleteInvestmentRecord('investment_theses', 'investment_thesis', thesisId);
+      _deleteSyncRecord('investment_theses', 'investment_thesis', thesisId);
 
   Future<int> saveThesisAssessment(ThesisAssessment assessment) =>
       _db.insert('thesis_assessments', assessment.toMap());
@@ -1109,40 +1014,35 @@ class FinanceRepository {
         'Enter a security name, ticker and non-negative KZT value.',
       );
     }
-    return _db.transaction((txn) async {
-      final values = {...holding.toMap(), 'is_synced': 0};
-      final id = holding.id;
-      final savedId = id ?? await txn.insert('portfolio_holdings', {...values, 'cloud_id': _newCloudId()});
-      if (id != null) {
-        final changed = await txn.update('portfolio_holdings', values,
-          where: 'id = ? AND local_deleted = 0', whereArgs: [id]);
-        if (changed != 1) throw StateError('The record is no longer available.');
-      }
-      await _recordSyncOp(
-        executor: txn,
-        entityType: 'portfolio_holding',
-        entityId: savedId.toString(),
-        operation: id == null ? 'create' : 'update',
-        payload: holding.toMap(),
-      );
-      return savedId;
-    });
+    return _saveSyncRecord('portfolio_holdings', 'portfolio_holding', holding.id, holding.toMap());
   }
 
   Future<void> deletePortfolioHolding(int holdingId) =>
-      _deleteInvestmentRecord('portfolio_holdings', 'portfolio_holding', holdingId);
+      _deleteSyncRecord('portfolio_holdings', 'portfolio_holding', holdingId);
 
-  Future<void> _deleteInvestmentRecord(String table, String entity, int id) async {
+  Future<int> _saveSyncRecord(
+    String table, String entity, int? id, Map<String, Object?> record,
+  ) => _db.transaction((txn) async {
+    final values = {...record, 'is_synced': 0};
+    final savedId = id ?? await txn.insert(table, {
+      ...values, 'cloud_id': _newCloudId(), 'remote_revision': 0,
+    });
+    if (id != null) {
+      final changed = await txn.update(table, values,
+        where: 'id = ? AND local_deleted = 0', whereArgs: [id]);
+      if (changed != 1) throw StateError('The record is no longer available.');
+    }
+    await _recordSyncOp(executor: txn, entityType: entity,
+      entityId: savedId.toString(), operation: id == null ? 'create' : 'update',
+      payload: record);
+    return savedId;
+  });
+
+  Future<void> _deleteSyncRecord(String table, String entity, int id) async {
     await _db.transaction((txn) async {
       final rows = await txn.query(table, where: 'id = ? AND local_deleted = 0',
         whereArgs: [id], limit: 1);
       if (rows.isEmpty) return;
-      final uid = _currentUid();
-      if (uid != null) {
-        await txn.delete('sync_operations',
-          where: 'entity_type = ? AND entity_id = ? AND owner_uid = ? AND operation != ?',
-          whereArgs: [entity, id.toString(), uid, 'delete']);
-      }
       await _recordSyncOp(
         executor: txn, entityType: entity, entityId: id.toString(),
         operation: 'delete', payload: rows.single,
@@ -1157,6 +1057,8 @@ class FinanceRepository {
     'goal': 'goals',
     'investment_thesis': 'investment_theses',
     'portfolio_holding': 'portfolio_holdings',
+    'budget': 'budgets',
+    'investment_setting': 'investment_settings',
   };
 
   static String _newCloudId() {
@@ -1164,58 +1066,61 @@ class FinanceRepository {
     return base64Url.encode(List<int>.generate(18, (_) => random.nextInt(256)));
   }
 
-  bool canSyncAccount(String uid) => (_accountUid ?? _currentUid()) == uid;
+  bool _deletingAccount = false;
+  bool canSyncAccount(String uid) =>
+      !_deletingAccount && _db.isOpen && (_accountUid ?? _currentUid()) == uid;
 
-  /// Persist the remote identifier before issuing a write, so an ambiguous
-  /// network response or process restart retries the same document.
-  Future<String?> reserveCloudId(SyncOperation op) async {
+  /// Freezes the revision expected by this queued operation before network I/O.
+  /// Missing legacy provenance stays a conflict, even when the remote is absent.
+  Future<({String id, int revision})?> prepareUpload(SyncOperation op) =>
+      _db.transaction((txn) async {
     final table = _syncTables[op.entityType];
-    final id = int.tryParse(op.entityId);
-    if (table == null || id == null || op.ownerUid == null ||
-        op.ownerUid != _currentUid()) {
-      return null;
-    }
-    return _db.transaction((txn) async {
-      final rows = await txn.query(table, where: 'id = ?', whereArgs: [id], limit: 1);
-      if (rows.isEmpty || rows.single['local_deleted'] == 1) return null;
-      final existing = rows.single['cloud_id'] as String?;
-      if (existing != null && existing.isNotEmpty) return existing;
-      final cloudId = _newCloudId();
-      await txn.update(table, {'cloud_id': cloudId}, where: 'id = ?', whereArgs: [id]);
-      return cloudId;
-    });
-  }
+    if (table == null || op.ownerUid == null || op.ownerUid != _currentUid()) return null;
+    final key = _recordKey(op.entityType);
+    final queued = await txn.query('sync_operations', where: 'id = ?', whereArgs: [op.id]);
+    final rows = await txn.query(table, where: '$key = ?', whereArgs: [op.entityId]);
+    if (queued.length != 1 || rows.length != 1) return null;
+    final cloudId = rows.single['cloud_id'] as String?;
+    final revision = (queued.single['expected_revision'] ?? rows.single['remote_revision']) as int?;
+    if (cloudId == null || cloudId.isEmpty || revision == null) return null;
+    await txn.update('sync_operations', {'expected_revision': revision},
+      where: 'id = ?', whereArgs: [op.id]);
+    return (id: cloudId, revision: revision);
+  });
 
-  Future<void> acknowledgeRecordUpload(SyncOperation op, String cloudId) async {
+  Future<void> acknowledgeRecordUpload(SyncOperation op, String cloudId, int revision) =>
+      _db.transaction((txn) async {
     final table = _syncTables[op.entityType]!;
-    await _db.transaction((txn) async {
-      final queued = await txn.query('sync_operations',
-        where: 'entity_type = ? AND entity_id = ?', whereArgs: [op.entityType, op.entityId]);
-      // A queued change (including a deletion) added while the upload was in
-      // flight must remain visible as a conflict to subsequent downloads.
-      if (queued.length != 1 || queued.single['id'] != op.id) return;
-      await txn.update(table, {'cloud_id': cloudId, 'is_synced': 1,
-        'synced_at': DateTime.now().toIso8601String()},
-        where: 'id = ?', whereArgs: [op.entityId]);
-    });
-  }
+    final removed = await txn.delete('sync_operations',
+      where: 'id = ? AND owner_uid = ?', whereArgs: [op.id, op.ownerUid]);
+    if (removed != 1) return;
+    final pending = await txn.query('sync_operations',
+      where: 'entity_type = ? AND entity_id = ?', whereArgs: [op.entityType, op.entityId], limit: 1);
+    await txn.update(table, {
+      'cloud_id': cloudId, 'remote_revision': revision,
+      'is_synced': pending.isEmpty ? 1 : 0,
+      'synced_at': DateTime.now().toIso8601String(),
+    }, where: '${_recordKey(op.entityType)} = ?', whereArgs: [op.entityId]);
+  });
 
-  /// A tombstone must never overwrite an unsynchronized local edit.
-  Future<bool> applyInvestmentTombstone(String entityType, String cloudId) async {
-    final table = _syncTables[entityType];
-    if (table != 'investment_theses' && table != 'portfolio_holdings') {
-      throw ArgumentError.value(entityType);
-    }
-    return _db.transaction((txn) async {
-      final rows = await txn.query(table!, where: 'cloud_id = ?', whereArgs: [cloudId]);
-      if (rows.isEmpty) return true;
-      if (rows.length != 1) return false;
-      if (rows.single['local_deleted'] == 1) return true;
-      if (rows.single['is_synced'] != 1) return false;
-      await txn.update(table, {'local_deleted': 1}, where: 'cloud_id = ?', whereArgs: [cloudId]);
-      return true;
-    });
-  }
+  static String _recordKey(String entity) => switch (entity) {
+    'budget' => 'category',
+    'investment_setting' => 'key',
+    _ => 'id',
+  };
+
+  Future<bool> applyTombstone(String entityType, String cloudId, int revision) =>
+      _db.transaction((txn) async {
+    final table = _syncTables[entityType]!;
+    final rows = await txn.query(table, where: 'cloud_id = ?', whereArgs: [cloudId]);
+    if (rows.isEmpty) return true;
+    if (rows.length != 1 || rows.single['is_synced'] != 1) return false;
+    final known = rows.single['remote_revision'] as int?;
+    if (known != null && known > revision) return false;
+    await txn.update(table, {'local_deleted': 1, 'remote_revision': revision},
+      where: 'cloud_id = ?', whereArgs: [cloudId]);
+    return true;
+  });
 
   Future<Map<String, String>> investmentSettings() async {
     final rows = await _db.query('investment_settings');
@@ -1225,16 +1130,7 @@ class FinanceRepository {
   }
 
   Future<void> saveInvestmentSetting(String key, String value) async {
-    await _db.insert('investment_settings', {
-      'key': key,
-      'value': value,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-    await _recordSyncOp(
-      entityType: 'investment_setting',
-      entityId: key,
-      operation: 'create',
-      payload: {'key': key, 'value': value},
-    );
+    await _saveKeyedRecord('investment_settings', 'investment_setting', 'key', key, 'value', value);
   }
 
   static const _portableTables = <String, String>{
@@ -1284,21 +1180,42 @@ class FinanceRepository {
     Future<void> Function(bool removeLegacy)? clearPreferences,
   }) async {
     _requireAccount(uid);
+    if (_deletingAccount) throw StateError('Account deletion is already in progress.');
+    _deletingAccount = true;
+    try {
+      await _deleteAccountData(uid, deleteCloud, clearPreferences: clearPreferences);
+    } finally {
+      _deletingAccount = false;
+    }
+  }
+
+  Future<void> _deleteAccountData(
+    String uid,
+    Future<void> Function() deleteCloud, {
+    Future<void> Function(bool removeLegacy)? clearPreferences,
+  }) async {
+    _requireAccount(uid);
     final directory = paths.dirname(_db.path);
+    final activePath = _db.path;
+    final account = base64Url.encode(utf8.encode(uid));
+    final original = paths.join(directory, 'smartsave_account_$account.db');
+    if (activePath != original && await databaseExists(original)) {
+      throw StateError('A retained plaintext backup needs verified recovery and owner review before deletion.');
+    }
     final sharedPath = paths.join(directory, 'smartsave_demo.db');
     final sharedExists = await databaseExists(sharedPath);
-    final legacyBelongsToAccount = await databaseExists(paths.join(directory, 'smartsave_legacy_claim.db')) &&
-        await _legacyClaimBelongsTo(uid, directory);
-    final removeLegacy = await _db.transaction((txn) async {
+    await _db.transaction((txn) async {
       const deletionMarker = 'account_deletion_prepared';
       final sealed = await txn.query('preferences', where: 'key = ?', whereArgs: [deletionMarker]);
-      if (sealed.isNotEmpty) return sealed.single['value'] == 'legacy';
-      final imported = await txn.query('preferences', where: 'key = ?',
-        whereArgs: ['legacy_account_import_complete']);
-      if (sharedExists && (!legacyBelongsToAccount || imported.isEmpty)) {
-        throw StateError('Shared legacy records require confirmed recovery before deletion.');
+      if (sealed.isNotEmpty) {
+        if (sealed.single['value'] == 'legacy') {
+          throw StateError('Shared original records must be preserved for ownership review.');
+        }
+        return;
       }
-      final removeLegacy = legacyBelongsToAccount && imported.isNotEmpty;
+      if (sharedExists) {
+        throw StateError('Shared original records need independent ownership review before deletion.');
+      }
       final pending = await txn.query('sync_operations',
         where: 'status != ?', whereArgs: ['synced'], limit: 1);
       if (pending.isNotEmpty) {
@@ -1319,7 +1236,7 @@ class FinanceRepository {
       for (final table in tables) {
         await txn.delete(table);
         if (table == 'preferences') {
-          await txn.insert('preferences', {'key': deletionMarker, 'value': removeLegacy ? 'legacy' : '1'});
+          await txn.insert('preferences', {'key': deletionMarker, 'value': '1'});
         }
         for (final operation in ['INSERT', 'UPDATE']) {
           await txn.execute(
@@ -1328,30 +1245,13 @@ class FinanceRepository {
           );
         }
       }
-      return removeLegacy;
     });
-    await clearPreferences?.call(removeLegacy);
-    if (removeLegacy && sharedExists) await deleteDatabase(sharedPath);
-    final activePath = _db.path;
-    final account = base64Url.encode(utf8.encode(uid));
-    final original = paths.join(directory, 'smartsave_account_$account.db');
+    // A historical self-claim cannot authorize disposal of shared originals.
+    await clearPreferences?.call(false);
     await close();
     await deleteDatabase(activePath);
     if (activePath != original) {
-      await deleteDatabase(original);
       await _secureStorage.delete(key: 'smartsave.sqlite.v1.$account');
-    }
-  }
-
-  Future<bool> _legacyClaimBelongsTo(String uid, String directory) async {
-    final claim = await openReadOnlyDatabase(
-      paths.join(directory, 'smartsave_legacy_claim.db'), singleInstance: false,
-    );
-    try {
-      final rows = await claim.query('legacy_claim');
-      return rows.isNotEmpty && rows.single['uid'] == uid;
-    } finally {
-      await claim.close();
     }
   }
 
@@ -1368,7 +1268,7 @@ class FinanceRepository {
           for (final entry in _portableTables.entries)
             if (entry.key != 'ai_messages' && present.contains(entry.key))
               entry.key: await txn.query(entry.key, orderBy: entry.value,
-                where: entry.key == 'investment_theses' || entry.key == 'portfolio_holdings'
+                where: _syncTables.containsValue(entry.key)
                     ? 'local_deleted = 0' : null),
         },
       });
@@ -1488,6 +1388,18 @@ class FinanceRepository {
     }
   }
 
+  Future<void> _saveKeyedRecord(String table, String entity, String key,
+      String id, String column, Object value) => _db.transaction((txn) async {
+    final payload = {key: id, column: value};
+    final changed = await txn.update(table, {column: value, 'is_synced': 0},
+      where: '$key = ?', whereArgs: [id]);
+    if (changed == 0) {
+      await txn.insert(table, {...payload, 'cloud_id': id, 'remote_revision': 0});
+    }
+    await _recordSyncOp(executor: txn, entityType: entity, entityId: id,
+      operation: changed == 0 ? 'create' : 'update', payload: payload);
+  });
+
   Future<String?> assistantConversationHistory() async {
     final rows = await _db.query(
       'preferences',
@@ -1562,9 +1474,12 @@ class FinanceRepository {
       final columns = await db.rawQuery("PRAGMA table_info($table)");
       final columnNames = columns.map((c) => c['name'] as String).toSet();
 
-      if ((table == 'investment_theses' || table == 'portfolio_holdings') &&
+      if ((_syncTables.containsValue(table)) &&
           !columnNames.contains('local_deleted')) {
         await db.execute('ALTER TABLE $table ADD COLUMN local_deleted INTEGER NOT NULL DEFAULT 0');
+      }
+      if (_syncTables.containsValue(table) && !columnNames.contains('remote_revision')) {
+        await db.execute('ALTER TABLE $table ADD COLUMN remote_revision INTEGER');
       }
       if (!columnNames.contains('cloud_id')) {
         await db.execute('ALTER TABLE $table ADD COLUMN cloud_id TEXT');
@@ -1607,6 +1522,9 @@ class FinanceRepository {
     final queueColumns = await db.rawQuery(
       'PRAGMA table_info(sync_operations)',
     );
+    if (!queueColumns.any((column) => column['name'] == 'expected_revision')) {
+      await db.execute('ALTER TABLE sync_operations ADD COLUMN expected_revision INTEGER');
+    }
     if (!queueColumns.any((column) => column['name'] == 'owner_uid')) {
       await db.execute('ALTER TABLE sync_operations ADD COLUMN owner_uid TEXT');
     }
@@ -1629,8 +1547,7 @@ class FinanceRepository {
   }) async {
     final db = executor ?? _db;
     final ownerUid = _currentUid();
-    final opId =
-        '${entityType}_${entityId}_${DateTime.now().microsecondsSinceEpoch}';
+    final opId = _newCloudId();
     await db.insert('sync_operations', {
       'id': opId,
       'entity_type': entityType,
@@ -1641,6 +1558,7 @@ class FinanceRepository {
       'status': 'pending',
       'owner_uid': ownerUid?.trim().isNotEmpty == true ? ownerUid : null,
     });
+    if (!_localChanges.isClosed) _localChanges.add(null);
   }
 
   /// Mark a sync operation as successfully completed by deleting it from the queue.
@@ -1756,22 +1674,23 @@ class FinanceRepository {
   // These methods apply remote Firestore data to local SQLite WITHOUT
   // recording sync operations, preventing infinite sync loops.
 
-  Future<bool> applyCloudTransaction(FinanceTransaction record, String cloudId) =>
-      _applyCloudRecord('transactions', record.toMap(), cloudId);
+  Future<bool> applyCloudTransaction(FinanceTransaction record, String cloudId, {int? revision}) =>
+      _applyCloudRecord('transactions', record.toMap(), cloudId, revision: revision);
 
-  Future<bool> applyCloudGoal(SavingsGoal record, String cloudId) =>
-      _applyCloudRecord('goals', record.toMap(), cloudId);
+  Future<bool> applyCloudGoal(SavingsGoal record, String cloudId, {int? revision}) =>
+      _applyCloudRecord('goals', record.toMap(), cloudId, revision: revision);
 
-  Future<bool> applyCloudHolding(PortfolioHolding record, String cloudId) =>
-      _applyCloudRecord('portfolio_holdings', record.toMap(), cloudId);
+  Future<bool> applyCloudHolding(PortfolioHolding record, String cloudId, {int? revision}) =>
+      _applyCloudRecord('portfolio_holdings', record.toMap(), cloudId, revision: revision);
 
-  Future<bool> applyCloudThesis(InvestmentThesis record, String cloudId) =>
-      _applyCloudRecord('investment_theses', record.toMap(), cloudId);
+  Future<bool> applyCloudThesis(InvestmentThesis record, String cloudId, {int? revision}) =>
+      _applyCloudRecord('investment_theses', record.toMap(), cloudId, revision: revision);
 
   Future<bool> _applyCloudRecord(
-    String table, Map<String, Object?> record, String cloudId,
-  ) => _db.transaction((txn) async {
-    final rows = await txn.query(table, where: 'cloud_id = ?', whereArgs: [cloudId]);
+    String table, Map<String, Object?> record, String cloudId, {int? revision, String key = 'id',
+  }) => _db.transaction((txn) async {
+    final rows = await txn.query(table, where: key == 'id' ? 'cloud_id = ?' : '$key = ?',
+      whereArgs: [key == 'id' ? cloudId : record[key]]);
     if (rows.length > 1) return false;
     final existing = rows.firstOrNull;
     if (existing != null && (existing['is_synced'] != 1 || existing['local_deleted'] == 1)) {
@@ -1781,57 +1700,26 @@ class FinanceRepository {
       ...record,
       'cloud_id': cloudId,
       'is_synced': 1,
+      'remote_revision': revision,
       'synced_at': DateTime.now().toIso8601String(),
     };
     if (existing == null) {
       await txn.insert(table, values);
     } else {
-      await txn.update(table, values, where: 'id = ?', whereArgs: [existing['id']]);
+      final known = existing['remote_revision'] as int?;
+      if (known != null && (revision == null || revision < known)) return false;
+      await txn.update(table, values, where: '$key = ?', whereArgs: [existing[key]]);
     }
     return true;
   });
 
-  /// Apply a cloud budget to local SQLite (remote-wins for budgets).
-  Future<bool> applyCloudBudget(String category, int monthlyLimit) async {
-    final existing = await _db.query(
-      'budgets',
-      where: 'category = ?',
-      whereArgs: [category],
-      limit: 1,
-    );
-    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0) {
-      return false;
-    }
-    await _db.insert('budgets', {
-      'category': category,
-      'monthly_limit': monthlyLimit,
-      'cloud_id': category,
-      'is_synced': 1,
-      'synced_at': DateTime.now().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-    return true;
-  }
+  Future<bool> applyCloudBudget(String category, int monthlyLimit, {int? revision}) =>
+      _applyCloudRecord('budgets', {'category': category, 'monthly_limit': monthlyLimit},
+        category, revision: revision, key: 'category');
 
-  /// Apply a cloud investment setting unless it has a pending local edit.
-  Future<bool> applyCloudSetting(String key, String value) async {
-    final existing = await _db.query(
-      'investment_settings',
-      where: 'key = ?',
-      whereArgs: [key],
-      limit: 1,
-    );
-    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0) {
-      return false;
-    }
-    await _db.insert('investment_settings', {
-      'key': key,
-      'value': value,
-      'cloud_id': key,
-      'is_synced': 1,
-      'synced_at': DateTime.now().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-    return true;
-  }
+  Future<bool> applyCloudSetting(String key, String value, {int? revision}) =>
+      _applyCloudRecord('investment_settings', {'key': key, 'value': value},
+        key, revision: revision, key: 'key');
 
   /// Get all pending sync operations with retry count info.
   Future<List<Map<String, dynamic>>> getPendingOpsWithRetry() async {
@@ -1839,7 +1727,7 @@ class FinanceRepository {
       'sync_operations',
       where: 'status IN (?, ?)',
       whereArgs: ['pending', 'error'],
-      orderBy: 'created_at',
+      orderBy: 'rowid',
     );
     return rows;
   }
@@ -1914,7 +1802,7 @@ class FinanceRepository {
       'sync_operations',
       where: 'status IN (?, ?)',
       whereArgs: ['pending', 'error'],
-      orderBy: 'created_at',
+      orderBy: 'rowid',
     );
 
     return rows
@@ -1960,7 +1848,10 @@ class FinanceRepository {
     );
   }
 
-  Future<void> close() => _db.close();
+  Future<void> close() async {
+    unawaited(_localChanges.close());
+    await _db.close();
+  }
 }
 
 int _roundedPercentChange(int current, int previous) {

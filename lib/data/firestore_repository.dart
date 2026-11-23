@@ -125,6 +125,72 @@ class FirestoreRepository {
     return _expectedUid == null || _expectedUid == uid ? uid ?? '' : '';
   }
 
+  /// A server-backed snapshot also arrives after reconnect, even when the
+  /// account has never written a metadata document.
+  Stream<bool> watchSyncConnection() {
+    final uid = _currentUid;
+    if (uid.isEmpty) return const Stream.empty();
+    return _firestore.collection(FirestorePaths.syncMetadata(uid)).doc('metadata')
+        .snapshots(includeMetadataChanges: true)
+        .map((snapshot) => _currentUid == uid && !snapshot.metadata.isFromCache)
+        .distinct();
+  }
+
+  /// Applies one immutable queued mutation against its recorded remote revision.
+  /// The mutation ID makes a retry after an ambiguous response idempotent.
+  Future<FirestoreResult<int>> commitSyncMutation({
+    required String entity,
+    required FirestoreModel record,
+    required int expectedRevision,
+    required String mutationId,
+    required bool deleted,
+  }) async {
+    final uid = _currentUid;
+    if (uid.isEmpty) return FirestoreResult.failure('User not authenticated');
+    final path = switch (entity) {
+      'transaction' => FirestorePaths.transactions(uid),
+      'goal' => FirestorePaths.goals(uid),
+      'budget' => FirestorePaths.budgets(uid),
+      'investment_thesis' => FirestorePaths.investmentTheses(uid),
+      'portfolio_holding' => FirestorePaths.portfolioHoldings(uid),
+      'investment_setting' => FirestorePaths.investmentSettings(uid),
+      _ => throw ArgumentError.value(entity),
+    };
+    try {
+      final ref = _firestore.collection(path).doc(record.id);
+      return await _firestore.runTransaction((txn) async {
+        if (_currentUid != uid) return FirestoreResult.failure('Account changed');
+        final current = (await txn.get(ref)).data();
+        if (_currentUid != uid) return FirestoreResult.failure('Account changed');
+        final currentRevision = current == null ? 0 : current['version'] as int?;
+        if (current != null && current['lastMutationId'] == mutationId &&
+            currentRevision == expectedRevision + 1) {
+          return FirestoreResult.success(expectedRevision + 1);
+        }
+        if (currentRevision != expectedRevision ||
+            (current == null && expectedRevision != 0) ||
+            (current != null && expectedRevision == 0) ||
+            (current?['isDeleted'] == true && !deleted)) {
+          return FirestoreResult.failure('Remote record changed', FirestoreErrorCode.failedPrecondition);
+        }
+        final next = expectedRevision + 1;
+        final metadata = {
+          'version': next, 'lastMutationId': mutationId, 'isDeleted': deleted,
+          'updatedAt': DateTime.now().toUtc().toIso8601String(),
+        };
+        if (current != null && deleted) {
+          txn.update(ref, metadata);
+        } else {
+          txn.set(ref, {...record.toFirestore(), ...metadata}, SetOptions(merge: true));
+        }
+        return FirestoreResult.success(next);
+      }, timeout: const Duration(seconds: 15));
+    } on FirebaseException catch (error) {
+      final code = _mapFirestoreException(error);
+      return FirestoreResult.failure(_getFirestoreErrorMessage(code), code);
+    }
+  }
+
   // ===== Transaction Operations =====
 
   /// Get all transactions for current user
@@ -133,6 +199,7 @@ class FirestoreRepository {
     String? query,
     int? limit,
     DocumentSnapshot? startAfter,
+    bool includeDeleted = false,
   }) async {
     try {
       final uid = _currentUid;
@@ -140,10 +207,9 @@ class FirestoreRepository {
         return FirestoreResult.failure('User not authenticated');
       }
 
-      Query queryRef = _firestore
-          .collection(FirestorePaths.transactions(uid))
-          .where('isDeleted', isEqualTo: false)
-          .orderBy('occurredAt', descending: true);
+      Query queryRef = _firestore.collection(FirestorePaths.transactions(uid));
+      if (!includeDeleted) queryRef = queryRef.where('isDeleted', isEqualTo: false);
+      queryRef = queryRef.orderBy('occurredAt', descending: true);
 
       if (category != null && category != 'All') {
         queryRef = queryRef.where('category', isEqualTo: category);
@@ -163,7 +229,7 @@ class FirestoreRepository {
         queryRef = queryRef.startAfterDocument(startAfter);
       }
 
-      final snapshot = await queryRef.get();
+      final snapshot = await queryRef.get(includeDeleted ? const GetOptions(source: Source.server) : null);
       final transactions = snapshot.docs
           .map(FirestoreTransaction.fromFirestore)
           .toList();
@@ -261,18 +327,17 @@ class FirestoreRepository {
   // ===== Savings Goal Operations =====
 
   /// Get all savings goals for current user
-  Future<FirestoreResult<List<FirestoreSavingsGoal>>> getGoals() async {
+  Future<FirestoreResult<List<FirestoreSavingsGoal>>> getGoals({bool includeDeleted = false}) async {
     try {
       final uid = _currentUid;
       if (uid.isEmpty) {
         return FirestoreResult.failure('User not authenticated');
       }
 
-      final snapshot = await _firestore
-          .collection(FirestorePaths.goals(uid))
-          .where('isDeleted', isEqualTo: false)
-          .orderBy('deadline')
-          .get();
+      Query query = _firestore.collection(FirestorePaths.goals(uid));
+      if (!includeDeleted) query = query.where('isDeleted', isEqualTo: false);
+      final snapshot = await query.orderBy('deadline')
+          .get(includeDeleted ? const GetOptions(source: Source.server) : null);
 
       final goals = snapshot.docs
           .map(FirestoreSavingsGoal.fromFirestore)
@@ -503,7 +568,7 @@ class FirestoreRepository {
       final snapshot = await _firestore
           .collection(FirestorePaths.investmentTheses(uid))
           .orderBy('updatedAt', descending: true)
-          .get();
+          .get(includeDeleted ? const GetOptions(source: Source.server) : null);
 
       final theses = snapshot.docs
           .map(FirestoreInvestmentThesis.fromFirestore)
@@ -575,7 +640,7 @@ class FirestoreRepository {
       final snapshot = await _firestore
           .collection(FirestorePaths.portfolioHoldings(uid))
           .orderBy('createdAt')
-          .get();
+          .get(includeDeleted ? const GetOptions(source: Source.server) : null);
 
       final holdings = snapshot.docs
           .map(FirestorePortfolioHolding.fromFirestore)
@@ -668,6 +733,26 @@ class FirestoreRepository {
   }
 
   // ===== Investment Settings =====
+
+  Future<FirestoreResult<List<FirestoreBudget>>> getVersionedBudgets() =>
+      _readVersioned(FirestorePaths.budgets, FirestoreBudget.fromFirestore);
+
+  Future<FirestoreResult<List<FirestoreInvestmentSetting>>> getVersionedSettings() =>
+      _readVersioned(FirestorePaths.investmentSettings, FirestoreInvestmentSetting.fromFirestore);
+
+  Future<FirestoreResult<List<T>>> _readVersioned<T>(
+    String Function(String) path, T Function(DocumentSnapshot) decode,
+  ) async {
+    final uid = _currentUid;
+    if (uid.isEmpty) return FirestoreResult.failure('User not authenticated');
+    try {
+      final snapshot = await _firestore.collection(path(uid)).get(const GetOptions(source: Source.server));
+      return FirestoreResult.success(snapshot.docs.map(decode).toList());
+    } on FirebaseException catch (error) {
+      final code = _mapFirestoreException(error);
+      return FirestoreResult.failure(_getFirestoreErrorMessage(code), code);
+    }
+  }
 
   /// Get investment settings
   Future<FirestoreResult<Map<String, String>>> getInvestmentSettings() async {

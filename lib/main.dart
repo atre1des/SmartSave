@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'data/providers.dart';
 import 'data/finance_repository.dart';
 import 'features/app/app.dart';
+import 'features/app/account_sync_scope.dart';
 import 'features/advice/assistant_session.dart';
 import 'services/auth_service.dart';
 import 'services/firebase_service.dart';
@@ -129,7 +130,7 @@ class _AccountSessionState extends State<_AccountSession> {
           sharedPreferencesProvider.overrideWithValue(widget.prefs),
           authServiceProvider.overrideWithValue(widget.auth),
         ],
-        child: const SmartSaveApp(),
+        child: AccountSyncScope(uid: widget.uid, child: const SmartSaveApp()),
       );
     },
   );
