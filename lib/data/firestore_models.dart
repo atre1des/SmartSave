@@ -8,6 +8,16 @@ import 'finance_repository.dart';
 
 part 'firestore_models.g.dart';
 
+/// Canonical ID and date representation shared by document model decoders.
+Map<String, dynamic> firestoreDocumentFields(String id, Map<String, dynamic> data) {
+  final fields = {...data, 'id': id};
+  final updatedAt = fields['updatedAt'];
+  if (updatedAt is Timestamp) {
+    fields['updatedAt'] = updatedAt.toDate().toUtc().toIso8601String();
+  }
+  return fields;
+}
+
 /// Base model for all Firestore documents
 abstract class FirestoreModel {
   String get id;
@@ -85,8 +95,7 @@ class FirestoreTransaction implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static FirestoreTransaction fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FirestoreTransaction.fromJson({'id': doc.id, ...data});
+    return FirestoreTransaction.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 
   // Convert from local SQLite model
@@ -176,8 +185,7 @@ class FirestoreSavingsGoal implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static FirestoreSavingsGoal fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FirestoreSavingsGoal.fromJson({'id': doc.id, ...data});
+    return FirestoreSavingsGoal.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 
   factory FirestoreSavingsGoal.fromLocal(SavingsGoal local, String localId) {
@@ -259,8 +267,7 @@ class FirestoreGoalContribution implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static FirestoreGoalContribution fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FirestoreGoalContribution.fromJson({'id': doc.id, ...data});
+    return FirestoreGoalContribution.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 
   factory FirestoreGoalContribution.fromLocal(
@@ -332,8 +339,7 @@ class FirestoreBudget implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static FirestoreBudget fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FirestoreBudget.fromJson({'id': doc.id, ...data});
+    return FirestoreBudget.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 
   factory FirestoreBudget.fromLocal(String category, int limit, String localId) {
@@ -411,8 +417,7 @@ class FirestoreInvestmentThesis implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static FirestoreInvestmentThesis fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FirestoreInvestmentThesis.fromJson({'id': doc.id, ...data});
+    return FirestoreInvestmentThesis.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 
   factory FirestoreInvestmentThesis.fromLocal(InvestmentThesis local, String localId) {
@@ -513,8 +518,7 @@ class FirestoreThesisCondition implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static FirestoreThesisCondition fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FirestoreThesisCondition.fromJson({'id': doc.id, ...data});
+    return FirestoreThesisCondition.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 
   factory FirestoreThesisCondition.fromLocal(ThesisCondition local, String localId, String thesisLocalId) {
@@ -599,8 +603,7 @@ class FirestoreThesisAssessment implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static FirestoreThesisAssessment fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FirestoreThesisAssessment.fromJson({'id': doc.id, ...data});
+    return FirestoreThesisAssessment.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 }
 
@@ -716,8 +719,7 @@ class FirestorePortfolioHolding implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static FirestorePortfolioHolding fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FirestorePortfolioHolding.fromJson({'id': doc.id, ...data});
+    return FirestorePortfolioHolding.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 
   factory FirestorePortfolioHolding.fromLocal(PortfolioHolding local, String localId) {
@@ -801,8 +803,7 @@ class FirestoreInvestmentSetting implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static FirestoreInvestmentSetting fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FirestoreInvestmentSetting.fromJson({'id': doc.id, ...data});
+    return FirestoreInvestmentSetting.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 }
 
@@ -858,8 +859,7 @@ class SyncMetadata implements FirestoreModel {
   Map<String, dynamic> toFirestore() => toJson();
 
   static SyncMetadata fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return SyncMetadata.fromJson({'id': doc.id, ...data});
+    return SyncMetadata.fromJson(firestoreDocumentFields(doc.id, doc.data() as Map<String, dynamic>));
   }
 }
 

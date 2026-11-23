@@ -29,7 +29,7 @@ final authServiceProvider = Provider<AuthService>((ref) => throw StateError('Aut
 final firestoreRepositoryProvider = Provider<FirestoreRepository>((ref) {
   final firestore = FirebaseFirestore.instance;
   final auth = ref.watch(authServiceProvider).auth;
-  return FirestoreRepository(firestore, auth);
+  return FirestoreRepository(firestore, auth, expectedUid: auth.currentUser?.uid);
 });
 
 // Sync service

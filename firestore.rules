@@ -14,6 +14,10 @@ service cloud.firestore {
           .hasAny(['userId', 'ownerUid']));
     }
 
+    function preservesDeletion() {
+      return resource == null || !resource.data.isDeleted || request.resource.data.isDeleted;
+    }
+
     function syncFields(d) {
       return d.id is string && d.createdAt is string &&
         (d.updatedAt is string || d.updatedAt is timestamp) &&
@@ -58,7 +62,7 @@ service cloud.firestore {
       match /investmentTheses/{id} {
         allow read: if owns(uid);
         allow create, update: if owns(uid) && validOwner(uid) &&
-          syncFields(request.resource.data) && request.resource.data.securityName is string &&
+          preservesDeletion() && syncFields(request.resource.data) && request.resource.data.securityName is string &&
           request.resource.data.rationale is string && request.resource.data.horizon is string;
         match /conditions/{conditionId} {
           allow read: if owns(uid);
@@ -78,7 +82,7 @@ service cloud.firestore {
       match /portfolioHoldings/{id} {
         allow read: if owns(uid);
         allow create, update: if owns(uid) && validOwner(uid) &&
-          syncFields(request.resource.data) && request.resource.data.securityName is string &&
+          preservesDeletion() && syncFields(request.resource.data) && request.resource.data.securityName is string &&
           request.resource.data.marketValueKzt is int && request.resource.data.marketValueKzt >= 0;
       }
 

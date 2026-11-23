@@ -97,7 +97,7 @@ global.fetch = async (url, options) => {
   const urlStr = String(url);
   if (urlStr.includes('openrouter.ai')) {
     upstreamCalls.push({ url: urlStr, options });
-    return upstreamResponse();
+    return upstreamResponse(options);
   }
   return realFetch(url, options);
 };
@@ -455,4 +455,65 @@ test('deletion requires recent authentication, scopes retries to the verified UI
     delete app.locals.verifyDeletionToken;
     delete app.locals.deleteCloudRecords;
   }
+});
+
+test('upstream deadline aborts a request without returning provider details', async () => {
+  const originalTimeout = app.locals.upstreamTimeoutMs;
+  app.locals.upstreamTimeoutMs = 30;
+  upstreamResponse = ({ signal }) => new Promise((resolve, reject) => {
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+  });
+  try {
+    const response = await post({ messages: [{ role: 'user', content: 'synthetic prompt' }] });
+    assert.equal(response.status, 504);
+    const body = await response.json();
+    assert.equal(body.code, 'UPSTREAM_TIMEOUT');
+    assert.equal(body.retryable, true);
+  } finally {
+    app.locals.upstreamTimeoutMs = originalTimeout;
+  }
+});
+
+test('transport failure does not log or return the prompt or credential', async () => {
+  const prompt = 'private synthetic prompt fixture';
+  const messages = [];
+  const previousLogger = console.error;
+  console.error = (...args) => messages.push(args.join(' '));
+  upstreamResponse = () => { throw new Error(`${prompt} ${DUMMY_KEY}`); };
+  try {
+    const response = await post({ messages: [{ role: 'user', content: prompt }] });
+    assert.equal(response.status, 500);
+    const output = await response.text();
+    assert.ok(messages.length > 0);
+    for (const text of [output, ...messages]) {
+      assert.ok(!text.includes(prompt));
+      assert.ok(!text.includes(DUMMY_KEY));
+    }
+  } finally {
+    console.error = previousLogger;
+  }
+});
+
+test('closing the client connection aborts the upstream request', async () => {
+  const client = new AbortController();
+  let markStarted;
+  let markAborted;
+  const started = new Promise((resolve) => { markStarted = resolve; });
+  const aborted = new Promise((resolve) => { markAborted = resolve; });
+  upstreamResponse = ({ signal }) => new Promise((_, reject) => {
+    signal.addEventListener('abort', () => {
+      markAborted();
+      reject(signal.reason);
+    }, { once: true });
+    markStarted();
+  });
+  const request = realFetch(`${baseUrl}/api/chat/completions`, {
+    method: 'POST', signal: client.signal,
+    headers: { 'content-type': 'application/json', authorization: 'Bearer mock-disconnect' },
+    body: JSON.stringify({ messages: [{ role: 'user', content: 'fixture' }] }),
+  });
+  const rejected = assert.rejects(request, { name: 'AbortError' });
+  await started;
+  client.abort();
+  await Promise.all([rejected, aborted]);
 });

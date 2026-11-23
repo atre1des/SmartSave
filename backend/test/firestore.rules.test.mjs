@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
@@ -82,4 +83,27 @@ test('a server deletion lock blocks the owner and cannot be cleared by the clien
   await assertFails(setDoc(ref, transaction));
   await assertFails(deleteDoc(record('alice', 'accountDeletionLocks/alice')));
   await assertSucceeds(setDoc(record('bob', 'users/bob/transactions/unlocked'), transaction));
+});
+
+test('investment tombstones cannot be reverted, and assessment history remains readable', async () => {
+  const thesis = 'users/investor/investmentTheses/project';
+  const holding = 'users/investor/portfolioHoldings/holding';
+  const assessment = `${thesis}/assessments/history`;
+  await assertSucceeds(setDoc(record('investor', thesis), {
+    ...sync, securityName: 'Fixture', rationale: '', horizon: '',
+  }));
+  await assertSucceeds(setDoc(record('investor', holding), {
+    ...sync, securityName: 'Fixture', marketValueKzt: 12000,
+  }));
+  await assertSucceeds(setDoc(record('investor', assessment), {
+    ...sync, thesisId: 'project', assessedAt: date, conditions: [],
+  }));
+  for (const path of [thesis, holding]) {
+    await assertFails(updateDoc(record('another-user', path), { isDeleted: true }));
+    const owner = record('investor', path);
+    await assertSucceeds(updateDoc(owner, { isDeleted: true, version: 2 }));
+    await assertFails(updateDoc(owner, { isDeleted: false, version: 3 }));
+    await assertFails(deleteDoc(owner));
+  }
+  assert.equal((await assertSucceeds(getDoc(record('investor', assessment)))).exists(), true);
 });

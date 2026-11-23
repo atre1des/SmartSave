@@ -112,12 +112,18 @@ String _getFirestoreErrorMessage(FirestoreErrorCode code) {
 
 /// Firestore Repository for Cloud Firestore operations
 class FirestoreRepository {
-  FirestoreRepository(this._firestore, this._auth);
+  FirestoreRepository(this._firestore, this._auth, {String? expectedUid})
+      : _expectedUid = expectedUid;
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  String get _currentUid => _auth.currentUser?.uid ?? '';
+  final String? _expectedUid;
+
+  String get _currentUid {
+    final uid = _auth.currentUser?.uid;
+    return _expectedUid == null || _expectedUid == uid ? uid ?? '' : '';
+  }
 
   // ===== Transaction Operations =====
 
@@ -486,7 +492,7 @@ class FirestoreRepository {
   // ===== Investment Thesis Operations =====
 
   /// Get all investment theses for current user
-  Future<FirestoreResult<List<FirestoreInvestmentThesis>>> getInvestmentTheses()
+  Future<FirestoreResult<List<FirestoreInvestmentThesis>>> getInvestmentTheses({bool includeDeleted = false})
       async {
     try {
       final uid = _currentUid;
@@ -496,12 +502,12 @@ class FirestoreRepository {
 
       final snapshot = await _firestore
           .collection(FirestorePaths.investmentTheses(uid))
-          .where('isDeleted', isEqualTo: false)
           .orderBy('updatedAt', descending: true)
           .get();
 
       final theses = snapshot.docs
           .map(FirestoreInvestmentThesis.fromFirestore)
+          .where((record) => includeDeleted || !record.isDeleted)
           .toList();
 
       return FirestoreResult.success(theses);
@@ -558,7 +564,7 @@ class FirestoreRepository {
   // ===== Portfolio Holdings Operations =====
 
   /// Get all portfolio holdings for current user
-  Future<FirestoreResult<List<FirestorePortfolioHolding>>> getPortfolioHoldings()
+  Future<FirestoreResult<List<FirestorePortfolioHolding>>> getPortfolioHoldings({bool includeDeleted = false})
       async {
     try {
       final uid = _currentUid;
@@ -568,12 +574,12 @@ class FirestoreRepository {
 
       final snapshot = await _firestore
           .collection(FirestorePaths.portfolioHoldings(uid))
-          .where('isDeleted', isEqualTo: false)
           .orderBy('createdAt')
           .get();
 
       final holdings = snapshot.docs
           .map(FirestorePortfolioHolding.fromFirestore)
+          .where((record) => includeDeleted || !record.isDeleted)
           .toList();
 
       return FirestoreResult.success(holdings);
@@ -624,6 +630,40 @@ class FirestoreRepository {
       );
     } catch (e) {
       return FirestoreResult.failure('Failed to save portfolio holding: $e');
+    }
+  }
+
+  Future<FirestoreResult<void>> deleteInvestmentThesis(FirestoreInvestmentThesis snapshot) =>
+      _deleteInvestmentRecord(snapshot, FirestorePaths.investmentTheses);
+
+  Future<FirestoreResult<void>> deletePortfolioHolding(FirestorePortfolioHolding snapshot) =>
+      _deleteInvestmentRecord(snapshot, FirestorePaths.portfolioHoldings);
+
+  Future<FirestoreResult<void>> _deleteInvestmentRecord(
+    FirestoreModel record, String Function(String uid) collectionPath,
+  ) async {
+    final uid = _currentUid;
+    if (uid.isEmpty) return FirestoreResult.failure('User not authenticated');
+    try {
+      final ref = _firestore.collection(collectionPath(uid)).doc(record.id);
+      await _firestore.runTransaction((txn) async {
+        final snapshot = await txn.get(ref);
+        final changes = {
+          'isDeleted': true,
+          'updatedAt': DateTime.now().toUtc().toIso8601String(),
+        };
+        if (!snapshot.exists) {
+          // A write with an ambiguous response may arrive later. Seal this
+          // reserved document ID even if it doesn't yet exist.
+          txn.set(ref, {...record.toFirestore(), ...changes});
+        } else if (snapshot.data()?['isDeleted'] != true) {
+          txn.update(ref, {...changes, 'version': FieldValue.increment(1)});
+        }
+      });
+      return FirestoreResult.ok();
+    } on FirebaseException catch (error) {
+      final code = _mapFirestoreException(error);
+      return FirestoreResult.failure(_getFirestoreErrorMessage(code), code);
     }
   }
 

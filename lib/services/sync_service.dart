@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../data/finance_repository.dart';
 import '../data/firestore_repository.dart';
 import '../data/firestore_models.dart';
+import '../data/investment_models.dart';
 
 /// Outcome of a synchronization attempt.
 enum SyncResultStatus {
@@ -111,11 +112,21 @@ class SyncService extends ChangeNotifier {
     required FirebaseAuth auth,
   }) : _localRepo = localRepo,
        _cloudRepo = cloudRepo,
-       _auth = auth;
+       _auth = auth,
+       _sessionUid = auth.currentUser?.uid;
 
   final FinanceRepository _localRepo;
   final FirestoreRepository _cloudRepo;
   final FirebaseAuth _auth;
+  final String? _sessionUid;
+  String? get _activeUid {
+    final uid = _sessionUid;
+    return uid != null &&
+            _auth.currentUser?.uid == uid &&
+            _localRepo.canSyncAccount(uid)
+        ? uid
+        : null;
+  }
 
   SyncState _state = SyncState.idle;
   String? _lastError;
@@ -161,6 +172,7 @@ class SyncService extends ChangeNotifier {
         return SyncResult.initializationFailed('Sync initialization failed');
       }
     }
+    if (_activeUid == null) return SyncResult.noAuthenticatedUser();
     if (_isSyncing) {
       return SyncResult.failure('A sync is already in progress');
     }
@@ -169,7 +181,9 @@ class SyncService extends ChangeNotifier {
 
     try {
       final pushResult = await pushLocalChanges();
+      if (pushResult.isNoAuth) return pushResult;
       final pullResult = await pullRemoteChanges();
+      if (pullResult.isNoAuth) return pullResult;
 
       final totalUploaded = pushResult.uploaded;
       final totalDownloaded = pullResult.downloaded;
@@ -221,7 +235,7 @@ class SyncService extends ChangeNotifier {
         return SyncResult.initializationFailed('Sync initialization failed');
       }
     }
-    final uid = _auth.currentUser?.uid;
+    final uid = _activeUid;
     if (uid == null || uid.isEmpty) {
       return SyncResult.noAuthenticatedUser();
     }
@@ -240,6 +254,7 @@ class SyncService extends ChangeNotifier {
         }
         try {
           final success = await _uploadOperation(op, uid);
+          if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
           if (success) {
             uploaded++;
             await _localRepo.removeSyncOperation(op.id);
@@ -248,6 +263,7 @@ class SyncService extends ChangeNotifier {
             // Don't mark as failed — it's a conflict, preserve the op
           }
         } catch (e) {
+          if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
           failed++;
           await _localRepo.failSyncOperation(op.id, e.toString());
         }
@@ -277,7 +293,7 @@ class SyncService extends ChangeNotifier {
         return SyncResult.initializationFailed('Sync initialization failed');
       }
     }
-    final uid = _auth.currentUser?.uid;
+    final uid = _activeUid;
     if (uid == null || uid.isEmpty) {
       return SyncResult.noAuthenticatedUser();
     }
@@ -288,8 +304,10 @@ class SyncService extends ChangeNotifier {
 
     // Download transactions
     final txResult = await _cloudRepo.getTransactions();
+    if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
     if (txResult.success && txResult.data != null) {
       for (final tx in txResult.data!) {
+        if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
         try {
           final applied = await _localRepo.applyCloudTransaction(
             tx.toLocal(),
@@ -310,8 +328,10 @@ class SyncService extends ChangeNotifier {
 
     // Download goals
     final goalsResult = await _cloudRepo.getGoals();
+    if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
     if (goalsResult.success && goalsResult.data != null) {
       for (final goal in goalsResult.data!) {
+        if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
         try {
           final applied = await _localRepo.applyCloudGoal(
             goal.toLocal(),
@@ -332,8 +352,10 @@ class SyncService extends ChangeNotifier {
 
     // Download budgets (remote-wins)
     final budgetsResult = await _cloudRepo.getBudgets();
+    if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
     if (budgetsResult.success && budgetsResult.data != null) {
       for (final entry in budgetsResult.data!.entries) {
+        if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
         try {
           if (await _localRepo.applyCloudBudget(entry.key, entry.value)) {
             downloaded++;
@@ -347,14 +369,23 @@ class SyncService extends ChangeNotifier {
     }
 
     // Download portfolio holdings
-    final holdingsResult = await _cloudRepo.getPortfolioHoldings();
+    final holdingsResult = await _cloudRepo.getPortfolioHoldings(
+      includeDeleted: true,
+    );
+    if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
     if (holdingsResult.success && holdingsResult.data != null) {
       for (final holding in holdingsResult.data!) {
         try {
-          final applied = await _localRepo.applyCloudHolding(
-            holding.toLocal(),
-            holding.id,
-          );
+          if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
+          final applied = holding.isDeleted
+              ? await _localRepo.applyInvestmentTombstone(
+                  'portfolio_holding',
+                  holding.id,
+                )
+              : await _localRepo.applyCloudHolding(
+                  holding.toLocal(),
+                  holding.id,
+                );
           if (applied) {
             downloaded++;
           } else {
@@ -369,14 +400,20 @@ class SyncService extends ChangeNotifier {
     }
 
     // Download investment theses
-    final thesesResult = await _cloudRepo.getInvestmentTheses();
+    final thesesResult = await _cloudRepo.getInvestmentTheses(
+      includeDeleted: true,
+    );
+    if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
     if (thesesResult.success && thesesResult.data != null) {
       for (final thesis in thesesResult.data!) {
         try {
-          final applied = await _localRepo.applyCloudThesis(
-            thesis.toLocal(),
-            thesis.id,
-          );
+          if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
+          final applied = thesis.isDeleted
+              ? await _localRepo.applyInvestmentTombstone(
+                  'investment_thesis',
+                  thesis.id,
+                )
+              : await _localRepo.applyCloudThesis(thesis.toLocal(), thesis.id);
           if (applied) {
             downloaded++;
           } else {
@@ -392,8 +429,10 @@ class SyncService extends ChangeNotifier {
 
     // Download investment settings (remote-wins)
     final settingsResult = await _cloudRepo.getInvestmentSettings();
+    if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
     if (settingsResult.success && settingsResult.data != null) {
       for (final entry in settingsResult.data!.entries) {
+        if (_activeUid != uid) return SyncResult.noAuthenticatedUser();
         try {
           if (await _localRepo.applyCloudSetting(entry.key, entry.value)) {
             downloaded++;
@@ -423,7 +462,7 @@ class SyncService extends ChangeNotifier {
   /// Upload a single pending operation to Firestore.
   /// Returns true on success, false on conflict (local unsynced changes exist).
   Future<bool> _uploadOperation(SyncOperation op, String uid) async {
-    if (_auth.currentUser?.uid != uid || op.ownerUid != uid) return false;
+    if (_activeUid != uid || op.ownerUid != uid) return false;
     if (op.operation == 'delete') {
       switch (op.entityType) {
         case 'transaction':
@@ -435,6 +474,26 @@ class SyncService extends ChangeNotifier {
           final result = await _cloudRepo.deleteGoal(
             (op.payload['cloud_id'] as String?) ?? op.entityId,
           );
+          return result.success;
+        case 'investment_thesis':
+        case 'portfolio_holding':
+          final id = op.payload['cloud_id'] as String?;
+          // An old queue entry without a cloud ID cannot safely identify a
+          // remote document. Keep it for ownership/identity review.
+          if (id == null || id.isEmpty) return false;
+          final result = op.entityType == 'investment_thesis'
+              ? await _cloudRepo.deleteInvestmentThesis(
+                  FirestoreInvestmentThesis.fromLocal(
+                    InvestmentThesis.fromMap(op.payload),
+                    op.entityId,
+                  ).copyWith(id: id),
+                )
+              : await _cloudRepo.deletePortfolioHolding(
+                  FirestorePortfolioHolding.fromLocal(
+                    PortfolioHolding.fromMap(op.payload),
+                    op.entityId,
+                  ).copyWith(id: id),
+                );
           return result.success;
         default:
           return false;
@@ -466,11 +525,17 @@ class SyncService extends ChangeNotifier {
     final tx = await _localRepo.getTransactionById(localId);
     if (tx == null) return false;
 
-    final cloudModel = FirestoreTransaction.fromLocal(tx, op.entityId);
+    final cloudId = await _localRepo.reserveCloudId(op);
+    if (cloudId == null || _activeUid != op.ownerUid) return false;
+    final cloudModel = FirestoreTransaction.fromLocal(
+      tx,
+      op.entityId,
+    ).copyWith(id: cloudId);
     final result = await _cloudRepo.saveTransaction(cloudModel);
 
     if (result.success && result.data != null) {
-      await _localRepo.markTransactionSynced(localId, result.data!.id);
+      if (_activeUid != op.ownerUid) return false;
+      await _localRepo.acknowledgeRecordUpload(op, cloudId);
       return true;
     }
     return false;
@@ -483,11 +548,17 @@ class SyncService extends ChangeNotifier {
     final goal = await _localRepo.getGoalById(localId);
     if (goal == null) return false;
 
-    final cloudModel = FirestoreSavingsGoal.fromLocal(goal, op.entityId);
+    final cloudId = await _localRepo.reserveCloudId(op);
+    if (cloudId == null || _activeUid != op.ownerUid) return false;
+    final cloudModel = FirestoreSavingsGoal.fromLocal(
+      goal,
+      op.entityId,
+    ).copyWith(id: cloudId);
     final result = await _cloudRepo.saveGoal(cloudModel);
 
     if (result.success && result.data != null) {
-      await _localRepo.markGoalSynced(localId, result.data!.id);
+      if (_activeUid != op.ownerUid) return false;
+      await _localRepo.acknowledgeRecordUpload(op, cloudId);
       return true;
     }
     return false;
@@ -510,11 +581,17 @@ class SyncService extends ChangeNotifier {
     final thesis = await _localRepo.getInvestmentThesisById(localId);
     if (thesis == null) return false;
 
-    final cloudModel = FirestoreInvestmentThesis.fromLocal(thesis, op.entityId);
+    final cloudId = await _localRepo.reserveCloudId(op);
+    if (cloudId == null || _activeUid != op.ownerUid) return false;
+    final cloudModel = FirestoreInvestmentThesis.fromLocal(
+      thesis,
+      op.entityId,
+    ).copyWith(id: cloudId);
     final result = await _cloudRepo.saveInvestmentThesis(cloudModel);
 
     if (result.success && result.data != null) {
-      await _localRepo.markInvestmentThesisSynced(localId, result.data!.id);
+      if (_activeUid != op.ownerUid) return false;
+      await _localRepo.acknowledgeRecordUpload(op, cloudId);
       return true;
     }
     return false;
@@ -527,14 +604,17 @@ class SyncService extends ChangeNotifier {
     final holding = await _localRepo.getPortfolioHoldingById(localId);
     if (holding == null) return false;
 
+    final cloudId = await _localRepo.reserveCloudId(op);
+    if (cloudId == null || _activeUid != op.ownerUid) return false;
     final cloudModel = FirestorePortfolioHolding.fromLocal(
       holding,
       op.entityId,
-    );
+    ).copyWith(id: cloudId);
     final result = await _cloudRepo.savePortfolioHolding(cloudModel);
 
     if (result.success && result.data != null) {
-      await _localRepo.markHoldingSynced(localId, result.data!.id);
+      if (_activeUid != op.ownerUid) return false;
+      await _localRepo.acknowledgeRecordUpload(op, cloudId);
       return true;
     }
     return false;
