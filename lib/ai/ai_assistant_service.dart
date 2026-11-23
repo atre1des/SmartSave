@@ -23,12 +23,7 @@ class SmartSaveAIAssistantService {
   /// Sets the conversation mode
   void setMode(AssistantMode mode) => _mode = mode;
 
-  /// Whether the AI service is available (backend reachable)
-  /// This checks actual backend connectivity.
-  Future<bool> get isAvailable async => await _provider.checkBackendHealth();
-
-  /// Gets the current model being used
-  String get currentModel => _provider.currentModel;
+  Future<bool> get isProxyReachable => _provider.checkBackendHealth();
 
   /// Builds the system prompt based on mode and user's financial context.
   ///
@@ -194,23 +189,18 @@ Response style:
 
     if (!isBackendHealthy) {
       final fallback = _getLocalFallback(prompt, 'Backend not reachable');
-      yield AIStreamChunk(content: fallback, isDone: true);
+      yield AIStreamChunk(content: fallback, isDone: false);
+      yield const AIStreamChunk(content: '', isDone: true);
       return;
     }
 
     try {
+      var receivedTerminal = false;
       await for (final chunk in _provider.sendMessageStream(messages: messages)) {
-        if (chunk.isDone) {
-          if (chunk.error != null) {
-            yield chunk;
-          } else {
-            debugPrint('[AIAssistantService] Stream completed successfully');
-            yield chunk;
-          }
-          return;
-        }
+        receivedTerminal = chunk.isDone;
         yield chunk;
       }
+      if (receivedTerminal) return;
 
       debugPrint('[AIAssistantService] Provider stream ended without terminal chunk');
       yield AIStreamChunk(

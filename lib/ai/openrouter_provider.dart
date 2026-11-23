@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
-import 'config.dart';
 import 'models.dart';
 
 /// Result of an AI request
@@ -33,19 +31,22 @@ class OpenRouterProvider {
     Dio? dio,
     String? baseUrl,
     String? model,
-  })  : _dio = dio ?? _createDefaultDio(),
-        _baseUrl = baseUrl ?? _getDefaultBackendUrl(),
-        _model = model ?? AIConfig.defaultModel {
+    User? Function()? currentUser,
+  }) : _dio = dio ?? _createDefaultDio(),
+       _baseUrl = baseUrl ?? _getDefaultBackendUrl(),
+       _model = model,
+       _currentUser = currentUser ?? _firebaseUser {
+    _sessionUid = _currentUser()?.uid;
     _configureDio();
   }
 
   static Dio _createDefaultDio() => Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 120),
-          sendTimeout: const Duration(seconds: 30),
-        ),
-      );
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 120),
+      sendTimeout: const Duration(seconds: 30),
+    ),
+  );
 
   /// Get the default backend URL based on platform
   static String _getDefaultBackendUrl() {
@@ -55,7 +56,7 @@ class OpenRouterProvider {
     // For Android emulator, use 10.0.2.2 to reach host machine
     // For iOS simulator, use localhost
     // For web/desktop, use localhost
-    if (!kIsWeb && Platform.isAndroid) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:3001';
     }
     return 'http://localhost:3001';
@@ -63,8 +64,12 @@ class OpenRouterProvider {
 
   final Dio _dio;
   final String _baseUrl;
-  final String _model;
-  final _sessionUser = Firebase.apps.isEmpty ? null : FirebaseAuth.instance.currentUser;
+  final String? _model;
+  final User? Function() _currentUser;
+  String? _sessionUid;
+
+  static User? _firebaseUser() =>
+      Firebase.apps.isEmpty ? null : FirebaseAuth.instance.currentUser;
 
   void _configureDio() {
     _dio.options.baseUrl = _baseUrl;
@@ -75,50 +80,63 @@ class OpenRouterProvider {
     });
 
     _dio.interceptors.add(
-      InterceptorsWrapper(onRequest: (options, handler) async {
-        if (options.path != '/api/chat/completions' || _sessionUser == null) {
-          handler.next(options);
-          return;
-        }
-        try {
-          final destination = options.uri;
-          final localDevelopment = kDebugMode && destination.scheme == 'http' &&
-              const {'localhost', '127.0.0.1', '10.0.2.2'}.contains(destination.host);
-          if (destination.scheme != 'https' && !localDevelopment) {
-            throw StateError('A trusted backend transport is required.');
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          if (options.path != '/api/chat/completions') {
+            handler.next(options);
+            return;
           }
-          final user = _sessionUser;
-          if (FirebaseAuth.instance.currentUser?.uid != user.uid) {
-            throw StateError('The account session changed.');
+          try {
+            final destination = options.uri;
+            final localDevelopment =
+                kDebugMode &&
+                destination.scheme == 'http' &&
+                const {
+                  'localhost',
+                  '127.0.0.1',
+                  '10.0.2.2',
+                }.contains(destination.host);
+            if (destination.scheme != 'https' && !localDevelopment) {
+              throw StateError('A trusted backend transport is required.');
+            }
+            final user = _currentUser();
+            if (user == null ||
+                (_sessionUid != null && user.uid != _sessionUid)) {
+              throw StateError('The account session changed.');
+            }
+            _sessionUid = user.uid;
+            // Firebase returns a fresh token when the cached token has expired.
+            final token = await user.getIdToken();
+            if (token == null ||
+                token.isEmpty ||
+                _currentUser()?.uid != user.uid) {
+              throw StateError('The account session changed.');
+            }
+            options.followRedirects = false;
+            options.headers['Authorization'] = 'Bearer $token';
+            handler.next(options);
+          } catch (_) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                message:
+                    'Unable to authenticate the AI request. Reopen the assistant or sign in again.',
+              ),
+            );
           }
-          final token = await user.getIdToken();
-          if (token == null || FirebaseAuth.instance.currentUser?.uid != user.uid) {
-            throw StateError('The account session changed.');
-          }
-          options.followRedirects = false;
-          options.headers['Authorization'] = 'Bearer $token';
-          handler.next(options);
-        } catch (_) {
-          handler.reject(DioException(
-            requestOptions: options,
-            message: 'Unable to authenticate the request.',
-          ));
-        }
-      }),
+        },
+      ),
     );
   }
 
   /// Whether the backend is configured (always true since backend handles API key)
-  bool get isConfigured => true; // Backend handles API key, so we just try to connect
-
-  /// Get the current model being used
-  String get currentModel => _model;
+  bool get isConfigured =>
+      true; // Backend handles API key, so we just try to connect
 
   /// Get the backend URL for debugging
   String get backendUrl => _baseUrl;
 
-  /// Check if the backend is reachable and healthy.
-  /// Returns true if backend responds to /health endpoint.
+  /// Checks proxy reachability only. This does not validate upstream generation.
   Future<bool> checkBackendHealth() async {
     try {
       final response = await _dio.get(
@@ -128,7 +146,8 @@ class OpenRouterProvider {
           sendTimeout: const Duration(seconds: 5),
         ),
       );
-      final isHealthy = response.statusCode == 200 && response.data['status'] == 'ok';
+      final isHealthy =
+          response.statusCode == 200 && response.data['status'] == 'ok';
       return isHealthy;
     } catch (e) {
       return false;
@@ -145,8 +164,10 @@ class OpenRouterProvider {
       final response = await _dio.post(
         '/api/chat/completions',
         data: {
-          'model': _model,
-          'messages': messages.map((m) => {'role': m.role, 'content': m.content}).toList(),
+          'model': ?_model,
+          'messages': messages
+              .map((m) => {'role': m.role, 'content': m.content})
+              .toList(),
           'temperature': temperature,
           'max_tokens': maxTokens,
           'stream': false,
@@ -211,265 +232,154 @@ class OpenRouterProvider {
       final response = await _dio.post(
         '/api/chat/completions',
         data: {
-          'model': _model,
-          'messages': messages.map((m) => {'role': m.role, 'content': m.content}).toList(),
+          'model': ?_model,
+          'messages': messages
+              .map((m) => {'role': m.role, 'content': m.content})
+              .toList(),
           'temperature': temperature,
           'max_tokens': maxTokens,
           'stream': true,
         },
         options: Options(
           responseType: ResponseType.stream,
+          validateStatus: (status) => status != null,
           receiveTimeout: const Duration(seconds: 120),
         ),
       );
 
       if (response.statusCode != 200) {
-        final errorText = await _readStreamAsString(response.data.stream);
-
-        // Parse error response for structured metadata
-        bool isRateLimitError = response.statusCode == 429;
-        bool isDailyQuotaExhausted = false;
-        int? retryAfterSeconds;
-        String errorMessage = errorText;
-
-        try {
-          final errorJson = jsonDecode(errorText) as Map<String, dynamic>;
-          // The backend wraps errors in a structured format.
-          // Check for our backend's error format first, then OpenRouter's.
-          if (errorJson['error'] != null) {
-            final errorField = errorJson['error'];
-            if (errorField is String) {
-              errorMessage = errorField;
-            } else if (errorField is Map) {
-              final errorMap = errorField as Map<String, dynamic>;
-              errorMessage =
-                  errorMap['message']?.toString() ??
-                  errorMap.toString();
-            }
-          }
-          if (errorJson['isDailyQuota'] == true) {
-            isDailyQuotaExhausted = true;
-          }
-          if (errorJson['isRateLimit'] == true) {
-            isRateLimitError = true;
-          }
-          // Extract retry-after from headers or metadata
-          final headers = response.headers;
-          if (headers.map.containsKey('retry-after')) {
-            retryAfterSeconds = int.tryParse(headers.map['retry-after']!.first);
-          }
-        } catch (e) {
-          // Ignore parsing errors, use defaults
-        }
-
+        final payload = await _readErrorPayload(response.data.stream);
+        final status = response.statusCode;
         yield AIStreamChunk(
           content: '',
           isDone: true,
-          error: 'HTTP ${response.statusCode}: $errorMessage',
-          isRateLimitError: isRateLimitError,
-          isDailyQuotaExhausted: isDailyQuotaExhausted,
-          retryAfterSeconds: retryAfterSeconds,
+          error: _httpError(status, payload),
+          isRateLimitError: status == 429,
+          isDailyQuotaExhausted: payload['isDailyQuota'] == true,
+          retryAfterSeconds: int.tryParse(
+            response.headers.value('retry-after') ?? '',
+          ),
         );
         return;
       }
 
-      yield* _parseStream(response.data.stream);
+      if (!(response.headers.value('content-type') ?? '').contains(
+        'text/event-stream',
+      )) {
+        yield const AIStreamChunk(
+          content: '',
+          isDone: true,
+          error:
+              'The AI proxy returned an unexpected response instead of a stream.',
+        );
+        return;
+      }
+
+      await for (final chunk in _parseStream(response.data.stream)) {
+        yield chunk;
+      }
     } on DioException catch (e) {
-      final isRateLimitError = e.response?.statusCode == 429;
-      final isDailyQuota = _detectDailyQuotaFromDioError(e);
       yield AIStreamChunk(
         content: '',
         isDone: true,
-        error: _dioErrorToString(e),
-        isRateLimitError: isRateLimitError,
-        isDailyQuotaExhausted: isDailyQuota,
+        error: _handleDioError(e).error,
       );
-    } catch (e) {
-      yield AIStreamChunk(
+    } catch (_) {
+      yield const AIStreamChunk(
         content: '',
         isDone: true,
-        error: 'Stream failed: ${e.toString()}',
+        error: 'The AI response was interrupted. Please try again.',
       );
     }
   }
 
-  /// Parse the SSE stream from backend
-  Stream<AIStreamChunk> _parseStream(Stream<List<int>> byteStream) async* {
-    final decoder = Utf8Decoder();
-    String buffer = '';
-    int chunkCount = 0;
-    String pendingContent = '';
-    bool sawAnyData = false;
-    String? streamError;
+  Stream<AIStreamChunk> _parseStream(Stream<List<int>> bytes) async* {
+    var hasContent = false;
+    var sawDone = false;
+    await for (final line
+        in utf8.decoder.bind(bytes).transform(const LineSplitter())) {
+      if (sawDone || !line.startsWith('data:')) continue;
+      final data = line.substring(5).trim();
+      if (data == '[DONE]') {
+        sawDone = true;
+        continue;
+      }
 
-    await for (final chunk in byteStream) {
-      buffer += decoder.convert(chunk);
-      final lines = buffer.split('\n');
-      buffer = lines.removeLast(); // Keep incomplete line in buffer
-
-      for (final line in lines) {
-        if (line.startsWith('data: ')) {
-          final data = line.substring(6).trim();
-          if (data == '[DONE]') {
-            sawAnyData = true;
-            // Flush any pending content before completing
-            if (pendingContent.isNotEmpty) {
-              yield AIStreamChunk(content: pendingContent, isDone: false);
-              pendingContent = '';
-            }
-            // If we saw an error event in the stream, propagate it
-            if (streamError != null) {
-              yield AIStreamChunk(
-                content: '',
-                isDone: true,
-                error: streamError,
-              );
-            } else {
-              yield AIStreamChunk(content: '', isDone: true);
-            }
-            return;
-          }
-
-          try {
-            final json = jsonDecode(data) as Map<String, dynamic>;
-
-            // Check for an error event injected by our backend
-            if (json['error'] != null) {
-              final err = json['error'];
-              final msg = err is Map
-                  ? (err['message']?.toString() ?? err.toString())
-                  : err.toString();
-              streamError = msg;
-              continue;
-            }
-
-            final choices = json['choices'] as List<dynamic>?;
-            if (choices != null && choices.isNotEmpty) {
-              final delta = choices.first['delta'] as Map<String, dynamic>?;
-              final content = delta?['content'] as String?;
-              if (content != null && content.isNotEmpty) {
-                sawAnyData = true;
-                chunkCount++;
-                pendingContent += content;
-
-                // Flush when we have a meaningful amount of content or hit a paragraph boundary
-                final shouldFlush = pendingContent.length >= 80 ||
-                    pendingContent.endsWith('\n\n') ||
-                    _endsWithSentenceBoundary(pendingContent);
-
-                if (shouldFlush) {
-                  if (chunkCount % 10 == 1) {
-                  }
-                  yield AIStreamChunk(content: pendingContent, isDone: false);
-                  pendingContent = '';
-                }
-              }
-            }
-          } catch (e) {
-            // Ignore parse errors for malformed chunks
-          }
-        }
+      final event = _decodeObject(data);
+      if (event['error'] != null) {
+        yield const AIStreamChunk(
+          content: '',
+          isDone: true,
+          error: 'The AI provider interrupted the response. Please try again.',
+        );
+        return;
+      }
+      final choices = event['choices'];
+      if (choices is! List || choices.isEmpty || choices.first is! Map) {
+        continue;
+      }
+      final delta = (choices.first as Map)['delta'];
+      final content = delta is Map ? delta['content'] : null;
+      if (content is String && content.isNotEmpty) {
+        hasContent = true;
+        yield AIStreamChunk(content: content, isDone: false);
       }
     }
-
-    // Process any remaining buffer
-    if (buffer.isNotEmpty && buffer.startsWith('data: ')) {
-      final data = buffer.substring(6).trim();
-      if (data != '[DONE]') {
-        try {
-          final json = jsonDecode(data) as Map<String, dynamic>;
-          if (json['error'] != null) {
-            final err = json['error'];
-            streamError = err is Map
-                ? (err['message']?.toString() ?? err.toString())
-                : err.toString();
-          } else {
-            final choices = json['choices'] as List<dynamic>?;
-            if (choices != null && choices.isNotEmpty) {
-              final delta = choices.first['delta'] as Map<String, dynamic>?;
-              final content = delta?['content'] as String?;
-              if (content != null && content.isNotEmpty) {
-                sawAnyData = true;
-                chunkCount++;
-                pendingContent += content;
-              }
-            }
-          }
-        } catch (_) {
-          // Ignore an incomplete final SSE event without logging its payload.
-        }
-      }
-    }
-
-    // Flush any remaining pending content
-    if (pendingContent.isNotEmpty) {
-      yield AIStreamChunk(content: pendingContent, isDone: false);
-    }
-
-    // If we never saw any data and no error was reported, treat as empty response error
-    if (!sawAnyData && streamError == null) {
-      yield AIStreamChunk(
-        content: '',
-        isDone: true,
-        error: 'The AI service returned an empty response. Please try again.',
-      );
-      return;
-    }
-
-    // If a stream error was detected, propagate it
-    if (streamError != null) {
-      yield AIStreamChunk(
-        content: '',
-        isDone: true,
-        error: streamError,
-      );
-      return;
-    }
-
-    yield AIStreamChunk(content: '', isDone: true);
+    yield AIStreamChunk(
+      content: '',
+      isDone: true,
+      error: !sawDone
+          ? 'The AI response ended before completion. Please try again.'
+          : hasContent
+          ? null
+          : 'The AI service returned an empty response.',
+    );
   }
 
-  /// Checks if the text ends at a natural sentence/paragraph boundary
-  bool _endsWithSentenceBoundary(String text) {
-    if (text.isEmpty) return false;
-    final trimmed = text.trimRight();
-    // Check for paragraph ending (double newline)
-    if (trimmed.endsWith('\n\n')) return true;
-    // Check for sentence ending with proper punctuation followed by space
-    // This regex checks for . ! ? followed by end of string or space + capital letter
-    if (RegExp(r'[.!?]\s*$').hasMatch(trimmed)) return true;
-    // Check for common paragraph-ending patterns
-    if (RegExp(r'[.!?]\s+[A-Z]').hasMatch(trimmed)) return true;
-    return false;
+  Future<Map<String, dynamic>> _readErrorPayload(
+    Stream<List<int>> bytes,
+  ) async {
+    final buffer = StringBuffer();
+    await for (final text in const Utf8Decoder(
+      allowMalformed: true,
+    ).bind(bytes)) {
+      if (buffer.length + text.length > 16384) return const {};
+      buffer.write(text);
+    }
+    return _decodeObject(buffer.toString());
   }
 
-  Future<String> _readStreamAsString(Stream<List<int>> stream) async {
-    final chunks = <String>[];
-    await for (final chunk in stream) {
-      chunks.add(Utf8Decoder().convert(chunk));
+  static Map<String, dynamic> _decodeObject(String text) {
+    try {
+      final data = jsonDecode(text);
+      return data is Map<String, dynamic> ? data : const {};
+    } on FormatException {
+      return const {};
     }
-    return chunks.join();
   }
 
-  /// Detect daily-quota exhaustion from a DioException (e.g. a non-200
-  /// response that Dio surfaces as an exception).
-  bool _detectDailyQuotaFromDioError(DioException e) {
-    final data = e.response?.data;
-    if (data is Map && data['isDailyQuota'] == true) return true;
-    final headers = e.response?.headers;
-    if (headers != null) {
-      final remaining = headers.value('x-ratelimit-remaining');
-      final limit = headers.value('x-ratelimit-limit');
-      if (remaining != null && limit != null) {
-        final rem = int.tryParse(remaining);
-        final lim = int.tryParse(limit);
-        if (rem != null && lim != null && rem == 0 && lim > 0) {
-          // Treat as daily quota exhaustion — do not auto-retry.
-          return true;
-        }
-      }
+  static String _httpError(int? status, Object? payload) {
+    final code = payload is Map ? payload['code'] : null;
+    if (code == 'OPENROUTER_KEY_MISSING') {
+      return 'The AI proxy has no OpenRouter key configured.';
     }
-    return false;
+    if (code == 'AUTH_UNAVAILABLE') {
+      return 'The AI proxy cannot verify Firebase sign-ins.';
+    }
+    return switch (status ?? 0) {
+      401 when code == 'OPENROUTER_HTTP_401' =>
+        'OpenRouter rejected the proxy credentials.',
+      401 =>
+        'The AI proxy could not verify your sign-in. Please sign in again.',
+      402 =>
+        'OpenRouter refused the request due to insufficient credits or quota.',
+      429 when payload is Map && payload['isDailyQuota'] == true =>
+        'The OpenRouter daily quota is exhausted.',
+      429 => 'Rate limit exceeded. Please wait and try again.',
+      504 => 'The AI provider timed out. Please try again.',
+      >= 500 => 'The AI service is temporarily unavailable. Please try again.',
+      _ => 'The AI request failed (HTTP $status). Please try again.',
+    };
   }
 
   AIRequestResult _handleDioError(DioException e) {
@@ -478,29 +388,15 @@ class OpenRouterProvider {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        errorMessage = 'Request timed out. Please check if the backend is running on ${_baseUrl.replaceAll('/api', '')}.';
+        errorMessage =
+            'Request timed out. Please check if the backend is running on ${_baseUrl.replaceAll('/api', '')}.';
         break;
       case DioExceptionType.badResponse:
-        final statusCode = e.response?.statusCode;
-        final responseData = e.response?.data;
-        if (statusCode == 401) {
-          errorMessage = 'OpenRouter API authentication failed. Check OPENROUTER_API_KEY in backend/.env.';
-        } else if (statusCode == 402) {
-          errorMessage = 'OpenRouter payment required. Check your OpenRouter account credits.';
-        } else if (statusCode == 403) {
-          errorMessage = 'OpenRouter access forbidden. Check API key permissions.';
-        } else if (statusCode == 429) {
-          errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
-        } else if (statusCode == 500 || statusCode == 502 || statusCode == 503) {
-          errorMessage = 'OpenRouter service unavailable. Please try again later.';
-        } else if (responseData is Map && responseData['error'] != null) {
-          errorMessage = 'API error: ${responseData['error']}';
-        } else {
-          errorMessage = 'Server error (HTTP $statusCode). Please try again later.';
-        }
+        errorMessage = _httpError(e.response?.statusCode, e.response?.data);
         break;
       case DioExceptionType.connectionError:
-        errorMessage = 'Cannot connect to backend at $_baseUrl. Make sure the backend server is running (npm start in backend folder).';
+        errorMessage =
+            'Cannot connect to backend at $_baseUrl. Make sure the backend server is running (npm start in backend folder).';
         break;
       case DioExceptionType.cancel:
         errorMessage = 'Request was cancelled.';
@@ -509,11 +405,6 @@ class OpenRouterProvider {
         errorMessage = 'Request failed: ${e.message}';
     }
     return AIRequestResult(success: false, error: errorMessage);
-  }
-
-  String _dioErrorToString(DioException e) {
-    final result = _handleDioError(e);
-    return result.error ?? 'Unknown error';
   }
 
   /// Close the dio client

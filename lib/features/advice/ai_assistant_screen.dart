@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../ai/ai_assistant_service.dart';
 import '../../ai/models.dart';
+import '../../ai/openrouter_provider.dart';
 import '../../ai/streaming_markdown.dart';
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
@@ -22,7 +23,9 @@ const bool kDebugLayout = true;
 enum BackendStatus { unknown, checking, connected, disconnected }
 
 class AIAssistantScreen extends ConsumerStatefulWidget {
-  const AIAssistantScreen({super.key});
+  const AIAssistantScreen({super.key, this.provider});
+
+  final OpenRouterProvider? provider;
 
   @override
   ConsumerState<AIAssistantScreen> createState() => _AIAssistantScreenState();
@@ -102,6 +105,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
     _assistantService = SmartSaveAIAssistantService(
       ref.read(financeRepositoryProvider),
+      provider: widget.provider,
     );
     // Load saved mode from session
     _mode = ref.read(assistantModeProvider);
@@ -113,7 +117,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   Future<void> _checkBackendHealth() async {
     if (_assistantService == null) return;
     setState(() => _backendStatus = BackendStatus.checking);
-    final isHealthy = await _assistantService!.isAvailable;
+    final isHealthy = await _assistantService!.isProxyReachable;
     if (mounted) {
       setState(
         () => _backendStatus = isHealthy
@@ -140,7 +144,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
             .map(
               (m) => AIMessage(
                 role: m['role'] as String? ?? '',
-                content: m['text'] as String? ?? '',
+                content: (m['content'] ?? m['text']) as String? ?? '',
                 isStreaming: m['isStreaming'] as bool? ?? false,
                 error: m['error'] as String?,
               ),
@@ -149,10 +153,9 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
         _conversations.putIfAbsent(id, () => messages);
       }
     }
-    setState(() {
-      _currentConversationId ??=
-          _conversations.isEmpty ? null : _conversations.keys.last;
-    });
+    if (_currentConversationId == null && _conversations.isNotEmpty) {
+      _selectConversation(_conversations.keys.last);
+    }
   }
 
   Future<void> _saveConversations() async {
@@ -357,7 +360,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                 _isRateLimitError = false;
                 _isDailyQuotaExhausted = false;
               });
-              break;
+              continue;
             }
 
             // Preserve all previous messages, replace the streaming assistant
@@ -383,7 +386,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
               '[AIAssistantScreen] After finalizing, messages count: ${ref.read(assistantAIConversationProvider).length}',
             );
           }
-          break;
+          continue;
         }
 
         _streamingContent += chunk.content;
@@ -621,6 +624,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(assistantAIConversationProvider);
+    final waitingForFirstChunk =
+        _isStreaming && (messages.isEmpty || messages.last.isUser) && _lastError == null;
     final isConnected = _backendStatus == BackendStatus.connected;
     final isChecking = _backendStatus == BackendStatus.checking;
 
@@ -679,7 +684,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                       isChecking
                           ? 'Checking...'
                           : isConnected
-                          ? 'AI Connected'
+                          ? 'Proxy reachable'
                           : 'Offline Mode',
                       style: TextStyle(
                         fontSize: 10,
@@ -802,7 +807,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                             '[AIAssistantScreen] ListView constraints: maxWidth=${constraints.maxWidth}, '
                             'maxHeight=${constraints.maxHeight}, hasBoundedHeight=${constraints.maxHeight.isFinite}, '
                             'hasBoundedWidth=${constraints.maxWidth.isFinite}, '
-                            'itemCount=${messages.length + (_isStreaming ? 1 : 0)}, '
+                            'itemCount=${messages.length + (waitingForFirstChunk ? 1 : 0)}, '
                             'scrollOffset=${_scrollController.hasClients ? _scrollController.offset.toStringAsFixed(1) : "N/A"}, '
                             'maxScrollExtent=${_scrollController.hasClients ? _scrollController.position.maxScrollExtent.toStringAsFixed(1) : "N/A"}',
                           );
@@ -818,10 +823,10 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                                   18,
                                 ),
                                 itemCount:
-                                    messages.length + (_isStreaming ? 1 : 0),
+                                    messages.length + (waitingForFirstChunk ? 1 : 0),
                                 itemBuilder: (context, index) {
-                                  if (_isStreaming &&
-                                      index == messages.length) {
+                                  if (index == messages.length ||
+                                      messages[index].isStreaming) {
                                     return _StreamingBubble(
                                       content: _streamingContent,
                                     );
@@ -885,7 +890,7 @@ class _DisclaimerBanner extends StatelessWidget {
         Expanded(
           child: Text(
             isConnected
-                ? 'SmartSave provides educational information and scenario-based analysis, not guaranteed outcomes. Investments can lose value. Verify current terms and make decisions at your own risk.'
+                ? 'The proxy responds. AI replies depend on OpenRouter availability. SmartSave provides educational information and scenario-based analysis. Investments can lose value. Verify current terms and make decisions at your own risk.'
                 : 'Running in offline mode (backend unavailable). Responses use local rules only. Start backend server to enable AI. Educational info only — not financial advice.',
             style: TextStyle(
               color: isConnected ? AppColors.firefly : AppColors.gold,
