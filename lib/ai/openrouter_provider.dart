@@ -395,7 +395,8 @@ class OpenRouterProvider {
               }
             }
           }
-        } catch (e) {
+        } catch (_) {
+          // Ignore an incomplete final SSE event without logging its payload.
         }
       }
     }

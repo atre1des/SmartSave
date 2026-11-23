@@ -430,33 +430,6 @@ class FinanceRepository {
     )''');
   }
 
-  static Future<void> _createInvestmentAllocationsTable(
-    DatabaseExecutor db,
-  ) async {
-    await db.execute('''CREATE TABLE investment_allocations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      security_type TEXT NOT NULL,
-      security_name TEXT NOT NULL,
-      ticker TEXT,
-      exchange TEXT DEFAULT 'KASE',
-      amount_kzt INTEGER NOT NULL CHECK(amount_kzt > 0),
-      current_value_kzt INTEGER NOT NULL CHECK(current_value_kzt >= 0),
-      linked_goal_id INTEGER REFERENCES goals(id) ON DELETE SET NULL,
-      created_at TEXT NOT NULL,
-      note TEXT NOT NULL DEFAULT ''
-    )''');
-  }
-
-  static Future<void> _createCashAccountsTable(DatabaseExecutor db) async {
-    await db.execute('''CREATE TABLE cash_accounts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      balance_kzt INTEGER NOT NULL DEFAULT 0,
-      is_investable INTEGER NOT NULL DEFAULT 1,
-      opened_at TEXT NOT NULL
-    )''');
-  }
-
   static Future<void> _seed(DatabaseExecutor db) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -1873,8 +1846,9 @@ class FinanceRepository {
       whereArgs: [category],
       limit: 1,
     );
-    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0)
+    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0) {
       return false;
+    }
     await _db.insert('budgets', {
       'category': category,
       'monthly_limit': monthlyLimit,
@@ -1893,8 +1867,9 @@ class FinanceRepository {
       whereArgs: [key],
       limit: 1,
     );
-    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0)
+    if (existing.isNotEmpty && (existing.first['is_synced'] as int? ?? 0) == 0) {
       return false;
+    }
     await _db.insert('investment_settings', {
       'key': key,
       'value': value,

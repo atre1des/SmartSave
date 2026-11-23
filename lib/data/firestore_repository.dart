@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firestore_models.dart';
 import 'firestore_paths.dart';
-import 'finance_repository.dart';
 
 /// Result wrapper for Firestore operations
 class FirestoreResult<T> {
@@ -107,7 +106,6 @@ String _getFirestoreErrorMessage(FirestoreErrorCode code) {
     case FirestoreErrorCode.internal:
       return 'An internal error occurred. Please try again later.';
     case FirestoreErrorCode.unknown:
-    default:
       return 'An unexpected error occurred. Please try again.';
   }
 }

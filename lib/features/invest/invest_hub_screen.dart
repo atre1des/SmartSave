@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../ai/assistant_service.dart';
-import '../../ai/models.dart';
-import '../../data/finance_repository.dart';
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
-import '../advice/ai_assistant_screen.dart';
-import '../advice/assistant_session.dart';
 import 'investment_intelligence_screen.dart';
 import 'invest_screen.dart';
 import 'stocks_screen.dart';
@@ -21,17 +16,6 @@ class InvestHubScreen extends ConsumerStatefulWidget {
 }
 
 class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
-  void _openAssistant() {
-    assistantRouteActive.value = true;
-    appNavigatorKey.currentState?.push<void>(
-      MaterialPageRoute<void>(builder: (_) => const AIAssistantScreen()),
-    ).whenComplete(() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        assistantRouteActive.value = false;
-      });
-    });
-  }
-
   void _openFeature(Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }

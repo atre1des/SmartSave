@@ -71,7 +71,6 @@ class EmailVerificationScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authService = ref.watch(authServiceProvider);
 
     return Scaffold(
       body: SafeArea(

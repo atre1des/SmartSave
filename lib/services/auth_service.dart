@@ -132,7 +132,6 @@ String _getAuthErrorMessage(AuthExceptionCode code) {
     case AuthExceptionCode.operationNotAllowed:
       return 'This operation is not allowed. Contact support.';
     case AuthExceptionCode.unknown:
-    default:
       return 'An unexpected error occurred. Please try again.';
   }
 }
@@ -412,19 +411,19 @@ class AuthService {
 
   /// Check if onboarding is complete for current user
   Future<bool> isOnboardingComplete() async {
-    return _prefs.getBool('onboarding_complete_${currentUserId}') ?? false;
+    return _prefs.getBool('onboarding_complete_$currentUserId') ?? false;
   }
 
   /// Set onboarding complete state
   Future<void> setOnboardingComplete(bool complete) async {
     if (currentUserId != null) {
-      await _prefs.setBool('onboarding_complete_${currentUserId}', complete);
+      await _prefs.setBool('onboarding_complete_$currentUserId', complete);
     }
   }
 
   /// Check if risk quiz is complete
   Future<bool> isRiskQuizComplete() async {
-    return _prefs.getBool('risk_profile_complete_${currentUserId}') ?? false;
+    return _prefs.getBool('risk_profile_complete_$currentUserId') ?? false;
   }
 
   /// Set risk quiz complete
@@ -438,7 +437,7 @@ class AuthService {
   /// Get risk profile
   String? getRiskProfile() {
     if (currentUserId != null) {
-      return _prefs.getString('risk_profile_${currentUserId}');
+      return _prefs.getString('risk_profile_$currentUserId');
     }
     return null;
   }

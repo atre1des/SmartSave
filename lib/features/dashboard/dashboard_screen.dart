@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/finance_controller.dart';
 import '../../data/finance_repository.dart';
 import '../../data/financial_math.dart';
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
 import '../goals/goals_screen.dart';
-import '../advice/ai_assistant_screen.dart';
-import '../invest/invest_screen.dart';
-import '../invest/invest_hub_screen.dart';
 import '../invest/investment_intelligence_screen.dart';
 import '../transactions/transactions_screen.dart';
 import '../profile/my_account_screen.dart';
@@ -201,7 +197,7 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 class _QuickActionsGrid extends ConsumerWidget {
-  const _QuickActionsGrid({super.key});
+  const _QuickActionsGrid();
 
   void _push(BuildContext context, Widget page) => Navigator.push(context, MaterialPageRoute(builder: (_) => page));
 
@@ -219,8 +215,6 @@ class _QuickActionsGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final finance = ref.watch(financeControllerProvider);
-
     final actions = [
       _QuickActionItem(
         icon: Icons.auto_awesome,
@@ -354,13 +348,11 @@ class _SingleGoalCard extends StatelessWidget {
   final SavingsGoal goal;
 
   int _monthsLeft(DateTime deadline) {
-    final now = DateTime.now();
     return ((deadline.year - DateTime.now().year) * 12 + deadline.month - DateTime.now().month).clamp(0, 120);
   }
 
   @override
   Widget build(BuildContext context) {
-    final months = _monthsLeft(goal.deadline);
     final monthly = monthlyGoalContribution(targetTenge: goal.target, savedTenge: goal.saved, monthsRemaining: _monthsLeft(goal.deadline));
 
     return SurfaceCard(
@@ -453,7 +445,6 @@ class TotalBalanceDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final finance = ref.watch(financeControllerProvider);
     return DefaultTabController(
       length: 2,
       child: Scaffold(

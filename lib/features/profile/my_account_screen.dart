@@ -9,7 +9,6 @@ import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
 import '../app/demo_flow_screens.dart';
 import '../goals/goals_screen.dart';
-import '../transactions/transactions_screen.dart';
 import '../invest/investment_intelligence_screen.dart';
 import '../invest/invest_screen.dart';
 import 'profile_screen.dart';

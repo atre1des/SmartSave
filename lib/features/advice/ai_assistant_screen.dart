@@ -1326,13 +1326,11 @@ class _ErrorBanner extends StatelessWidget {
     required this.onRetry,
     this.isRateLimitError = false,
     this.isDailyQuotaExhausted = false,
-    this.retryAfterSeconds,
   });
   final String error;
   final VoidCallback onRetry;
   final bool isRateLimitError;
   final bool isDailyQuotaExhausted;
-  final int? retryAfterSeconds;
 
   @override
   Widget build(BuildContext context) {
