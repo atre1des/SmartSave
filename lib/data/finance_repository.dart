@@ -242,7 +242,11 @@ class FinanceRepository {
             for (final row in await txn.query(table)) row[key]: row,
           };
           if (copied.length != rows.length ||
-              rows.any((row) => !mapEquals(copied[row[key]], row))) {
+              rows.any((row) {
+                final copy = copied[row[key]];
+                return copy == null ||
+                    row.entries.any((field) => copy[field.key] != field.value);
+              })) {
             throw StateError('Migration did not preserve the original rows.');
           }
         }
@@ -1020,6 +1024,7 @@ class FinanceRepository {
   Future<List<InvestmentThesis>> investmentTheses() async {
     final rows = await _db.query(
       'investment_theses',
+      where: 'local_deleted = 0',
       orderBy: 'updated_at DESC',
     );
     return rows.map(InvestmentThesis.fromMap).toList();
@@ -1029,21 +1034,24 @@ class FinanceRepository {
     if (thesis.securityName.trim().isEmpty || thesis.ticker.trim().isEmpty) {
       throw ArgumentError('Enter a security name and ticker.');
     }
-    final id = thesis.id == null
-        ? await _db.insert('investment_theses', thesis.toMap())
-        : (await _db.update(
-            'investment_theses',
-            thesis.toMap(),
-            where: 'id = ?',
-            whereArgs: [thesis.id],
-          )).toDouble().toInt();
-    await _recordSyncOp(
-      entityType: 'investment_thesis',
-      entityId: id.toString(),
-      operation: thesis.id == null ? 'create' : 'update',
-      payload: thesis.toMap(),
-    );
-    return id;
+    return _db.transaction((txn) async {
+      final values = {...thesis.toMap(), 'is_synced': 0};
+      final id = thesis.id;
+      final savedId = id ?? await txn.insert('investment_theses', {...values, 'cloud_id': _newCloudId()});
+      if (id != null) {
+        final changed = await txn.update('investment_theses', values,
+          where: 'id = ? AND local_deleted = 0', whereArgs: [id]);
+        if (changed != 1) throw StateError('The record is no longer available.');
+      }
+      await _recordSyncOp(
+        executor: txn,
+        entityType: 'investment_thesis',
+        entityId: savedId.toString(),
+        operation: id == null ? 'create' : 'update',
+        payload: thesis.toMap(),
+      );
+      return savedId;
+    });
   }
 
   Future<List<ThesisCondition>> thesisConditions(int thesisId) async {
@@ -1072,29 +1080,8 @@ class FinanceRepository {
     return condition.id!;
   }
 
-  Future<void> deleteInvestmentThesis(int thesisId) async {
-    await _db.transaction((txn) async {
-      final rows = await txn.query(
-        'investment_theses',
-        where: 'id = ?',
-        whereArgs: [thesisId],
-        limit: 1,
-      );
-      if (rows.isEmpty) return;
-      await _recordSyncOp(
-        executor: txn,
-        entityType: 'investment_thesis',
-        entityId: thesisId.toString(),
-        operation: 'delete',
-        payload: rows.first,
-      );
-      await txn.delete(
-        'investment_theses',
-        where: 'id = ?',
-        whereArgs: [thesisId],
-      );
-    });
-  }
+  Future<void> deleteInvestmentThesis(int thesisId) =>
+      _deleteInvestmentRecord('investment_theses', 'investment_thesis', thesisId);
 
   Future<int> saveThesisAssessment(ThesisAssessment assessment) =>
       _db.insert('thesis_assessments', assessment.toMap());
@@ -1110,7 +1097,7 @@ class FinanceRepository {
   }
 
   Future<List<PortfolioHolding>> portfolioHoldings() async {
-    final rows = await _db.query('portfolio_holdings', orderBy: 'id');
+    final rows = await _db.query('portfolio_holdings', where: 'local_deleted = 0', orderBy: 'id');
     return rows.map(PortfolioHolding.fromMap).toList();
   }
 
@@ -1122,44 +1109,111 @@ class FinanceRepository {
         'Enter a security name, ticker and non-negative KZT value.',
       );
     }
-    final id = holding.id == null
-        ? await _db.insert('portfolio_holdings', holding.toMap())
-        : (await _db.update(
-            'portfolio_holdings',
-            holding.toMap(),
-            where: 'id = ?',
-            whereArgs: [holding.id],
-          )).toDouble().toInt();
-    await _recordSyncOp(
-      entityType: 'portfolio_holding',
-      entityId: id.toString(),
-      operation: holding.id == null ? 'create' : 'update',
-      payload: holding.toMap(),
-    );
-    return id;
-  }
-
-  Future<void> deletePortfolioHolding(int holdingId) async {
-    await _db.transaction((txn) async {
-      final rows = await txn.query(
-        'portfolio_holdings',
-        where: 'id = ?',
-        whereArgs: [holdingId],
-        limit: 1,
-      );
-      if (rows.isEmpty) return;
+    return _db.transaction((txn) async {
+      final values = {...holding.toMap(), 'is_synced': 0};
+      final id = holding.id;
+      final savedId = id ?? await txn.insert('portfolio_holdings', {...values, 'cloud_id': _newCloudId()});
+      if (id != null) {
+        final changed = await txn.update('portfolio_holdings', values,
+          where: 'id = ? AND local_deleted = 0', whereArgs: [id]);
+        if (changed != 1) throw StateError('The record is no longer available.');
+      }
       await _recordSyncOp(
         executor: txn,
         entityType: 'portfolio_holding',
-        entityId: holdingId.toString(),
-        operation: 'delete',
-        payload: rows.first,
+        entityId: savedId.toString(),
+        operation: id == null ? 'create' : 'update',
+        payload: holding.toMap(),
       );
-      await txn.delete(
-        'portfolio_holdings',
-        where: 'id = ?',
-        whereArgs: [holdingId],
+      return savedId;
+    });
+  }
+
+  Future<void> deletePortfolioHolding(int holdingId) =>
+      _deleteInvestmentRecord('portfolio_holdings', 'portfolio_holding', holdingId);
+
+  Future<void> _deleteInvestmentRecord(String table, String entity, int id) async {
+    await _db.transaction((txn) async {
+      final rows = await txn.query(table, where: 'id = ? AND local_deleted = 0',
+        whereArgs: [id], limit: 1);
+      if (rows.isEmpty) return;
+      final uid = _currentUid();
+      if (uid != null) {
+        await txn.delete('sync_operations',
+          where: 'entity_type = ? AND entity_id = ? AND owner_uid = ? AND operation != ?',
+          whereArgs: [entity, id.toString(), uid, 'delete']);
+      }
+      await _recordSyncOp(
+        executor: txn, entityType: entity, entityId: id.toString(),
+        operation: 'delete', payload: rows.single,
       );
+      await txn.update(table, {'local_deleted': 1, 'is_synced': 0},
+        where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  static const _syncTables = {
+    'transaction': 'transactions',
+    'goal': 'goals',
+    'investment_thesis': 'investment_theses',
+    'portfolio_holding': 'portfolio_holdings',
+  };
+
+  static String _newCloudId() {
+    final random = Random.secure();
+    return base64Url.encode(List<int>.generate(18, (_) => random.nextInt(256)));
+  }
+
+  bool canSyncAccount(String uid) => (_accountUid ?? _currentUid()) == uid;
+
+  /// Persist the remote identifier before issuing a write, so an ambiguous
+  /// network response or process restart retries the same document.
+  Future<String?> reserveCloudId(SyncOperation op) async {
+    final table = _syncTables[op.entityType];
+    final id = int.tryParse(op.entityId);
+    if (table == null || id == null || op.ownerUid == null ||
+        op.ownerUid != _currentUid()) {
+      return null;
+    }
+    return _db.transaction((txn) async {
+      final rows = await txn.query(table, where: 'id = ?', whereArgs: [id], limit: 1);
+      if (rows.isEmpty || rows.single['local_deleted'] == 1) return null;
+      final existing = rows.single['cloud_id'] as String?;
+      if (existing != null && existing.isNotEmpty) return existing;
+      final cloudId = _newCloudId();
+      await txn.update(table, {'cloud_id': cloudId}, where: 'id = ?', whereArgs: [id]);
+      return cloudId;
+    });
+  }
+
+  Future<void> acknowledgeRecordUpload(SyncOperation op, String cloudId) async {
+    final table = _syncTables[op.entityType]!;
+    await _db.transaction((txn) async {
+      final queued = await txn.query('sync_operations',
+        where: 'entity_type = ? AND entity_id = ?', whereArgs: [op.entityType, op.entityId]);
+      // A queued change (including a deletion) added while the upload was in
+      // flight must remain visible as a conflict to subsequent downloads.
+      if (queued.length != 1 || queued.single['id'] != op.id) return;
+      await txn.update(table, {'cloud_id': cloudId, 'is_synced': 1,
+        'synced_at': DateTime.now().toIso8601String()},
+        where: 'id = ?', whereArgs: [op.entityId]);
+    });
+  }
+
+  /// A tombstone must never overwrite an unsynchronized local edit.
+  Future<bool> applyInvestmentTombstone(String entityType, String cloudId) async {
+    final table = _syncTables[entityType];
+    if (table != 'investment_theses' && table != 'portfolio_holdings') {
+      throw ArgumentError.value(entityType);
+    }
+    return _db.transaction((txn) async {
+      final rows = await txn.query(table!, where: 'cloud_id = ?', whereArgs: [cloudId]);
+      if (rows.isEmpty) return true;
+      if (rows.length != 1) return false;
+      if (rows.single['local_deleted'] == 1) return true;
+      if (rows.single['is_synced'] != 1) return false;
+      await txn.update(table, {'local_deleted': 1}, where: 'cloud_id = ?', whereArgs: [cloudId]);
+      return true;
     });
   }
 
@@ -1313,7 +1367,9 @@ class FinanceRepository {
         'records': {
           for (final entry in _portableTables.entries)
             if (entry.key != 'ai_messages' && present.contains(entry.key))
-              entry.key: await txn.query(entry.key, orderBy: entry.value),
+              entry.key: await txn.query(entry.key, orderBy: entry.value,
+                where: entry.key == 'investment_theses' || entry.key == 'portfolio_holdings'
+                    ? 'local_deleted = 0' : null),
         },
       });
     });
@@ -1506,6 +1562,10 @@ class FinanceRepository {
       final columns = await db.rawQuery("PRAGMA table_info($table)");
       final columnNames = columns.map((c) => c['name'] as String).toSet();
 
+      if ((table == 'investment_theses' || table == 'portfolio_holdings') &&
+          !columnNames.contains('local_deleted')) {
+        await db.execute('ALTER TABLE $table ADD COLUMN local_deleted INTEGER NOT NULL DEFAULT 0');
+      }
       if (!columnNames.contains('cloud_id')) {
         await db.execute('ALTER TABLE $table ADD COLUMN cloud_id TEXT');
       }
@@ -1696,147 +1756,40 @@ class FinanceRepository {
   // These methods apply remote Firestore data to local SQLite WITHOUT
   // recording sync operations, preventing infinite sync loops.
 
-  /// Apply a cloud transaction to local SQLite.
-  /// Returns true if applied, false if conflict (local has unsynced changes).
-  Future<bool> applyCloudTransaction(
-    FinanceTransaction cloudTx,
-    String cloudId,
-  ) async {
-    final existing = await _db.query(
-      'transactions',
-      where: 'cloud_id = ?',
-      whereArgs: [cloudId],
-      limit: 1,
-    );
-    if (existing.isNotEmpty) {
-      final row = existing.first;
-      if ((row['is_synced'] as int? ?? 0) == 0) return false; // conflict
-      await _db.update(
-        'transactions',
-        {
-          ...cloudTx.toMap(),
-          'cloud_id': cloudId,
-          'is_synced': 1,
-          'synced_at': DateTime.now().toIso8601String(),
-        },
-        where: 'cloud_id = ?',
-        whereArgs: [cloudId],
-      );
-      return true;
-    }
-    await _db.insert('transactions', {
-      ...cloudTx.toMap(),
-      'cloud_id': cloudId,
-      'is_synced': 1,
-      'synced_at': DateTime.now().toIso8601String(),
-    });
-    return true;
-  }
+  Future<bool> applyCloudTransaction(FinanceTransaction record, String cloudId) =>
+      _applyCloudRecord('transactions', record.toMap(), cloudId);
 
-  /// Apply a cloud savings goal to local SQLite.
-  Future<bool> applyCloudGoal(SavingsGoal cloudGoal, String cloudId) async {
-    final existing = await _db.query(
-      'goals',
-      where: 'cloud_id = ?',
-      whereArgs: [cloudId],
-      limit: 1,
-    );
-    if (existing.isNotEmpty) {
-      final row = existing.first;
-      if ((row['is_synced'] as int? ?? 0) == 0) return false; // conflict
-      await _db.update(
-        'goals',
-        {
-          ...cloudGoal.toMap(),
-          'cloud_id': cloudId,
-          'is_synced': 1,
-          'synced_at': DateTime.now().toIso8601String(),
-        },
-        where: 'cloud_id = ?',
-        whereArgs: [cloudId],
-      );
-      return true;
-    }
-    await _db.insert('goals', {
-      ...cloudGoal.toMap(),
-      'cloud_id': cloudId,
-      'is_synced': 1,
-      'synced_at': DateTime.now().toIso8601String(),
-    });
-    return true;
-  }
+  Future<bool> applyCloudGoal(SavingsGoal record, String cloudId) =>
+      _applyCloudRecord('goals', record.toMap(), cloudId);
 
-  /// Apply a cloud portfolio holding to local SQLite.
-  Future<bool> applyCloudHolding(
-    PortfolioHolding cloudHolding,
-    String cloudId,
-  ) async {
-    final existing = await _db.query(
-      'portfolio_holdings',
-      where: 'cloud_id = ?',
-      whereArgs: [cloudId],
-      limit: 1,
-    );
-    if (existing.isNotEmpty) {
-      final row = existing.first;
-      if ((row['is_synced'] as int? ?? 0) == 0) return false; // conflict
-      await _db.update(
-        'portfolio_holdings',
-        {
-          ...cloudHolding.toMap(),
-          'cloud_id': cloudId,
-          'is_synced': 1,
-          'synced_at': DateTime.now().toIso8601String(),
-        },
-        where: 'cloud_id = ?',
-        whereArgs: [cloudId],
-      );
-      return true;
-    }
-    await _db.insert('portfolio_holdings', {
-      ...cloudHolding.toMap(),
-      'cloud_id': cloudId,
-      'is_synced': 1,
-      'synced_at': DateTime.now().toIso8601String(),
-    });
-    return true;
-  }
+  Future<bool> applyCloudHolding(PortfolioHolding record, String cloudId) =>
+      _applyCloudRecord('portfolio_holdings', record.toMap(), cloudId);
 
-  /// Apply a cloud investment thesis to local SQLite.
-  Future<bool> applyCloudThesis(
-    InvestmentThesis cloudThesis,
-    String cloudId,
-  ) async {
-    final existing = await _db.query(
-      'investment_theses',
-      where: 'cloud_id = ?',
-      whereArgs: [cloudId],
-      limit: 1,
-    );
-    if (existing.isNotEmpty) {
-      final row = existing.first;
-      if ((row['is_synced'] as int? ?? 0) == 0) return false; // conflict
-      await _db.update(
-        'investment_theses',
-        {
-          ...cloudThesis.toMap(),
-          'cloud_id': cloudId,
-          'is_synced': 1,
-          'synced_at': DateTime.now().toIso8601String(),
-        },
-        where: 'cloud_id = ?',
-        whereArgs: [cloudId],
-      );
-      return true;
+  Future<bool> applyCloudThesis(InvestmentThesis record, String cloudId) =>
+      _applyCloudRecord('investment_theses', record.toMap(), cloudId);
+
+  Future<bool> _applyCloudRecord(
+    String table, Map<String, Object?> record, String cloudId,
+  ) => _db.transaction((txn) async {
+    final rows = await txn.query(table, where: 'cloud_id = ?', whereArgs: [cloudId]);
+    if (rows.length > 1) return false;
+    final existing = rows.firstOrNull;
+    if (existing != null && (existing['is_synced'] != 1 || existing['local_deleted'] == 1)) {
+      return false;
     }
-    await _db.insert('investment_theses', {
-      ...cloudThesis.toMap(),
+    final values = {
+      ...record,
       'cloud_id': cloudId,
       'is_synced': 1,
       'synced_at': DateTime.now().toIso8601String(),
-    });
+    };
+    if (existing == null) {
+      await txn.insert(table, values);
+    } else {
+      await txn.update(table, values, where: 'id = ?', whereArgs: [existing['id']]);
+    }
     return true;
-  }
+  });
 
   /// Apply a cloud budget to local SQLite (remote-wins for budgets).
   Future<bool> applyCloudBudget(String category, int monthlyLimit) async {

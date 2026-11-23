@@ -206,4 +206,41 @@ void main() {
       expect((await bob.investmentSettings())['private'], 'bob');
     },
   );
+  test(
+    'a late legacy conflict rolls back earlier rows and preserves the source',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartsave-conflict',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final sourcePath = path.join(directory.path, 'smartsave_demo.db');
+      final source = await databaseFactory.openDatabase(sourcePath);
+      addTearDown(source.close);
+      await source.execute(
+        'CREATE TABLE investment_settings (key TEXT PRIMARY KEY, value TEXT)',
+      );
+      await source.insert('investment_settings', {
+        'key': 'a-valid',
+        'value': 'original',
+      });
+      await source.insert('investment_settings', {
+        'key': 'z-conflict',
+        'value': 'legacy',
+      });
+      final account = await FinanceRepository.openForAccount(
+        'alice',
+        directory: directory.path,
+      );
+      addTearDown(account.close);
+      await account.saveInvestmentSetting('z-conflict', 'current');
+      await expectLater(
+        account.importLegacyAccountData('alice', ownershipConfirmed: true),
+        throwsStateError,
+      );
+      final after = await account.investmentSettings();
+      expect(after['a-valid'], isNull);
+      expect(after['z-conflict'], 'current');
+      expect(await source.query('investment_settings'), hasLength(2));
+    },
+  );
 }

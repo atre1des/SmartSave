@@ -25,6 +25,7 @@ if (firebaseApp && process.env.SMARTSAVE_ENABLE_ACCOUNT_DELETION === 'true') {
   };
 }
 const PORT = process.env.PORT || 3001;
+app.locals.upstreamTimeoutMs = 120_000;
 
 // --- Model configuration (free-tier only, no paid fallbacks) ---
 // Primary free model: ERNIE 5.5 Flash Preview (free)
@@ -280,6 +281,7 @@ app.post('/api/chat/completions',
   express.json({ limit: '1mb' }),
   validateCompletion,
   async (req, res) => {
+  let deadline;
   try {
     const { model, messages, temperature, max_tokens, stream } = req.body;
 
@@ -318,7 +320,17 @@ app.post('/api/chat/completions',
       );
     }
 
+    const upstream = new AbortController();
+    res.once('close', () => {
+      if (!res.writableEnded) upstream.abort();
+    });
+    deadline = setTimeout(
+      () => upstream.abort(new DOMException('Upstream timeout', 'TimeoutError')),
+      req.app.locals.upstreamTimeoutMs,
+    );
+    deadline.unref();
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      signal: upstream.signal,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -529,6 +541,10 @@ app.post('/api/chat/completions',
       res.json(data);
     }
   } catch (error) {
+    if (res.destroyed) return;
+    if (error?.name === 'TimeoutError') {
+      return rejectRequest(res, 504, 'UPSTREAM_TIMEOUT', 'The AI provider timed out.');
+    }
     console.error('OpenRouter proxy request failed');
     res.status(500).json(
       buildErrorResponse({
@@ -539,6 +555,8 @@ app.post('/api/chat/completions',
         retryable: true,
       }),
     );
+  } finally {
+    clearTimeout(deadline);
   }
 });
 

@@ -248,47 +248,18 @@ class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
     }
   }
 
-  Future<void> _importLegacy() async {
-    final auth = ref.read(authServiceProvider);
-    final uid = auth.currentUserId;
-    if (uid == null) return;
-    final repository = ref.read(financeRepositoryProvider);
-    final preferences = ref.read(sharedPreferencesProvider);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialog) => AlertDialog(
-        title: const Text('Confirm legacy record ownership'),
-        content: const Text(
-          'Confirm that every record and assistant conversation from the previous shared installation belongs to you. If anyone else used this installation, cancel. This reserves recovery for your account on this device.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(dialog, true), child: const Text('These are my records')),
-        ],
+  Future<void> _showLegacyRecovery() => showDialog<void>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: const Text('Legacy record recovery'),
+      content: const Text(
+        'This installation cannot verify who owns the old shared records or assistant history. The originals are kept on this device for ownership review.',
       ),
-    );
-    if (!mounted || auth.currentUserId != uid || confirmed != true) return;
-    setState(() => _working = true);
-    try {
-      await repository.importLegacyAccountData(
-        uid,
-        ownershipConfirmed: confirmed == true,
-        assistantHistory: preferences.getString('ai_conversations'),
-      );
-      if (mounted) {
-        await ref.read(financeControllerProvider).refresh();
-        if (mounted) showMessage(context, 'Legacy recovery is complete. The original was kept.');
-      }
-    } on StateError catch (error) {
-      if (mounted) showMessage(context, '${error.message} The original was kept.');
-    } catch (_) {
-      if (mounted) {
-        showMessage(context, 'Could not recover the legacy data. The original was kept.');
-      }
-    } finally {
-      if (mounted) setState(() => _working = false);
-    }
-  }
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialog), child: const Text('Close')),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Privacy & data')), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
@@ -297,7 +268,7 @@ class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
     const SizedBox(height: 12), const SurfaceCard(color: AppColors.mintLight, child: Text('Financial records are stored on this device. Synchronization can send records to Firebase, and the online assistant sends its conversation to OpenRouter through SmartSave’s backend.', style: TextStyle(fontSize: 12))),
     const SizedBox(height: 12),
     OutlinedButton(onPressed: _working ? null : _export, child: const Text('Export local data')),
-    OutlinedButton(onPressed: _working ? null : _importLegacy, child: const Text('Recover legacy data')),
+    OutlinedButton(onPressed: _working ? null : _showLegacyRecovery, child: const Text('Recover legacy data')),
     const SizedBox(height: 8), TextButton(onPressed: () => _push(context, const DeleteAccountScreen()), child: const Text('Delete account', style: TextStyle(color: AppColors.wine))),
   ])));
 }
