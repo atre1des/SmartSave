@@ -777,21 +777,24 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Disclaimer banner
-            _DisclaimerBanner(isConnected: isConnected),
+            if (!_showModeSelector || messages.isNotEmpty)
+              _DisclaimerBanner(isConnected: isConnected),
 
-            // Mode selector (shown initially)
-            if (_showModeSelector && messages.isEmpty)
-              _ModeSelector(currentMode: _mode, onToggle: _toggleMode),
-
-            // Quick actions (shown initially)
-            if (_showModeSelector && messages.isEmpty)
-              _QuickActionsSection(actions: _quickActions, onSelect: _send),
-
-            // Chat messages
             Expanded(
-              child: messages.isEmpty && !_showModeSelector
-                  ? _EmptyState(onClear: _clearConversation)
+              child: messages.isEmpty && _showModeSelector
+                  ? ListView(
+                      children: [
+                        _DisclaimerBanner(isConnected: isConnected),
+                        _ModeSelector(
+                          currentMode: _mode,
+                          onToggle: _toggleMode,
+                        ),
+                        _QuickActionsSection(
+                          actions: _quickActions,
+                          onSelect: _send,
+                        ),
+                      ],
+                    )
                   : LayoutBuilder(
                       builder: (context, constraints) {
                         if (kDebugLayout) {

@@ -79,9 +79,32 @@ class GoalProgressScreen extends ConsumerWidget {
   }
 
   Future<void> _contribute(BuildContext context, WidgetRef ref, SavingsGoal goal) async {
-    final controller = TextEditingController();
-    final amount = await showDialog<int>(context: context, builder: (dialogContext) => AlertDialog(title: const Text('Add money to goal'), content: TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount in ₸')), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')), FilledButton(onPressed: () { final value = int.tryParse(controller.text.replaceAll(RegExp(r'[^0-9]'), '')); if (value == null || value <= 0) return; Navigator.pop(dialogContext, value); }, child: const Text('Save'))]));
-    controller.dispose();
+    var input = '';
+    final amount = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add money to goal'),
+        content: TextField(
+          onChanged: (value) => input = value,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Amount in ₸'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = int.tryParse(input.replaceAll(RegExp(r'[^0-9]'), ''));
+              if (value == null || value <= 0) return;
+              Navigator.pop(dialogContext, value);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
     if (amount == null || goal.id == null) return;
     try { await ref.read(financeControllerProvider).addContribution(goal.id!, amount); } catch (error) { if (context.mounted) showMessage(context, error.toString()); }
   }

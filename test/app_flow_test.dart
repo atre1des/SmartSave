@@ -20,16 +20,19 @@ void main() {
     databaseFactory = databaseFactoryFfiNoIsolate;
   });
 
-  testWidgets('demo onboarding reaches goals and transaction creation', (
+  testWidgets('compact account journey covers onboarding, finances, and export', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.physicalSize = const Size(430, 700);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
     SharedPreferences.setMockInitialValues({});
     final repository = await FinanceRepository.open(
       databasePath: inMemoryDatabasePath,
+      accountUid: 'widget-test-account',
+      currentUid: () => 'widget-test-account',
+      seed: false,
     );
     addTearDown(repository.close);
 
@@ -62,6 +65,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Get started'));
     await tester.tap(find.text('Get started'));
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -110,14 +114,34 @@ void main() {
     await tester.tap(find.text('Continue to SmartSave'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Your finances'), findsOneWidget);
+    await tester.tap(find.byTooltip('Open My Account'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      4,
+    );
+    expect(find.byType(BackButton), findsNothing);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Your finances'), findsOneWidget);
+
     final dashboardScroll = find
         .descendant(
           of: find.byType(DashboardScreen),
           matching: find.byType(Scrollable),
         )
         .first;
-    final myGoals = find.text('My Goals');
-    await tester.scrollUntilVisible(myGoals, 300, scrollable: dashboardScroll);
+    final myGoals = find.text('Create your first goal');
+    await tester.scrollUntilVisible(myGoals, 180, scrollable: dashboardScroll);
+    expect(find.text('No goals yet'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Recent'),
+      180,
+      scrollable: dashboardScroll,
+    );
+    expect(find.text('Recent'), findsOneWidget);
+    await tester.scrollUntilVisible(myGoals, -140, scrollable: dashboardScroll);
     await tester.tap(myGoals);
     await tester.pumpAndSettle();
     await tester.tap(find.text('New goal'));
@@ -132,9 +156,31 @@ void main() {
     await tester.tap(find.text('Save goal'));
     await tester.pumpAndSettle();
     expect(find.text('Capstone laptop'), findsOneWidget);
+    await tester.tap(find.text('Capstone laptop'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Add money'), 200);
+    await tester.tap(find.text('Add money'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '35000');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(
+      (await repository.goals())
+          .singleWhere((goal) => goal.name == 'Capstone laptop')
+          .saved,
+      35000,
+    );
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
     await tester.pageBack();
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Goal Progress'),
+      150,
+      scrollable: dashboardScroll,
+    );
+    expect(find.text('No goals yet'), findsNothing);
     final recent = find
         .ancestor(of: find.text('Recent'), matching: find.byType(Row))
         .first;
@@ -158,6 +204,72 @@ void main() {
     );
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
+    expect(find.text('Test lunch'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    final spendingHeading = find
+        .ancestor(
+          of: find.text('Top spending this month'),
+          matching: find.byType(Row),
+        )
+        .first;
+    await tester.ensureVisible(find.text('Top spending this month'));
+    await tester.tap(
+      find.descendant(of: spendingHeading, matching: find.text('See all')),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Food budget'), 200);
+    expect(find.text('Food budget'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Invest'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Investment Intelligence'), 200);
+    expect(find.text('Investment Intelligence'), findsOneWidget);
+    await tester.tap(find.text('AI'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      2,
+    );
+
+    await tester.tap(find.text('My Account'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Privacy & data'), 200);
+    await tester.tap(find.text('Privacy & data'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Export local data'), 200);
+    await tester.tap(find.text('Export local data'));
+    await tester.pumpAndSettle();
+    expect(find.text('Local data export'), findsOneWidget);
+    expect(find.textContaining('Test lunch', findRichText: true), findsWidgets);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Log out'), 200);
+    await tester.tap(find.text('Log out'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsNothing);
+
+    await tester.ensureVisible(find.text('I already have an account'));
+    await tester.tap(find.text('I already have an account'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'student@example.edu',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'demo-pass-123');
+    final signIn = find.widgetWithText(FilledButton, 'Sign in');
+    await tester.ensureVisible(signIn);
+    await tester.tap(signIn);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Test lunch'),
+      200,
+      scrollable: dashboardScroll,
+    );
     expect(find.text('Test lunch'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -197,6 +309,33 @@ class _TestAuthService implements AuthService {
     expect(password, 'demo-pass-123');
     _user = _TestUser(displayName, () => _changes.add(_user));
     sessionUid.value = _user!.uid;
+    return AuthResult.ok();
+  }
+
+  _TestUser? _registered;
+
+  @override
+  String? get currentUserId => _user?.uid;
+
+  @override
+  Future<AuthResult> signIn({
+    required String email,
+    required String password,
+  }) async {
+    expect(email, 'student@example.edu');
+    expect(password, 'demo-pass-123');
+    _user = _registered;
+    sessionUid.value = _user!.uid;
+    _changes.add(_user);
+    return AuthResult.ok();
+  }
+
+  @override
+  Future<AuthResult> signOut() async {
+    _registered = _user;
+    _user = null;
+    sessionUid.value = null;
+    _changes.add(null);
     return AuthResult.ok();
   }
 

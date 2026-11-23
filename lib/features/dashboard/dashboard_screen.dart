@@ -9,7 +9,6 @@ import '../../shared/widgets.dart';
 import '../goals/goals_screen.dart';
 import '../invest/investment_intelligence_screen.dart';
 import '../transactions/transactions_screen.dart';
-import '../profile/my_account_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -34,32 +33,49 @@ class DashboardScreen extends ConsumerWidget {
     final topSpending = spending.entries.where((e) => e.key != 'Health').toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final goals = finance.goals;
+    final loadError = finance.loadError;
 
     return Scaffold(
       body: SafeArea(
         child: finance.isLoading
             ? const Center(child: CircularProgressIndicator(color: AppColors.firefly))
+            : loadError != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(loadError, textAlign: TextAlign.center),
+                      TextButton(onPressed: finance.refresh, child: const Text('Retry')),
+                    ],
+                  ),
+                ),
+              )
             : RefreshIndicator(
                 onRefresh: finance.refresh,
                 child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                   children: [
                     // Header with greeting and profile avatar
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(_getGreeting(), style: Theme.of(context).textTheme.bodySmall),
-                            const SizedBox(height: 2),
-                            Text('Your finances', style: Theme.of(context).textTheme.headlineMedium),
-                          ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_getGreeting(), style: Theme.of(context).textTheme.bodySmall),
+                              const SizedBox(height: 2),
+                              Text('Your finances', style: Theme.of(context).textTheme.headlineMedium),
+                            ],
+                          ),
                         ),
-                        // Profile avatar in top-right - tapping navigates to My Account
-                        GestureDetector(
-                          onTap: () => _push(context, const MyAccountScreen()),
-                          child: const CircleAvatar(
+                        IconButton(
+                          tooltip: 'Open My Account',
+                          onPressed: () => ref.read(selectedTabIndexProvider.notifier).state = 4,
+                          icon: const CircleAvatar(
                             backgroundColor: AppColors.mintLight,
                             foregroundColor: AppColors.firefly,
                             child: Text('Y', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -93,33 +109,8 @@ class DashboardScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 7),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Spent this month', style: TextStyle(color: AppColors.mint, fontSize: 11)),
-                                  Text(formatTenge(finance.monthlySpend), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0E4A4F),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.circle, color: AppColors.lime, size: 8),
-                                    SizedBox(width: 6),
-                                    Text('Demo data', style: TextStyle(color: AppColors.mintLight, fontSize: 11, fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                          const Text('Spent this month', style: TextStyle(color: AppColors.mint, fontSize: 11)),
+                          Text(formatTenge(finance.monthlySpend), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
                         ],
                         ),
                         ),
@@ -135,18 +126,9 @@ class DashboardScreen extends ConsumerWidget {
                       SectionHeading('Goal Progress', trailing: 'My Goals', onTrailing: () => _push(context, const GoalsScreen())),
                       const SizedBox(height: 12),
                       _GoalProgressCard(goals: goals.take(2).toList()),
-                      if (goals.length > 2) ...[
-                        const SizedBox(height: 8),
-                        Center(
-                          child: TextButton(
-                            onPressed: () => _push(context, const GoalsScreen()),
-                            child: Text('View all ${goals.length} goals', style: const TextStyle(color: AppColors.prussianBlue, fontWeight: FontWeight.w600)),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                      ] else ...[
-                        SectionHeading('Goals', trailing: 'Create', onTrailing: () => _push(context, const GoalsScreen())),
-                        const SizedBox(height: 12),
+                    ] else ...[
+                      const SectionHeading('Goals'),
+                      const SizedBox(height: 12),
                         SurfaceCard(
                           color: AppColors.mintLight,
                           padding: const EdgeInsets.all(20),
@@ -164,8 +146,8 @@ class DashboardScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20),
-                      ],
+                    ],
+                    const SizedBox(height: 20),
 
                     // Top spending this month
                     SectionHeading('Top spending this month', trailing: 'See all', onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
@@ -188,7 +170,6 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ),
                   ],
-                ],
               ),
             ),
       ),
@@ -385,8 +366,9 @@ class _SingleGoalCard extends StatelessWidget {
           const SizedBox(height: 12),
           ProgressTrack(value: goal.target == 0 ? 0 : goal.saved / goal.target, height: 10),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
             children: [
               Text('${_monthsLeft(goal.deadline)} months left', style: Theme.of(context).textTheme.bodySmall),
               Text('≈ ${formatTenge(monthly)}/month', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),

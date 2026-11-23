@@ -21,10 +21,7 @@ class MyAccountScreen extends ConsumerWidget {
     final finance = ref.watch(financeControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(),
-        title: Text('My Account'),
-      ),
+      appBar: AppBar(title: const Text('My Account')),
       body: SafeArea(
         child: finance.isLoading
             ? const Center(child: CircularProgressIndicator(color: AppColors.firefly))

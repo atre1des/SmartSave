@@ -34,7 +34,9 @@ class AppEntry extends ConsumerWidget {
           future: ref.read(authServiceProvider).isOnboardingComplete(),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
             }
             return snapshot.data! ? const AppShell() : const OnboardingScreen();
           },
@@ -71,7 +73,6 @@ class EmailVerificationScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -142,7 +143,7 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
-      child: Padding(
+      child: _ScrollWhenNeeded(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
         child: Column(
           children: [
@@ -290,17 +291,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         displayName: displayName,
       );
     } else {
-      result = await authService.signIn(
-        email: email,
-        password: password,
-      );
+      result = await authService.signIn(email: email, password: password);
     }
 
     if (!mounted) return;
     setState(() => _busy = false);
 
     if (!result.success) {
-      showMessage(context, result.errorMessage ?? 'Authentication failed. Please try again.');
+      showMessage(
+        context,
+        result.errorMessage ?? 'Authentication failed. Please try again.',
+      );
     }
   }
 
@@ -320,7 +321,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (result.success) {
       showMessage(context, 'Password reset email sent. Check your inbox.');
     } else {
-      showMessage(context, result.errorMessage ?? 'Failed to send reset email.');
+      showMessage(
+        context,
+        result.errorMessage ?? 'Failed to send reset email.',
+      );
     }
   }
 
@@ -464,7 +468,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
-      child: Padding(
+      child: _ScrollWhenNeeded(
         padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -535,9 +539,28 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   );
 }
 
+class _ScrollWhenNeeded extends StatelessWidget {
+  const _ScrollWhenNeeded({required this.padding, required this.child});
+
+  final EdgeInsets padding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        child: Padding(
+          padding: padding,
+          child: IntrinsicHeight(child: child),
+        ),
+      ),
+    ),
+  );
+}
+
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key, this.initialIndex = 0});
-  final int initialIndex;
+  const AppShell({super.key});
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
 }
@@ -588,22 +611,46 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final selected = ref.watch(selectedTabIndexProvider);
-    return Scaffold(
-      body: IndexedStack(index: selected, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        height: 80,
-        selectedIndex: selected,
-        onDestinationSelected: (index) => ref.read(selectedTabIndexProvider.notifier).state = index,
-        backgroundColor: Colors.white,
-        indicatorColor: Colors.transparent,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: [
-          for (var i = 0; i < _tabs.length; i++)
-            NavigationDestination(
-              icon: _buildTabIcon(_tabs[i].asset, i == selected),
-              label: _tabs[i].label,
-            ),
-        ],
+    final navigationTheme = NavigationBarTheme.of(context);
+    return PopScope(
+      canPop: selected == 0 || Navigator.of(context).canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && selected != 0) {
+          ref.read(selectedTabIndexProvider.notifier).state = 0;
+        }
+      },
+      child: Scaffold(
+        body: IndexedStack(index: selected, children: _pages),
+        bottomNavigationBar: NavigationBarTheme(
+          data: navigationTheme.copyWith(
+            labelTextStyle: WidgetStateProperty.resolveWith((states) {
+              final style =
+                  navigationTheme.labelTextStyle?.resolve(states) ??
+                  Theme.of(context).textTheme.labelMedium;
+              return style?.copyWith(
+                color: states.contains(WidgetState.selected)
+                    ? AppColors.firefly
+                    : AppColors.muted,
+              );
+            }),
+          ),
+          child: NavigationBar(
+            height: 80,
+            selectedIndex: selected,
+            onDestinationSelected: (index) =>
+                ref.read(selectedTabIndexProvider.notifier).state = index,
+            backgroundColor: Colors.white,
+            indicatorColor: Colors.transparent,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            destinations: [
+              for (var i = 0; i < _tabs.length; i++)
+                NavigationDestination(
+                  icon: _buildTabIcon(_tabs[i].asset, i == selected),
+                  label: _tabs[i].label,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
