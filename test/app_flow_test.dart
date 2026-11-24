@@ -169,22 +169,17 @@ void main() {
             .first;
         final myGoals = find.text('Create your first goal');
         await tester.scrollUntilVisible(
-          myGoals,
-          180,
-          scrollable: dashboardScroll,
-        );
-        expect(find.text('No goals yet'), findsOneWidget);
-        await tester.scrollUntilVisible(
           find.text('Recent'),
-          180,
+          140,
           scrollable: dashboardScroll,
         );
         expect(find.text('Recent'), findsOneWidget);
         await tester.scrollUntilVisible(
-          myGoals,
-          -140,
+          myGoals.hitTestable(),
+          120,
           scrollable: dashboardScroll,
         );
+        expect(find.text('No goals yet'), findsOneWidget);
         await tester.tap(myGoals);
         await tester.pumpAndSettle();
         await tester.tap(find.text('New goal'));
@@ -232,14 +227,16 @@ void main() {
         final recent = find
             .ancestor(of: find.text('Recent'), matching: find.byType(Row))
             .first;
+        final recentLink = find.descendant(
+          of: recent,
+          matching: find.text('See all'),
+        );
         await tester.scrollUntilVisible(
-          find.text('Recent'),
-          300,
+          recentLink.hitTestable(),
+          -120,
           scrollable: dashboardScroll,
         );
-        await tester.tap(
-          find.descendant(of: recent, matching: find.text('See all')),
-        );
+        await tester.tap(recentLink);
         await tester.pumpAndSettle();
         await tester.tap(find.byType(FloatingActionButton));
         await tester.pumpAndSettle();
@@ -282,6 +279,11 @@ void main() {
           200,
         );
         expect(find.text('Investment Intelligence'), findsOneWidget);
+        expect(find.text('Price change'), findsOneWidget);
+        await tester.tap(find.text('Explore'));
+        await tester.pumpAndSettle();
+        expect(find.text('Thesis Autopsy'), findsOneWidget);
+        expect(find.text('Price change'), findsNothing);
         await tester.tap(find.text('AI'));
         await tester.pumpAndSettle();
         expect(
@@ -290,6 +292,14 @@ void main() {
               .selectedIndex,
           2,
         );
+
+        await tester.tap(find.byTooltip('Conversation History'));
+        await tester.pumpAndSettle();
+        expect(find.byType(BottomSheet), findsOneWidget);
+        expect(find.text('New Chat'), findsOneWidget);
+        await tester.tap(find.text('New Chat'));
+        await tester.pumpAndSettle();
+        expect(find.byType(BottomSheet), findsNothing);
 
         await tester.tap(find.text('My Account'));
         await tester.pumpAndSettle();

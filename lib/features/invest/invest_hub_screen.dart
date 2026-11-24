@@ -19,6 +19,8 @@ class InvestHubScreen extends ConsumerStatefulWidget {
 }
 
 class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
+  bool _research = false;
+
   void _openFeature(Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
@@ -31,41 +33,120 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
       body: SafeArea(
         bottom: false,
         child: finance.isLoading
-            ? Center(child: CircularProgressIndicator(color: context.colors.text))
+            ? Center(
+                child: CircularProgressIndicator(color: context.colors.text),
+              )
             : RefreshIndicator(
                 onRefresh: finance.refresh,
                 child: ListView(
-                  padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.paddingOf(context).bottom),
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    24,
+                    24,
+                    24 + MediaQuery.paddingOf(context).bottom,
+                  ),
                   children: [
-                    Text(context.l10n.investmentIntelligence, style: glassTitle(context)),
+                    Text(
+                      context.l10n.investmentIntelligence,
+                      style: glassTitle(context),
+                    ),
                     const SizedBox(height: 10),
-                    Text(context.l10n.investExploreIntro, style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 27),
-                    SectionHeading(context.l10n.stocksForYou, trailing: context.l10n.viewAll, onTrailing: () => _openFeature(const StocksScreen())),
-                    Text(context.l10n.sampleStockNotice, style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 12),
-                    _StocksPreview(onTap: () => _openFeature(const StocksScreen())),
+                    Text(
+                      context.l10n.investExploreIntro,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        for (final (research, label) in [
+                          (false, context.l10n.stocksForYou),
+                          (true, context.l10n.explore),
+                        ])
+                          Expanded(
+                            child: Semantics(
+                              selected: _research == research,
+                              child: TextButton(
+                                onPressed: () =>
+                                    setState(() => _research = research),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: _research == research
+                                      ? context.colors.text
+                                      : context.colors.muted,
+                                  backgroundColor: _research == research
+                                      ? context.colors.action.withValues(
+                                          alpha: .12,
+                                        )
+                                      : null,
+                                  minimumSize: const Size(48, 48),
+                                ),
+                                child: Text(label, textAlign: TextAlign.center),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const Divider(height: 1),
                     const SizedBox(height: 20),
-                    SectionHeading(context.l10n.explore),
-                    const SizedBox(height: 6),
-                    for (final (index, icon, title, detail) in [
-                      (0, Icons.auto_awesome, context.l10n.aiBeginners, context.l10n.investBasicsIntro),
-                      (1, Icons.description_outlined, context.l10n.thesisReview, context.l10n.thesisTrackingIntro),
-                      (2, Icons.waves_outlined, context.l10n.liquidityAnalysis, context.l10n.liquidityExecutionIntro),
-                      (3, Icons.timeline_outlined, context.l10n.economicRipple, context.l10n.macroImpactIntro),
-                    ])
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(icon, color: context.colors.action),
-                        title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-                        subtitle: Text(detail, style: Theme.of(context).textTheme.bodySmall),
-                        trailing: Icon(Icons.chevron_right, color: context.colors.muted),
-                        onTap: () => _openFeature(InvestmentIntelligenceScreen(initialTab: index)),
+                    if (!_research)
+                      _StocksPreview(
+                        onTap: () => _openFeature(const StocksScreen()),
+                        onAssistant: () =>
+                            _openFeature(const InvestmentIntelligenceScreen()),
                       ),
+                    if (_research)
+                      for (final (index, icon, title, detail) in [
+                        (
+                          0,
+                          Icons.auto_awesome,
+                          context.l10n.aiBeginners,
+                          context.l10n.investBasicsIntro,
+                        ),
+                        (
+                          1,
+                          Icons.description_outlined,
+                          context.l10n.thesisReview,
+                          context.l10n.thesisTrackingIntro,
+                        ),
+                        (
+                          2,
+                          Icons.waves_outlined,
+                          context.l10n.liquidityAnalysis,
+                          context.l10n.liquidityExecutionIntro,
+                        ),
+                        (
+                          3,
+                          Icons.timeline_outlined,
+                          context.l10n.economicRipple,
+                          context.l10n.macroImpactIntro,
+                        ),
+                      ])
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(icon, color: context.colors.action),
+                          title: Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          subtitle: Text(
+                            detail,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right,
+                            color: context.colors.muted,
+                          ),
+                          onTap: () => _openFeature(
+                            InvestmentIntelligenceScreen(initialTab: index),
+                          ),
+                        ),
                     const SizedBox(height: 20),
 
                     // Bonds
-                    SectionHeading(context.l10n.bonds, trailing: context.l10n.comingSoon, onTrailing: () => _openFeature(const BondsScreen())),
+                    SectionHeading(
+                      context.l10n.bonds,
+                      trailing: context.l10n.comingSoon,
+                      onTrailing: () => _openFeature(const BondsScreen()),
+                    ),
                     const SizedBox(height: 12),
                     SurfaceCard(
                       color: context.colors.subtleSurface,
@@ -79,7 +160,11 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               color: context.colors.surface,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Icon(Icons.account_balance_outlined, color: context.colors.text, size: 24),
+                            child: Icon(
+                              Icons.account_balance_outlined,
+                              color: context.colors.text,
+                              size: 24,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -88,24 +173,37 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               children: [
                                 Text(
                                   context.l10n.bondOpportunities,
-                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   context.l10n.bondIntro,
-                                  style: TextStyle(color: context.colors.muted, fontSize: 12),
+                                  style: TextStyle(
+                                    color: context.colors.muted,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          Icon(Icons.chevron_right, color: context.colors.muted),
+                          Icon(
+                            Icons.chevron_right,
+                            color: context.colors.muted,
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
 
                     // Auto Invest
-                    SectionHeading(context.l10n.autoInvest, trailing: context.l10n.setUp, onTrailing: () => _openFeature(const AutoInvestScreen())),
+                    SectionHeading(
+                      context.l10n.autoInvest,
+                      trailing: context.l10n.setUp,
+                      onTrailing: () => _openFeature(const AutoInvestScreen()),
+                    ),
                     const SizedBox(height: 12),
                     SurfaceCard(
                       color: context.colors.noticeSurface,
@@ -119,7 +217,11 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               color: context.colors.surface,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Icon(Icons.autorenew_outlined, color: context.colors.warning, size: 24),
+                            child: Icon(
+                              Icons.autorenew_outlined,
+                              color: context.colors.warning,
+                              size: 24,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -128,36 +230,49 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               children: [
                                 Text(
                                   context.l10n.recurringInvestment,
-                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   context.l10n.createAllocation,
-                                  style: TextStyle(color: context.colors.muted, fontSize: 12),
+                                  style: TextStyle(
+                                    color: context.colors.muted,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          Icon(Icons.chevron_right, color: context.colors.muted),
+                          Icon(
+                            Icons.chevron_right,
+                            color: context.colors.muted,
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       context.l10n.demoTransfersNotice,
-                      style: TextStyle(color: context.colors.muted, fontSize: 11),
+                      style: TextStyle(
+                        color: context.colors.muted,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
+      ),
     );
   }
 }
 
 class _StocksPreview extends ConsumerWidget {
-  const _StocksPreview({required this.onTap});
+  const _StocksPreview({required this.onTap, required this.onAssistant});
   final VoidCallback onTap;
+  final VoidCallback onAssistant;
 
   // Sample stocks - same as InvestScreen
   static const List<(String, String, String, String, String, bool)> _stocks = [
@@ -169,71 +284,117 @@ class _StocksPreview extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Use the same sample stocks as the current InvestScreen
+    final colors = context.colors;
+    final numeric = Theme.of(context).textTheme.titleMedium?.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ..._stocks.take(3).map(
-          (stock) => Padding(
-            padding: const EdgeInsets.only(bottom: 9),
-            child: _StockTile(stock: stock, onTap: () => _push(context, StockDetailsScreen(stock: stock))),
+        Text(
+          context.l10n.sampleStockNotice,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 14),
+        Text(
+          context.l10n.stockPriceChange,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        for (final stock in _stocks) ...[
+          _StockMovement(ticker: stock.$2, change: stock.$5),
+          const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 14),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            onPressed: onAssistant,
+            icon: const Icon(Icons.auto_awesome, size: 17),
+            label: Text(context.l10n.aiBeginners),
           ),
         ),
-        TextButton(
-          onPressed: onTap,
-          child: Text(context.l10n.viewAllStocks, style: TextStyle(color: context.colors.action, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 10),
+        for (final stock in _stocks.take(3)) ...[
+          Divider(height: 1, color: colors.outline),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(stock.$1),
+            subtitle: Text(
+              stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile,
+            ),
+            trailing: Text(stock.$4, style: numeric),
+            onTap: () => _push(context, StockDetailsScreen(stock: stock)),
+          ),
+        ],
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton(
+            onPressed: onTap,
+            child: Text(context.l10n.viewAllStocks),
+          ),
         ),
       ],
     );
   }
 }
 
-class _StockTile extends StatelessWidget {
-  const _StockTile({required this.stock, required this.onTap});
-  final (String, String, String, String, String, bool) stock;
-  final VoidCallback onTap;
+class _StockMovement extends StatelessWidget {
+  const _StockMovement({required this.ticker, required this.change});
+
+  final String ticker;
+  final String change;
 
   @override
   Widget build(BuildContext context) {
-    final magnitude = double.parse(stock.$5.substring(1, stock.$5.length - 1).replaceAll(',', '.'));
-    final gain = stock.$5.startsWith('+');
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      onTap: onTap,
-      title: Text(stock.$1, style: Theme.of(context).textTheme.titleLarge),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('${stock.$2} · ${stock.$3}'),
-          Text(stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile),
-        ],
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(stock.$4, style: Theme.of(context).textTheme.titleMedium),
-          Text(stock.$5, style: TextStyle(color: gain ? context.colors.positive : context.colors.error, fontSize: 12)),
-          const SizedBox(height: 4),
-          ExcludeSemantics(
+    final colors = context.colors;
+    final gain = change.startsWith('+');
+    final magnitude = double.parse(
+      change.substring(1, change.length - 1).replaceAll(',', '.'),
+    );
+    final fraction = (magnitude / 2.3).clamp(0.0, 1.0);
+    final numberStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    return Row(
+      children: [
+        SizedBox(width: 50, child: Text(ticker, style: numberStyle)),
+        Expanded(
+          child: ExcludeSemantics(
             child: SizedBox(
-              width: 48,
-              child: Align(
-                alignment: gain ? Alignment.centerRight : Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: (magnitude / 2.3).clamp(0, 1),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: gain ? context.colors.progress : context.colors.warning,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: const SizedBox(height: 3),
-                  ),
-                ),
+              height: 23,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final midpoint = constraints.maxWidth / 2;
+                  final width = midpoint * fraction;
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(height: 1, color: colors.outline),
+                      Container(width: 1, color: colors.muted),
+                      Positioned(
+                        left: gain ? midpoint : midpoint - width,
+                        width: width,
+                        height: 12,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: gain ? colors.action : colors.warning,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
-        ],
-      ),
+        ),
+        SizedBox(
+          width: 64,
+          child: Text(change, style: numberStyle, textAlign: TextAlign.end),
+        ),
+      ],
     );
   }
 }

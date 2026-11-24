@@ -1,28 +1,35 @@
-# SmartSave UI v3 — Phase A review
+# SmartSave Phase A — Reference-driven redesign
 
-This child branch starts at the UI v2 experiment, commit `ee9ea86f040d5fc1f80177bf20a52df0e3919e37`. The prototype follows the supplied Liquid Glass guidance. The approval gate covers the three screens below.
+This review covers Home, Investment Intelligence and AI chat on `experimental/ui-v3-liquid-glass`. The previous Phase A captures are preserved in commit [909248b](https://github.com/atre1des/SmartSave/tree/909248b430f24564ffe6e14504a8f36a266aa199/docs/ui-v3).
 
-| Screen | UI v2 comparison | UI v3 light | UI v3 dark |
-| --- | --- | --- | --- |
-| Dashboard | [Light](../ui-v2/light-dashboard.png), [Dark](../ui-v2/dark-dashboard.png) | [Light](light-dashboard.png) | [Dark](dark-dashboard.png) |
-| Investment Intelligence home | [Light](../ui-v2/light-invest.png), [Dark](../ui-v2/dark-invest.png) | [Light](light-invest.png) | [Dark](dark-invest.png) |
-| AI chat | UI v2 used a standard toolbar, bordered messages, and a solid composer | [Light](light-ai-chat.png) | [Dark](dark-ai-chat.png) |
+| Screen | Light | Dark |
+| --- | --- | --- |
+| Home | [Dashboard](light-dashboard.png) | [Dashboard](dark-dashboard.png) |
+| Investment Intelligence | [Invest](light-invest.png) | [Invest](dark-invest.png) |
+| AI Assistant | [Chat](light-ai-chat.png) | [Chat](dark-ai-chat.png) |
 
-Actual Flutter widget captures use a 430 × 920 logical viewport at 2×, Noto Sans and DejaVu fallbacks, an in-memory seeded finance repository, and a saved fictional chat. The offline label reflects the fixture's unavailable provider. Corresponding light and dark views use the same data. The investment movements use the existing illustrative quote values.
+## Reference mapping
 
-## Changes beyond color
+| Attachments in display order | SmartSave application |
+| --- | --- |
+| 1–2 · Apple Wallet | Move the amount and label out of a heavy card. Use right-aligned transaction values, a single grouped activity surface and quiet dividers. Balance detail remains outside this review. |
+| 3 and 9 · Fuse Plus, repeated attachment | Keep the dark canvas nearly black, with limited surface tint and big type. Apply this restraint to the chat transcript and market overview. |
+| 4 · Binance | Place signed data in a zero-centered analytical chart. Use selectable market and research views. |
+| 5 · Starling | Give the balance its own atmospheric space. Place records lower on the page, on a distinct surface. |
+| 6 · Public portfolio | Give price comparisons shared space and a common scale. Keep section navigation and the dock compact. |
+| 7 · Klarna | Use a floating capsule, compact prompt controls and layered sheet interactions. |
+| 8 · Public investing introduction | Use strong contrast and generous space around research controls on the dark canvas. |
+| 10 · Fuse wallet | Give the primary financial amount larger tabular figures and separate supporting labels and amounts. |
 
-- **Dashboard** — A large financial title and tapered balance hierarchy replace the shortcut-first composition. One grouped savings surface and recent activity sit ahead of research shortcuts. The six equal tiles become a compact route list with existing actions intact.
-- **Investment Intelligence home** — Oversized type establishes the research destination. Sample quotes appear as typographic rows with signed values and magnitude marks, ahead of grouped entry points. Each research shortcut opens its corresponding existing analysis tab.
-- **AI chat** — A larger title and concise status sit beside history and feature controls. Rounded, asymmetric message shapes give each role a distinct silhouette. An inset contextual notice and a translucent composer separate chat and controls. The history drawer uses a softer edge and a dedicated heading. Existing conversation storage, navigation, streaming, and key handlers remain in place.
-- **Navigation** — `AppNavigationBar` now renders a clipped floating capsule with a moving selection highlight and semantic destination labels. The two scrollable prototypes paint beneath the dock and reserve sufficient trailing space to scroll their last content clear. The dock hides while the AI keyboard is open.
+## Changes from the previous Phase A
 
-## Rendering and accessibility
+- **Home** replaces the gradient balance card with a larger open balance area and a localized monthly spend and budget line. Research has a dedicated link beside the financial summaries. The two most recent transactions share a single inset group, followed by savings progress and the existing spending details and shortcuts.
+- **Invest** separates the sample market overview from research. Four existing sample changes share a signed chart with a common zero baseline. Stock detail links and the AI investment entry remain visible in the market view. Theses, liquidity and economic scenarios are available in Explore. The chart shows existing illustrative values side by side, with no historical series or live feed.
+- **Chat** replaces assistant bubbles with a readable markdown transcript interleaved with right-aligned user messages. The composer keeps input, mode and send controls on one line when collapsed, and grows for multiline text. A scrollable history sheet replaces the drawer and retains saved-chat controls and research links.
+- **Navigation** retains the five localized destinations and moving highlight. The capsule now has more internal breathing room and a quieter selection tint. Home and Invest scroll beneath it and have trailing space to bring the last item clear.
 
-`GlassSurface` uses Flutter's built-in clipped `BackdropFilter` and restrained opacity and highlight treatments, with no new dependency. Glass is limited to the dock and composer. Scrollable financial cards and quote rows carry no blur. High-contrast and accessible-navigation signals make the glass layer solid and skip the filter. Flutter's disable-animations signal removes the selection animation. Native Reduce Transparency mapping and real-device frame profiling remain open.
+The six images are actual Flutter widget renders at 430 × 920 logical pixels, exported at 2×. They use one local SQLite fixture with fictional financial records and a saved fictional conversation. The capture renderer uses Noto Sans and DejaVu glyph fallbacks. The chat status reflects the offline fixture.
 
-The visual treatment approximates the supplied design principles in Flutter. Native UIKit/SwiftUI Liquid Glass optics and on-device compositing were outside this prototype. The desktop capture verifies layout, actual rendering, and typography at the fixture size. iPhone safe areas, software keyboard behavior on hardware, and large text across all locales remain for device review.
+The floating control materials use clipped Flutter blur, an opaque high-contrast fallback and a reduced-motion selection mode. Native iOS glass and device-level keyboard, safe area, Reduce Transparency and frame timing still need device review. No new packages were required.
 
-## Verification
-
-`flutter analyze --no-pub` reported zero diagnostics. `flutter test --no-pub --coverage --reporter expanded` passed all 65 tests, including the compact account journey in both themes, high-contrast glass fallback, locale switching, and mocked streaming and conversation memory. These checks used local fixtures.
+Flutter analysis finished with zero diagnostics. The complete Flutter suite passed 65 tests with coverage enabled. The two compact account journeys exercise the new research segment and history sheet. Streaming and conversation persistence were exercised with mocked requests.

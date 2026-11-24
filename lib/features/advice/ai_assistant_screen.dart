@@ -46,8 +46,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   bool _showModeSelector = true;
   SmartSaveAIAssistantService? _assistantService;
 
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
-
   // Backend connectivity status
   BackendStatus _backendStatus = BackendStatus.unknown;
 
@@ -128,7 +126,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
   void _startNewConversation() {
     ref.read(aiConversationsProvider).startNew();
-    _scaffoldKey.currentState?.closeDrawer();
     setState(() {
       _lastError = null;
       _showModeSelector = true;
@@ -137,7 +134,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
   void _selectConversation(String id) {
     unawaited(ref.read(aiConversationsProvider).select(id));
-    _scaffoldKey.currentState?.closeDrawer();
     setState(() {
       _lastError = null;
       _showModeSelector = false;
@@ -304,127 +300,129 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     _assistantService!.setMode(_mode);
   }
 
-  Widget _buildDrawer(AIConversations conversations) {
-    return Drawer(
-      backgroundColor: context.colors.canvas,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadiusDirectional.horizontal(
-          end: Radius.circular(30),
+  void _openHistory() {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: .78,
+        child: Consumer(
+          builder: (context, ref, _) => _buildHistory(
+            ref.watch(aiConversationsProvider),
+            () => Navigator.pop(sheetContext),
+          ),
         ),
       ),
-      child: SafeArea(
-        child: Column(
-          children: [
+    );
+  }
+
+  Widget _buildHistory(AIConversations conversations, VoidCallback close) {
+    return SafeArea(
+      top: false,
+      child: ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 26, 20, 16),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                context.l10n.conversationHistory,
+                style: glassTitle(
+                  context,
+                ).copyWith(fontSize: 25, letterSpacing: -.8),
+              ),
+            ),
+          ),
+
+          // Fixed entries
+          ListTile(
+            leading: const Icon(Icons.add_circle_outline),
+            title: Text(context.l10n.newChat),
+            subtitle: Text(context.l10n.startConversation),
+            onTap: conversations.busy || !conversations.ready
+                ? null
+                : () {
+                    close();
+                    _startNewConversation();
+                  },
+          ),
+          ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: Text(context.l10n.thesisReview),
+            subtitle: Text(context.l10n.recordReasoning),
+            onTap: () {
+              close();
+              _openFeature(const InvestmentIntelligenceScreen(initialTab: 1));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.waves_outlined),
+            title: Text(context.l10n.liquidity),
+            subtitle: Text(context.l10n.testOrderSize),
+            onTap: () {
+              close();
+              _openFeature(const InvestmentIntelligenceScreen(initialTab: 2));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.timeline_outlined),
+            title: Text(context.l10n.economicRipple),
+            subtitle: Text(context.l10n.simulateMacro),
+            onTap: () {
+              close();
+              _openFeature(const InvestmentIntelligenceScreen(initialTab: 3));
+            },
+          ),
+
+          const Divider(height: 16),
+
+          // Recent chats
+          if (conversations.entries.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 26, 20, 16),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  context.l10n.conversationHistory,
-                  style: glassTitle(
-                    context,
-                  ).copyWith(fontSize: 28, letterSpacing: -1),
-                ),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+              child: Text(
+                context.l10n.recentChats,
+                style: Theme.of(context).textTheme.titleSmall,
               ),
             ),
-
-            // Fixed entries
-            ListTile(
-              leading: const Icon(Icons.add_circle_outline),
-              title: Text(context.l10n.newChat),
-              subtitle: Text(context.l10n.startConversation),
-              onTap: conversations.busy || !conversations.ready
-                  ? null
-                  : _startNewConversation,
-            ),
-            ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: Text(context.l10n.thesisReview),
-              subtitle: Text(context.l10n.recordReasoning),
-              onTap: () {
-                _scaffoldKey.currentState?.closeDrawer();
-                _openFeature(const InvestmentIntelligenceScreen());
+          for (final entry in conversations.entries)
+            Builder(
+              builder: (context) {
+                final firstUserMsg = entry.value
+                    .where((m) => m.isUser)
+                    .firstOrNull;
+                final title = firstUserMsg?.text ?? context.l10n.untitledChat;
+                return ListTile(
+                  dense: true,
+                  title: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  trailing: IconButton(
+                    tooltip: context.l10n.delete,
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    onPressed: conversations.busy
+                        ? null
+                        : () {
+                            conversations.delete(entry.key);
+                            setState(() => _lastError = null);
+                          },
+                  ),
+                  onTap: conversations.busy
+                      ? null
+                      : () {
+                          close();
+                          _selectConversation(entry.key);
+                        },
+                );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.waves_outlined),
-              title: Text(context.l10n.liquidity),
-              subtitle: Text(context.l10n.testOrderSize),
-              onTap: () {
-                _scaffoldKey.currentState?.closeDrawer();
-                _openFeature(const InvestmentIntelligenceScreen());
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.timeline_outlined),
-              title: Text(context.l10n.economicRipple),
-              subtitle: Text(context.l10n.simulateMacro),
-              onTap: () {
-                _scaffoldKey.currentState?.closeDrawer();
-                _openFeature(const InvestmentIntelligenceScreen());
-              },
-            ),
-
-            const Divider(height: 16),
-
-            // Recent Chats
-            if (conversations.entries.isNotEmpty)
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Text(
-                        context.l10n.recentChats,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: context.colors.muted,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView(
-                        children: conversations.entries.map((entry) {
-                          final firstUserMsg = entry.value
-                              .where((m) => m.isUser)
-                              .firstOrNull;
-                          final title =
-                              firstUserMsg?.text ?? context.l10n.untitledChat;
-                          final preview = title.length > 30
-                              ? '${title.substring(0, 30)}...'
-                              : title;
-                          return ListTile(
-                            dense: true,
-                            title: Text(
-                              preview,
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 16),
-                              onPressed: conversations.busy
-                                  ? null
-                                  : () {
-                                      conversations.delete(entry.key);
-                                      setState(() => _lastError = null);
-                                    },
-                            ),
-                            onTap: conversations.busy
-                                ? null
-                                : () => _selectConversation(entry.key),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -451,10 +449,9 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     );
 
     return Scaffold(
-      key: _scaffoldKey,
       appBar: AppBar(
-        toolbarHeight: 82,
-        titleSpacing: 4,
+        toolbarHeight: 70,
+        titleSpacing: 10,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -463,7 +460,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
               context.l10n.assistant,
               style: glassTitle(
                 context,
-              ).copyWith(fontSize: 28, letterSpacing: -1),
+              ).copyWith(fontSize: 25, letterSpacing: -.8),
               maxLines: 2,
             ),
             const SizedBox(height: 5),
@@ -483,8 +480,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
         ),
         leading: IconButton(
           tooltip: context.l10n.conversationHistory,
-          icon: const Icon(Icons.history_rounded),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          icon: const Icon(Icons.history_rounded, size: 21),
+          onPressed: _openHistory,
         ),
         actions: [
           PopupMenuButton<String>(
@@ -568,8 +565,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
           ),
         ],
       ),
-      drawer: _buildDrawer(conversations),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             if (!_showModeSelector || messages.isNotEmpty)
@@ -623,8 +620,9 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                                     (waitingForFirstChunk ? 1 : 0),
                                 itemBuilder: (context, index) {
                                   if (index == messages.length) {
-                                    return _StreamingBubble(
+                                    return _AssistantTranscript(
                                       content: _streamingContent,
+                                      isStreaming: true,
                                     );
                                   }
                                   return _MessageBubble(
@@ -679,12 +677,6 @@ class _DisclaimerBanner extends StatelessWidget {
     width: double.infinity,
     margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
     padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-    decoration: BoxDecoration(
-      color: isConnected
-          ? context.colors.surface
-          : context.colors.noticeSurface.withValues(alpha: .65),
-      borderRadius: BorderRadius.circular(18),
-    ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -702,9 +694,9 @@ class _DisclaimerBanner extends StatelessWidget {
                 ? context.l10n.aiProxyNotice
                 : context.l10n.aiOfflineNotice,
             style: TextStyle(
-              color: isConnected ? context.colors.text : context.colors.warning,
-              fontSize: 10,
-              height: 1.35,
+              color: context.colors.muted,
+              fontSize: 12,
+              height: 1.4,
             ),
           ),
         ),
@@ -868,7 +860,8 @@ class _QuickActionChip extends StatelessWidget {
     label: Text(action.title, style: const TextStyle(fontSize: 12)),
     onPressed: onTap,
     backgroundColor: context.colors.subtleSurface,
-    side: BorderSide(color: context.colors.outline),
+    side: BorderSide.none,
+    shape: const StadiumBorder(),
   );
 
   IconData _iconForAction(QuickActionType type) {
@@ -924,64 +917,37 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kDebugLayout) {
-      debugPrint(
-        '[MessageBubble] build: role=${message.role}, contentLength=${message.text.length}, '
-        'isStreaming=${message.isStreaming}, hasError=${message.error != null}, '
-        'availableWidth=${(MediaQuery.sizeOf(context).width * 0.84).toStringAsFixed(1)}, '
-        'messageEmpty=${message.text.isEmpty}',
+    final colors = context.colors;
+    if (!message.isUser) {
+      return _AssistantTranscript(
+        content: message.text,
+        isStreaming: message.isStreaming,
       );
     }
     return Align(
-      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (kDebugLayout) {
-            debugPrint(
-              '[MessageBubble] layout constraints: maxWidth=${constraints.maxWidth.toStringAsFixed(1)}, '
-              'maxHeight=${constraints.maxHeight.toStringAsFixed(1)}, '
-              'hasBoundedWidth=${constraints.maxWidth.isFinite}, '
-              'hasBoundedHeight=${constraints.maxHeight.isFinite}',
-            );
-          }
-          return Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.sizeOf(context).width * .84,
-              maxHeight: constraints.maxHeight.isFinite
-                  ? constraints.maxHeight
-                  : double.infinity,
-            ),
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: message.isUser
-                  ? context.colors.primary
-                  : context.colors.surface,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(24),
-                topRight: const Radius.circular(24),
-                bottomLeft: Radius.circular(message.isUser ? 24 : 7),
-                bottomRight: Radius.circular(message.isUser ? 7 : 24),
-              ),
-            ),
-            child: message.isUser
-                ? SelectableText(
-                    message.text,
-                    style: TextStyle(
-                      color: context.colors.onPrimary,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  )
-                : BufferedStreamingMarkdown(
-                    content: message.text,
-                    isStreaming: message.isStreaming,
-                    selectable: true,
-                    styleSheet: _assistantMarkdownStyleSheet(context),
-                    onTapLink: (url, title, text) {},
-                  ),
-          );
-        },
+      alignment: AlignmentDirectional.centerEnd,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * .82,
+        ),
+        margin: const EdgeInsets.only(bottom: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(
+            colors.action.withValues(alpha: colors.isDark ? .18 : .12),
+            colors.canvas,
+          ),
+          borderRadius: const BorderRadiusDirectional.only(
+            topStart: Radius.circular(23),
+            topEnd: Radius.circular(23),
+            bottomStart: Radius.circular(23),
+            bottomEnd: Radius.circular(7),
+          ),
+        ),
+        child: SelectableText(
+          message.text,
+          style: TextStyle(color: colors.text, fontSize: 15, height: 1.45),
+        ),
       ),
     );
   }
@@ -992,8 +958,8 @@ MarkdownStyleSheet _assistantMarkdownStyleSheet(BuildContext context) {
   return MarkdownStyleSheet.fromTheme(theme).copyWith(
     p: theme.textTheme.bodyMedium?.copyWith(
       color: context.colors.text,
-      height: 1.5,
-      fontSize: 13,
+      height: 1.53,
+      fontSize: 15,
     ),
     h1: theme.textTheme.headlineSmall?.copyWith(
       color: context.colors.text,
@@ -1042,7 +1008,7 @@ MarkdownStyleSheet _assistantMarkdownStyleSheet(BuildContext context) {
       color: context.colors.text,
     ),
     codeblockDecoration: BoxDecoration(
-      color: context.colors.text,
+      color: context.colors.subtleSurface,
       borderRadius: BorderRadius.circular(8),
     ),
     codeblockPadding: const EdgeInsets.all(12),
@@ -1056,88 +1022,55 @@ MarkdownStyleSheet _assistantMarkdownStyleSheet(BuildContext context) {
   );
 }
 
-class _StreamingBubble extends StatelessWidget {
-  const _StreamingBubble({required this.content});
+class _AssistantTranscript extends StatelessWidget {
+  const _AssistantTranscript({
+    required this.content,
+    required this.isStreaming,
+  });
+
   final String content;
+  final bool isStreaming;
 
   @override
-  Widget build(BuildContext context) {
-    if (kDebugLayout) {
-      debugPrint(
-        '[StreamingBubble] build: contentLength=${content.length}, '
-        'availableWidth=${(MediaQuery.sizeOf(context).width * 0.84).toStringAsFixed(1)}, '
-        'contentEmpty=${content.isEmpty}',
-      );
-    }
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (kDebugLayout) {
-            debugPrint(
-              '[StreamingBubble] layout constraints: maxWidth=${constraints.maxWidth.toStringAsFixed(1)}, '
-              'maxHeight=${constraints.maxHeight.toStringAsFixed(1)}, '
-              'hasBoundedWidth=${constraints.maxWidth.isFinite}, '
-              'hasBoundedHeight=${constraints.maxHeight.isFinite}',
-            );
-          }
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * .84,
-                maxHeight: constraints.maxHeight.isFinite
-                    ? constraints.maxHeight
-                    : double.infinity,
-              ),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.sizeOf(context).width * .84,
-                ),
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 11,
-                ),
-                decoration: BoxDecoration(
-                  color: context.colors.surface,
-                  border: Border.all(color: context.colors.outline),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    BufferedStreamingMarkdown(
-                      content: content,
-                      isStreaming: true,
-                      selectable: true,
-                      styleSheet: _assistantMarkdownStyleSheet(context),
-                      onTapLink: (url, title, text) {},
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: context.colors.progress,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(4, 8, 6, 24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.auto_awesome, size: 16, color: context.colors.action),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                context.l10n.assistant,
+                style: Theme.of(context).textTheme.titleSmall,
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
+            if (isStreaming) ...[
+              const SizedBox(width: 10),
+              SizedBox.square(
+                dimension: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: context.colors.action,
+                  semanticsLabel: context.l10n.waiting,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        BufferedStreamingMarkdown(
+          content: content,
+          isStreaming: isStreaming,
+          selectable: true,
+          styleSheet: _assistantMarkdownStyleSheet(context),
+          onTapLink: (url, title, text) {},
+        ),
+      ],
+    ),
+  );
 }
 
 class _ErrorBanner extends StatelessWidget {
@@ -1264,100 +1197,72 @@ class _Composer extends StatelessWidget {
     ),
     child: GlassSurface(
       radius: 30,
-      padding: const EdgeInsets.fromLTRB(11, 2, 7, 7),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Mode indicator
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                mode == AssistantMode.beginner
-                    ? context.l10n.beginnerMode
-                    : context.l10n.experiencedMode,
-                style: TextStyle(
-                  color: context.colors.muted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              TextButton(
-                onPressed: onModeToggle,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  context.l10n.switchMode,
-                  style: TextStyle(
-                    color: context.colors.action,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          IconButton(
+            tooltip: mode == AssistantMode.beginner
+                ? '${context.l10n.switchMode} · ${context.l10n.beginnerMode}'
+                : '${context.l10n.switchMode} · ${context.l10n.experiencedMode}',
+            onPressed: onModeToggle,
+            icon: Icon(
+              mode == AssistantMode.beginner
+                  ? Icons.school_outlined
+                  : Icons.analytics_outlined,
+              color: context.colors.action,
+              size: 20,
+            ),
           ),
-          const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Focus(
-                  canRequestFocus: false,
-                  onKeyEvent: _handleKey,
-                  child: TextField(
-                    controller: controller,
-                    minLines: 1,
-                    maxLines: 4,
-                    textInputAction: TextInputAction.newline,
-                    readOnly: busy,
-                    decoration: InputDecoration(
-                      hintText: busy
-                          ? context.l10n.waiting
-                          : context.l10n.askSmartSave,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 15,
-                        vertical: 12,
+          Expanded(
+            child: Focus(
+              canRequestFocus: false,
+              onKeyEvent: _handleKey,
+              child: TextField(
+                controller: controller,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.newline,
+                readOnly: busy,
+                decoration: InputDecoration(
+                  hintText: busy
+                      ? context.l10n.waiting
+                      : context.l10n.askSmartSave,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 3,
+                    vertical: 14,
+                  ),
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            height: 48,
+            width: 48,
+            child: IconButton.filled(
+              tooltip: context.l10n.sendQuestion,
+              onPressed: busy ? null : () => onSend(controller.text),
+              style: IconButton.styleFrom(
+                backgroundColor: context.colors.primary,
+                foregroundColor: context.colors.onPrimary,
+              ),
+              icon: busy
+                  ? SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: context.colors.onPrimary,
                       ),
-                      filled: false,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      isDense: true,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 48,
-                width: 48,
-                child: IconButton.filled(
-                  tooltip: context.l10n.sendQuestion,
-                  onPressed: busy ? null : () => onSend(controller.text),
-                  style: IconButton.styleFrom(
-                    backgroundColor: context.colors.primary,
-                    foregroundColor: context.colors.onPrimary,
-                  ),
-                  icon: busy
-                      ? SizedBox(
-                          width: 17,
-                          height: 17,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: context.colors.onPrimary,
-                          ),
-                        )
-                      : const Icon(Icons.arrow_upward_rounded),
-                ),
-              ),
-            ],
+                    )
+                  : const Icon(Icons.arrow_upward_rounded),
+            ),
           ),
         ],
       ),

@@ -294,7 +294,7 @@ class AppNavigationBar extends StatelessWidget {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: colors.action.withValues(
-                            alpha: colors.isDark ? .2 : .11,
+                            alpha: colors.isDark ? .16 : .08,
                           ),
                           borderRadius: BorderRadius.circular(30),
                         ),
@@ -317,8 +317,8 @@ class AppNavigationBar extends StatelessWidget {
                                 child: ExcludeSemantics(
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 7,
-                                      horizontal: 2,
+                                      vertical: 9,
+                                      horizontal: 3,
                                     ),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
@@ -337,7 +337,7 @@ class AppNavigationBar extends StatelessWidget {
                                             fontWeight: i == selectedIndex
                                                 ? FontWeight.w700
                                                 : FontWeight.w500,
-                                            fontSize: 10,
+                                            fontSize: 11,
                                           ),
                                         ),
                                       ],
