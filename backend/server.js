@@ -1,10 +1,13 @@
 // backend/server.js
 import express from 'express';
 import cors from 'cors';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+
+dotenv.config({ path: fileURLToPath(new URL('./.env', import.meta.url)) });
 
 export const app = express();
 const firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
@@ -350,6 +353,9 @@ app.post('/api/chat/completions',
     const rateLimitHeaders = extractRateLimitHeaders(response);
 
     if (!response.ok) {
+      if (rateLimitHeaders['retry-after']) {
+        res.setHeader('Retry-After', rateLimitHeaders['retry-after']);
+      }
       let errorText = '';
       try {
         errorText = await response.text();
@@ -463,16 +469,16 @@ app.post('/api/chat/completions',
           );
         }
 
-        // Always signal end
-        res.write('data: [DONE]\n\n');
+        // Preserve upstream completion semantics. EOF without [DONE] is incomplete.
+        if (!receivedAny) res.write('data: [DONE]\n\n');
         res.end();
-      } catch (streamErr) {
+      } catch {
         console.error('Upstream stream was interrupted');
         if (!res.headersSent) {
           return res.status(502).json(
             buildErrorResponse({
               status: 502,
-              message: 'Upstream stream interrupted: ' + streamErr.message,
+              message: 'Upstream stream interrupted.',
               code: 'STREAM_INTERRUPTED',
               isDailyQuota: false,
               retryable: true,
@@ -484,7 +490,7 @@ app.post('/api/chat/completions',
           res.write(
             `data: ${JSON.stringify({
               error: {
-                message: 'Stream interrupted: ' + streamErr.message,
+                message: 'Stream interrupted.',
                 type: 'stream_interrupted',
               },
             })}\n\n`,

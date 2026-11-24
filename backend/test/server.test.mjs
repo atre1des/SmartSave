@@ -332,6 +332,21 @@ test('401: authentication error is forwarded with its code', async () => {
   assert.equal(body.isDailyQuota, false);
 });
 
+test('402: preserves an upstream credit error', async () => {
+  upstreamResponse = () => jsonResponse({ error: { message: 'Insufficient credits' } }, 402);
+  const response = await post({ messages: [{ role: 'user', content: 'Hi' }], stream: true });
+  assert.equal(response.status, 402);
+  assert.equal((await response.json()).code, 'OPENROUTER_HTTP_402');
+});
+
+test('SSE EOF does not fabricate upstream completion', async () => {
+  upstreamResponse = () => sseResponse(['data: {"choices":[{"delta":{"content":"partial"}}]}\n\n']);
+  const response = await post({ messages: [{ role: 'user', content: 'Hi' }], stream: true });
+  const text = await response.text();
+  assert.match(text, /partial/);
+  assert.doesNotMatch(text, /\[DONE\]/);
+});
+
 // 8. HTTP 500 provider/server error + key sanitization.
 test('500: provider error is forwarded and any API-key-shaped text is redacted', async () => {
   upstreamResponse = () =>
@@ -368,6 +383,7 @@ test('missing key: 503 OPENROUTER_KEY_MISSING when no API key is configured', as
   const saved = process.env.OPENROUTER_API_KEY;
   delete process.env.OPENROUTER_API_KEY;
   try {
+    assert.equal((await realFetch(`${baseUrl}/health`)).status, 200);
     const res = await post({ messages: [{ role: 'user', content: 'Hi' }], stream: false });
     const body = await res.json();
 
