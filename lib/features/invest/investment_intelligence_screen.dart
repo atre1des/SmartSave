@@ -20,7 +20,7 @@ class InvestmentIntelligenceScreen extends StatelessWidget {
     initialIndex: initialTab,
     length: 4,
     child: Scaffold(
-      appBar: AppBar(
+      appBar: EditorialHeader(
         title: Text(context.l10n.investmentIntelligence),
         bottom: TabBar(
           isScrollable: true,
@@ -104,7 +104,7 @@ class _AIBeginnerTab extends ConsumerWidget {
       const SizedBox(height: 20),
 
       // Open AI Assistant
-      SurfaceCard(
+      RecordGroup(
         color: context.colors.emphasis,
         onTap: () {
           Navigator.of(context).push<void>(
@@ -203,7 +203,7 @@ class _TopicCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     onTap: onTap,
     padding: const EdgeInsets.all(16),
     child: Row(
@@ -393,7 +393,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
             ],
           ),
           if (theses.isEmpty)
-            SurfaceCard(
+            RecordGroup(
               color: context.colors.subtleSurface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,7 +419,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
             for (final thesis in theses)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: SurfaceCard(
+                child: RecordGroup(
                   onTap: () async {
                     await Navigator.push<void>(
                       context,
@@ -493,7 +493,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
 class _SourceBanner extends StatelessWidget {
   const _SourceBanner();
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     color: context.colors.emphasis,
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -534,7 +534,7 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     padding: const EdgeInsets.all(12),
     child: Row(
       children: [
@@ -632,7 +632,7 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: EditorialHeader(
       title: Text(
         widget.thesis == null ? context.l10n.newInvestmentThesis : context.l10n.editThesis,
       ),
@@ -804,7 +804,7 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: EditorialHeader(
       title: Text(widget.thesis.ticker),
       actions: [
         IconButton(
@@ -865,7 +865,7 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
                 ],
               ),
               if (conditions.isEmpty)
-                SurfaceCard(
+                RecordGroup(
                   child: Text(
                     context.l10n.noConditions,
                     style: TextStyle(color: context.colors.muted, fontSize: 12),
@@ -895,7 +895,7 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
               const SizedBox(height: 18),
               SectionHeading(context.l10n.bearCase),
               if (latest == null)
-                SurfaceCard(
+                RecordGroup(
                   child: Text(
                     context.l10n.runAssessment,
                     style: TextStyle(color: context.colors.muted, fontSize: 12),
@@ -1005,7 +1005,7 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: EditorialHeader(
       title: Text(
         widget.condition == null ? context.l10n.addCondition : context.l10n.editCondition,
       ),
@@ -1144,7 +1144,7 @@ class _ConditionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: SurfaceCard(
+    child: RecordGroup(
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1254,7 +1254,7 @@ class _HistoryCard extends StatelessWidget {
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: SurfaceCard(
+      child: RecordGroup(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1435,7 +1435,7 @@ class _LiquidityTabState extends ConsumerState<_LiquidityTab> {
         ),
         const SizedBox(height: 8),
         if (analysis == null)
-          SurfaceCard(
+          RecordGroup(
             child: Text(
               context.l10n.enterHistoricalOrder,
               style: TextStyle(color: context.colors.muted, fontSize: 12),
@@ -1467,7 +1467,7 @@ class _LiquidityResult extends StatelessWidget {
   final String source;
   final String date;
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     color: analysis.status == 'scenario'
         ? context.colors.subtleSurface
         : context.colors.noticeSurface,
@@ -1596,7 +1596,7 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
             ],
           ),
           if (holdings.isEmpty)
-            SurfaceCard(
+            RecordGroup(
               child: Text(
                 context.l10n.holdingStart,
                 style: TextStyle(color: context.colors.muted, fontSize: 12),
@@ -1606,7 +1606,7 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
             for (final holding in holdings)
               Padding(
                 padding: const EdgeInsets.only(bottom: 7),
-                child: SurfaceCard(
+                child: RecordGroup(
                   padding: const EdgeInsets.all(11),
                   child: Row(
                     children: [
@@ -1720,7 +1720,7 @@ class _RippleResults extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      SurfaceCard(
+      RecordGroup(
         color: context.colors.emphasis,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1760,7 +1760,7 @@ class _RippleResults extends StatelessWidget {
       for (final item in result.holdings)
         Padding(
           padding: const EdgeInsets.only(bottom: 7),
-          child: SurfaceCard(
+          child: RecordGroup(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
@@ -1933,7 +1933,7 @@ class _HoldingFormState extends ConsumerState<_HoldingForm> {
 
 Widget _textCard(BuildContext context, String title, String text) => Padding(
   padding: const EdgeInsets.only(bottom: 7),
-  child: SurfaceCard(
+  child: RecordGroup(
     padding: const EdgeInsets.all(12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1957,7 +1957,7 @@ Widget _textCard(BuildContext context, String title, String text) => Padding(
 
 Widget _listCard(String title, List<String> lines, Color color) => Padding(
   padding: const EdgeInsets.only(bottom: 7),
-  child: SurfaceCard(
+  child: RecordGroup(
     color: color,
     padding: const EdgeInsets.all(12),
     child: Column(

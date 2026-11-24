@@ -1,3 +1,4 @@
+import '../../shared/widgets.dart';
 import '../../l10n/app_locale.dart';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
+import '../../shared/glass.dart';
 import 'assistant_session.dart';
 import '../invest/investment_intelligence_screen.dart';
 import 'advice_screens.dart';
@@ -77,10 +79,7 @@ class _FinancialAssistantScreenState
       if (!mounted) return;
       conversation.state = [
         ...conversation.state,
-        AssistantMessage(
-          text: context.l10n.localReadError,
-          isUser: false,
-        ),
+        AssistantMessage(text: context.l10n.localReadError, isUser: false),
       ];
     } finally {
       if (mounted) {
@@ -106,7 +105,7 @@ class _FinancialAssistantScreenState
   Widget build(BuildContext context) {
     final messages = ref.watch(assistantConversationProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: EditorialHeader(
         title: Text(context.l10n.assistant),
         actions: [
           PopupMenuButton<String>(
@@ -122,7 +121,10 @@ class _FinancialAssistantScreenState
                 value: 'investment',
                 child: Text(context.l10n.investmentIntelligence),
               ),
-              PopupMenuItem(value: 'advice', child: Text(context.l10n.recommendations)),
+              PopupMenuItem(
+                value: 'advice',
+                child: Text(context.l10n.recommendations),
+              ),
             ],
           ),
         ],
@@ -202,7 +204,10 @@ class _SuggestionChipsRow extends StatelessWidget {
             padding: const EdgeInsets.only(right: 8),
             child: ActionChip(
               avatar: const Icon(Icons.arrow_outward_rounded, size: 15),
-              label: Text(suggestion, style: const TextStyle(fontSize: 12)),
+              label: Text(
+                suggestion,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
               onPressed: () => onSelect(suggestion),
             ),
           ),
@@ -253,14 +258,20 @@ class _MessageBubble extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: message.isUser ? context.colors.emphasis : context.colors.surface,
-        border: message.isUser ? null : Border.all(color: context.colors.outline),
+        color: message.isUser
+            ? context.colors.emphasis
+            : context.colors.surface,
+        border: message.isUser
+            ? null
+            : Border.all(color: context.colors.outline),
         borderRadius: BorderRadius.circular(16),
       ),
       child: SelectableText(
         message.text,
         style: TextStyle(
-          color: message.isUser ? context.colors.onEmphasis : context.colors.text,
+          color: message.isUser
+              ? context.colors.onEmphasis
+              : context.colors.text,
           fontSize: 12,
           height: 1.4,
         ),
@@ -279,7 +290,10 @@ class _TypingIndicator extends StatelessWidget {
       child: SizedBox(
         width: 20,
         height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2, color: context.colors.progress),
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: context.colors.progress,
+        ),
       ),
     ),
   );
@@ -303,49 +317,57 @@ class _Composer extends StatelessWidget {
       14,
       12 + MediaQuery.paddingOf(context).bottom,
     ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            minLines: 1,
-            maxLines: 4,
-            textInputAction: TextInputAction.send,
-            onSubmitted: onSend,
-            decoration: InputDecoration(
-              hintText: context.l10n.askSmartSave,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 15,
-                vertical: 12,
+    child: GlassSurface(
+      radius: 28,
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              minLines: 1,
+              maxLines: 4,
+              textInputAction: TextInputAction.send,
+              onSubmitted: onSend,
+              decoration: InputDecoration(
+                hintText: context.l10n.askSmartSave,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 12,
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          height: 48,
-          width: 48,
-          child: IconButton.filled(
-            tooltip: context.l10n.sendQuestion,
-            onPressed: busy ? null : () => onSend(controller.text),
-            style: IconButton.styleFrom(
-              backgroundColor: context.colors.primary,
-              foregroundColor: context.colors.onPrimary,
+          const SizedBox(width: 8),
+          SizedBox(
+            height: 48,
+            width: 48,
+            child: IconButton.filled(
+              tooltip: context.l10n.sendQuestion,
+              onPressed: busy ? null : () => onSend(controller.text),
+              style: IconButton.styleFrom(
+                backgroundColor: context.colors.primary,
+                foregroundColor: context.colors.onPrimary,
+              ),
+              icon: busy
+                  ? SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: context.colors.onPrimary,
+                      ),
+                    )
+                  : const Icon(Icons.arrow_upward_rounded),
             ),
-            icon: busy
-                ? SizedBox(
-                    width: 17,
-                    height: 17,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: context.colors.onPrimary,
-                    ),
-                  )
-                : const Icon(Icons.arrow_upward_rounded),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }

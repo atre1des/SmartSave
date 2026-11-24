@@ -303,7 +303,10 @@ void main() {
 
         await tester.tap(find.text('My Account'));
         await tester.pumpAndSettle();
-        await tester.scrollUntilVisible(find.text('Privacy & data'), 200);
+        await tester.scrollUntilVisible(
+          find.text('Privacy & data').hitTestable(),
+          160,
+        );
         await tester.tap(find.text('Privacy & data'));
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(find.text('Export local data'), 200);
@@ -346,7 +349,10 @@ void main() {
         expect(find.text('Test lunch'), findsOneWidget);
         await tester.tap(find.text('My Account'));
         await tester.pumpAndSettle();
-        await tester.scrollUntilVisible(find.text('Profile'), 180);
+        await tester.scrollUntilVisible(
+          find.text('Profile').hitTestable(),
+          150,
+        );
         await tester.tap(find.text('Profile'));
         await tester.pumpAndSettle();
         final languageMenu = find.byType(DropdownButtonFormField<Locale>);

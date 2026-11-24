@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../l10n/app_locale.dart';
 
 import '../../shared/theme.dart';
+import '../../shared/glass.dart';
 import '../../data/providers.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../advice/assistant_session.dart';
@@ -77,20 +78,16 @@ class EmailVerificationScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: _ScrollWhenNeeded(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
           child: Column(
             children: [
               const Spacer(flex: 2),
-              Icon(
-                Icons.email_outlined,
-                size: 80,
-                color: context.colors.text,
-              ),
-              const SizedBox(height: 24),
+              const _EntryMotif(icon: Icons.mark_email_unread_outlined),
+              const SizedBox(height: 28),
               Text(
                 context.l10n.verifyEmail,
-                style: Theme.of(context).textTheme.headlineLarge,
+                style: glassTitle(context),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
@@ -149,77 +146,9 @@ class WelcomeScreen extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(flex: 2),
-            SizedBox(
-              width: 260,
-              height: 260,
-              child: Stack(
-                alignment: Alignment.topLeft,
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    child: SvgPicture.asset(
-                      'assets/figma/splash-blob.svg',
-                      width: 230,
-                      height: 230,
-                    ),
-                  ),
-                  Positioned(
-                    left: 126,
-                    top: 0,
-                    child: SvgPicture.asset(
-                      'assets/figma/splash-blob-mint.svg',
-                      width: 120,
-                      height: 120,
-                    ),
-                  ),
-                  Positioned(
-                    left: -7,
-                    top: 166,
-                    child: SvgPicture.asset(
-                      'assets/figma/splash-blob-lime.svg',
-                      width: 64,
-                      height: 64,
-                    ),
-                  ),
-                  Positioned(
-                    left: 158,
-                    top: 144,
-                    child: SvgPicture.asset(
-                      'assets/figma/splash-logo.svg',
-                      width: 86,
-                      height: 86,
-                    ),
-                  ),
-                  Positioned(
-                    left: 25,
-                    top: 25,
-                    child: SvgPicture.asset(
-                      'assets/figma/splash-blob-dark.svg',
-                      width: 180,
-                      height: 180,
-                    ),
-                  ),
-                  Positioned(
-                    left: 39,
-                    top: 58,
-                    child: SvgPicture.asset(
-                      'assets/figma/splash-logo-background.svg',
-                      width: 152,
-                      height: 114,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'SmartSave',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineLarge?.copyWith(fontSize: 36, height: 1.2),
-            ),
+            const _EntryMotif(icon: Icons.account_balance_wallet_outlined),
+            const SizedBox(height: 24),
+            Text('SmartSave', style: glassTitle(context).copyWith(fontSize: 48)),
             const SizedBox(height: 8),
             Text(
               context.l10n.welcomeSubtitle,
@@ -350,12 +279,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: EditorialHeader(
       leading: IconButton(
         onPressed: () => Navigator.maybePop(context),
         icon: const Icon(Icons.arrow_back),
       ),
-      title: Text(context.l10n.welcome),
+      title: Text(widget.signUp ? context.l10n.signUp : context.l10n.signIn),
     ),
     body: SafeArea(
       child: Form(
@@ -495,26 +424,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               alignment: Alignment.centerRight,
               child: TextButton(onPressed: _finish, child: Text(context.l10n.skip)),
             ),
-            const SizedBox(height: 48),
-            Container(
-              height: 230,
-              decoration: BoxDecoration(
-                color: context.colors.subtleSurface,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.pie_chart_outline_rounded,
-                  size: 112,
-                  color: context.colors.text,
-                ),
-              ),
-            ),
             const Spacer(),
-            Text(
-              _copy(context).$1,
-              style: Theme.of(context).textTheme.headlineLarge,
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _EntryMotif(
+                icon: [
+                  Icons.pie_chart_outline_rounded,
+                  Icons.savings_outlined,
+                  Icons.show_chart_rounded,
+                ][_step],
+              ),
             ),
+            const SizedBox(height: 28),
+            Text(_copy(context).$1, style: glassTitle(context)),
             const SizedBox(height: 10),
             Text(
               _copy(context).$2,
@@ -553,6 +475,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ],
         ),
       ),
+    ),
+  );
+}
+
+class _EntryMotif extends StatelessWidget {
+  const _EntryMotif({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: context.colors.action.withValues(alpha: .11),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(26),
+      child: Icon(icon, size: 46, color: context.colors.action),
     ),
   );
 }

@@ -129,7 +129,7 @@ class _ProfileDetailsScreenState extends ConsumerState<ProfileDetailsScreen> {
   @override
   void dispose() { _name.dispose(); _contact.dispose(); super.dispose(); }
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.profile)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+  Widget build(BuildContext context) => Scaffold(appBar: EditorialHeader(title: Text(context.l10n.profile)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
     Center(child: CircleAvatar(radius: 34, backgroundColor: context.colors.subtleSurface, child: Text('Y', style: TextStyle(fontSize: 24)))),
     TextButton(onPressed: () => showMessage(context, context.l10n.noPhotoUpload), child: Text(context.l10n.changePhoto)),
     TextField(controller: _name, decoration: InputDecoration(labelText: context.l10n.name)),
@@ -203,9 +203,9 @@ class ConnectedAccountsScreen extends StatefulWidget {
 class _ConnectedAccountsScreenState extends State<ConnectedAccountsScreen> {
   bool _connected = true;
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.connectedAccounts)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    if (_connected) SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [CircleAvatar(backgroundColor: context.colors.subtleSurface, child: Text('KA')), SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.kaspiDemoCard, style: TextStyle(fontWeight: FontWeight.w600)), Text(context.l10n.readOnlyDemo, style: TextStyle(color: context.colors.muted, fontSize: 11))]))]), const SizedBox(height: 14), Text(context.l10n.sampleLastSync, style: TextStyle(fontSize: 12)), Row(children: [TextButton(onPressed: () => showMessage(context, context.l10n.bankSyncUnavailable), child: Text(context.l10n.syncNow)), const Spacer(), TextButton(onPressed: () => setState(() => _connected = false), child: Text(context.l10n.disconnect))])])) else SurfaceCard(child: Text(context.l10n.noDemoCard)),
-    const SizedBox(height: 14), SurfaceCard(color: context.colors.subtleSurface, child: Text(context.l10n.noBankIntegration, style: TextStyle(fontSize: 12))),
+  Widget build(BuildContext context) => Scaffold(appBar: EditorialHeader(title: Text(context.l10n.connectedAccounts)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+    if (_connected) RecordGroup(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [CircleAvatar(backgroundColor: context.colors.subtleSurface, child: Text('KA')), SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.kaspiDemoCard, style: TextStyle(fontWeight: FontWeight.w600)), Text(context.l10n.readOnlyDemo, style: TextStyle(color: context.colors.muted, fontSize: 11))]))]), const SizedBox(height: 14), Text(context.l10n.sampleLastSync, style: TextStyle(fontSize: 12)), Row(children: [TextButton(onPressed: () => showMessage(context, context.l10n.bankSyncUnavailable), child: Text(context.l10n.syncNow)), const Spacer(), TextButton(onPressed: () => setState(() => _connected = false), child: Text(context.l10n.disconnect))])])) else RecordGroup(child: Text(context.l10n.noDemoCard)),
+    const SizedBox(height: 14), RecordGroup(color: context.colors.subtleSurface, child: Text(context.l10n.noBankIntegration, style: TextStyle(fontSize: 12))),
     const SizedBox(height: 18), PrimaryAction(label: context.l10n.addCard, onPressed: () => _push(context, const ConnectCardScreen())),
   ])));
 }
@@ -219,7 +219,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   final _values = <String, bool>{'Goal reminders': true, 'Budget alerts': true, 'Advice of the day': false, 'Deposit rate changes': false, 'Market news': false};
   final _descriptions = {'Goal reminders': 'Monthly saving reminder', 'Budget alerts': 'When a category goes over budget', 'Advice of the day': 'One short tip each morning', 'Deposit rate changes': 'When sample rates change', 'Market news': 'Updates on your sample watchlist'};
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.notifications)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+  Widget build(BuildContext context) => Scaffold(appBar: EditorialHeader(title: Text(context.l10n.notifications)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
     for (final entry in _values.entries) SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600)), subtitle: Text(_descriptions[entry.key]!, style: TextStyle(fontSize: 12, color: context.colors.muted)), value: entry.value, onChanged: (value) => setState(() => _values[entry.key] = value)),
     const SizedBox(height: 10), Text(context.l10n.noDemoPush, style: TextStyle(color: context.colors.muted, fontSize: 11)),
   ])));
@@ -228,13 +228,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 class AdviceHistoryScreen extends StatelessWidget {
   const AdviceHistoryScreen({super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.adviceHistory)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+  Widget build(BuildContext context) => Scaffold(appBar: EditorialHeader(title: Text(context.l10n.adviceHistory)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
     for (final item in [
       ('Savings', 'Cut food delivery by 15 000 ₸', 'Applied'),
       ('Deposit', 'Freedom Bank · 19.50% ГЭСВ', 'Viewed'),
       ('Stock', 'Halyk Bank (HSBK) fits Moderate', 'Saved'),
       ('Savings', 'Save 23 000 ₸ per month for New laptop', 'Applied'),
-    ]) SurfaceCard(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${item.$1} · ${item.$3}', style: TextStyle(color: context.colors.muted, fontSize: 11)), const SizedBox(height: 5), Text(item.$2, style: const TextStyle(fontWeight: FontWeight.w600)), TextButton(onPressed: () => showDialog<void>(context: context, builder: (context) => AlertDialog(title: Text(context.l10n.aboutDemoItem), content: Text(context.l10n.adviceHistoryNotice), actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.close))])), child: Text(context.l10n.whyThis))])),
+    ]) RecordGroup(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${item.$1} · ${item.$3}', style: TextStyle(color: context.colors.muted, fontSize: 11)), const SizedBox(height: 5), Text(item.$2, style: const TextStyle(fontWeight: FontWeight.w600)), TextButton(onPressed: () => showDialog<void>(context: context, builder: (context) => AlertDialog(title: Text(context.l10n.aboutDemoItem), content: Text(context.l10n.adviceHistoryNotice), actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.close))])), child: Text(context.l10n.whyThis))])),
   ])));
 }
 
@@ -257,12 +257,12 @@ class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
     try {
       final data = await repository.exportAccountData(uid);
       if (!mounted || auth.currentUserId != uid) return;
-      await showDialog<void>(
+      await showEditorSheet<void>(
         context: context,
-        builder: (dialog) => AlertDialog(
+        builder: (dialog) => EditorSheet(
           title: Text(dialog.l10n.localDataExport),
           content: SizedBox(
-            width: 520,
+            height: 240,
             child: SingleChildScrollView(child: SelectableText(data)),
           ),
           actions: [
@@ -285,9 +285,9 @@ class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
     }
   }
 
-  Future<void> _showLegacyRecovery() => showDialog<void>(
+  Future<void> _showLegacyRecovery() => showEditorSheet<void>(
     context: context,
-    builder: (dialog) => AlertDialog(
+    builder: (dialog) => EditorSheet(
       title: Text(dialog.l10n.legacyRecovery),
       content: Text(dialog.l10n.legacyRecoveryWarning),
       actions: [
@@ -297,10 +297,10 @@ class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
   );
 
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.privacyData)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+  Widget build(BuildContext context) => Scaffold(appBar: EditorialHeader(title: Text(context.l10n.privacyData)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
     SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(context.l10n.personalAdviceConsent), subtitle: Text(context.l10n.neededForAdvice, style: TextStyle(fontSize: 12, color: context.colors.muted)), value: _personalAdvice, onChanged: (value) => setState(() => _personalAdvice = value)),
     SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(context.l10n.shareStats), subtitle: Text(context.l10n.improvesApp, style: TextStyle(fontSize: 12, color: context.colors.muted)), value: _analytics, onChanged: (value) => setState(() => _analytics = value)),
-    const SizedBox(height: 12), SurfaceCard(color: context.colors.subtleSurface, child: Text(context.l10n.privacyDisclosure, style: TextStyle(fontSize: 12))),
+    const SizedBox(height: 12), RecordGroup(color: context.colors.subtleSurface, child: Text(context.l10n.privacyDisclosure, style: TextStyle(fontSize: 12))),
     const SizedBox(height: 12),
     OutlinedButton(onPressed: _working ? null : _export, child: Text(context.l10n.exportData)),
     OutlinedButton(
@@ -359,7 +359,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_busy,
     child: Scaffold(
-      appBar: AppBar(title: Text(context.l10n.deleteAccount)),
+      appBar: EditorialHeader(title: Text(context.l10n.deleteAccount)),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -392,9 +392,9 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.subscription)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    SurfaceCard(color: context.colors.subtleSurface, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.freeCurrent, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)), SizedBox(height: 10), Text(context.l10n.featureExpenses), Text(context.l10n.featureGoals), Text(context.l10n.featureDeposits)])),
-    const SizedBox(height: 14), SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Premium', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)), Text(context.l10n.pricePending, style: TextStyle(color: context.colors.muted)), SizedBox(height: 10), Text(context.l10n.featureFree), Text(context.l10n.featureStocksBonds), Text(context.l10n.featurePersonalPlan), Text(context.l10n.featureAdviceHistory)])),
+  Widget build(BuildContext context) => Scaffold(appBar: EditorialHeader(title: Text(context.l10n.subscription)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+    RecordGroup(color: context.colors.subtleSurface, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.freeCurrent, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)), SizedBox(height: 10), Text(context.l10n.featureExpenses), Text(context.l10n.featureGoals), Text(context.l10n.featureDeposits)])),
+    const SizedBox(height: 14), RecordGroup(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Premium', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)), Text(context.l10n.pricePending, style: TextStyle(color: context.colors.muted)), SizedBox(height: 10), Text(context.l10n.featureFree), Text(context.l10n.featureStocksBonds), Text(context.l10n.featurePersonalPlan), Text(context.l10n.featureAdviceHistory)])),
     const SizedBox(height: 12), Text(context.l10n.noSubscriptionBilling, style: TextStyle(color: context.colors.muted, fontSize: 11)),
     const SizedBox(height: 18), PrimaryAction(label: context.l10n.tryPremium, onPressed: () => showMessage(context, context.l10n.premiumPreview)),
   ])));
@@ -418,7 +418,7 @@ class _HelpScreenState extends State<HelpScreen> {
   @override
   Widget build(BuildContext context) {
     final filtered = _faqs.where((faq) => faq.$1.toLowerCase().contains(_search.text.toLowerCase())).toList();
-    return Scaffold(appBar: AppBar(title: Text(context.l10n.helpSupport)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+    return Scaffold(appBar: EditorialHeader(title: Text(context.l10n.helpSupport)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
       TextField(controller: _search, onChanged: (_) => setState(() {}), decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: context.l10n.showHelp)),
       const SizedBox(height: 12),
       for (final faq in filtered) Card(color: context.colors.surface, child: ExpansionTile(title: Text(faq.$1, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), children: [Padding(padding: const EdgeInsets.all(16), child: Text(faq.$2, style: TextStyle(fontSize: 12, color: context.colors.muted)))])),

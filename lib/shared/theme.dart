@@ -165,7 +165,7 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
       backgroundColor: colors.surface,
       selectedColor: colors.subtleSurface,
       side: BorderSide(color: colors.fieldOutline),
-      labelStyle: TextStyle(color: colors.text),
+      labelStyle: TextStyle(color: colors.text, fontFamily: 'Inter'),
       secondaryLabelStyle: TextStyle(color: colors.text),
       checkmarkColor: colors.action,
     ),

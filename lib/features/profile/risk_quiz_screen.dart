@@ -45,7 +45,8 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
       ],
     ),
     _QuizQuestion(
-      question: 'What portion of your savings are you comfortable putting at risk?',
+      question:
+          'What portion of your savings are you comfortable putting at risk?',
       options: [
         ('small', 'A small amount (up to 10%)'),
         ('moderate', 'A moderate amount (10–30%)'),
@@ -66,10 +67,15 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
     if (_answers.any((a) => a == null)) return;
 
     final profile = _calculateRiskProfile(_answers);
-    await ref.read(authServiceProvider).setRiskQuizComplete(true, profile: profile);
+    await ref
+        .read(authServiceProvider)
+        .setRiskQuizComplete(true, profile: profile);
 
     if (mounted) {
-      showMessage(context, 'Risk profile updated: ${profile[0].toUpperCase()}${profile.substring(1)} investor');
+      showMessage(
+        context,
+        'Risk profile updated: ${profile[0].toUpperCase()}${profile.substring(1)} investor',
+      );
       Navigator.pop(context);
     }
   }
@@ -77,15 +83,41 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
   String _calculateRiskProfile(List<String?> answers) {
     int score = 0;
     // Time horizon
-    score += switch (answers[0]) { 'wait' => 1, '1-3years' => 2, '3-5years' => 3, '5plus' => 4, _ => 1 };
+    score += switch (answers[0]) {
+      'wait' => 1,
+      '1-3years' => 2,
+      '3-5years' => 3,
+      '5plus' => 4,
+      _ => 1,
+    };
     // Experience
-    score += switch (answers[1]) { 'none' => 1, 'some' => 2, 'experienced' => 3, _ => 1 };
+    score += switch (answers[1]) {
+      'none' => 1,
+      'some' => 2,
+      'experienced' => 3,
+      _ => 1,
+    };
     // Reaction to loss
-    score += switch (answers[2]) { 'sell' => 1, 'hold' => 2, 'buy' => 3, _ => 1 };
+    score += switch (answers[2]) {
+      'sell' => 1,
+      'hold' => 2,
+      'buy' => 3,
+      _ => 1,
+    };
     // Risk allocation
-    score += switch (answers[3]) { 'small' => 1, 'moderate' => 2, 'large' => 3, _ => 1 };
+    score += switch (answers[3]) {
+      'small' => 1,
+      'moderate' => 2,
+      'large' => 3,
+      _ => 1,
+    };
     // Goal
-    score += switch (answers[4]) { 'preserve' => 1, 'balance' => 2, 'growth' => 3, _ => 1 };
+    score += switch (answers[4]) {
+      'preserve' => 1,
+      'balance' => 2,
+      'growth' => 3,
+      _ => 1,
+    };
 
     if (score <= 7) return 'conservative';
     if (score <= 11) return 'moderate';
@@ -97,95 +129,84 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
     final question = _questions[_step];
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: EditorialHeader(
         title: Text(context.l10n.riskAssessment),
         actions: [
           TextButton(
             onPressed: _finish,
-            child: Text(context.l10n.finish, style: TextStyle(color: context.colors.text)),
+            child: Text(
+              context.l10n.finish,
+              style: TextStyle(color: context.colors.text),
+            ),
           ),
         ],
       ),
       body: SafeArea(
-        child: Padding(
+        child: ListView(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Progress indicator
-              LinearProgressIndicator(
-                value: (_step + 1) / _questions.length,
-                color: context.colors.text,
-                backgroundColor: context.colors.subtleSurface,
-                minHeight: 6,
-                borderRadius: BorderRadius.circular(3),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Question ${_step + 1} of ${_questions.length}',
-                style: TextStyle(color: context.colors.muted, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: context.colors.subtleSurface,
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.shield_outlined,
-                    size: 80,
-                    color: context.colors.text,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                question.question,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 24),
-              Column(
-                children: [
-                  for (final option in question.options)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _QuizOption(
-                        label: option.$2,
-                        value: option.$1,
-                        selected: _answers[_step] == option.$1,
-                        onTap: () => setState(() => _answers[_step] = option.$1),
-                      ),
+          children: [
+            // Progress indicator
+            LinearProgressIndicator(
+              value: (_step + 1) / _questions.length,
+              color: context.colors.text,
+              backgroundColor: context.colors.subtleSurface,
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Question ${_step + 1} of ${_questions.length}',
+              style: TextStyle(color: context.colors.muted, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              question.question,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 24),
+            Column(
+              children: [
+                for (final option in question.options)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _QuizOption(
+                      label: option.$2,
+                      value: option.$1,
+                      selected: _answers[_step] == option.$1,
+                      onTap: () => setState(() => _answers[_step] = option.$1),
                     ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  if (_step > 0)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => setState(() => _step--),
-                        child: Text(context.l10n.back),
-                      ),
-                    )
-                  else
-                    const Expanded(child: SizedBox()),
-                  const SizedBox(width: 12),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                if (_step > 0)
                   Expanded(
-                    child: PrimaryAction(
-                      label: _step == _questions.length - 1 ? context.l10n.finish : context.l10n.next,
-                      onPressed: _answers[_step] != null
-                          ? (_step == _questions.length - 1 ? _finish : () => setState(() => _step++))
-                          : null,
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => _step--),
+                      child: Text(context.l10n.back),
                     ),
+                  )
+                else
+                  const Expanded(child: SizedBox()),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: PrimaryAction(
+                    label: _step == _questions.length - 1
+                        ? context.l10n.finish
+                        : context.l10n.next,
+                    onPressed: _answers[_step] != null
+                        ? (_step == _questions.length - 1
+                              ? _finish
+                              : () => setState(() => _step++))
+                        : null,
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -199,7 +220,12 @@ class _QuizQuestion {
 }
 
 class _QuizOption extends StatelessWidget {
-  const _QuizOption({required this.label, required this.value, required this.selected, required this.onTap});
+  const _QuizOption({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final String value;
   final bool selected;
@@ -228,7 +254,9 @@ class _QuizOption extends StatelessWidget {
             decoration: BoxDecoration(
               color: selected ? context.colors.surface : Colors.transparent,
               border: Border.all(
-                color: selected ? context.colors.surface : context.colors.outline,
+                color: selected
+                    ? context.colors.surface
+                    : context.colors.outline,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(12),
@@ -244,7 +272,9 @@ class _QuizOption extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: selected ? context.colors.onEmphasis : context.colors.text,
+                color: selected
+                    ? context.colors.onEmphasis
+                    : context.colors.text,
               ),
             ),
           ),

@@ -404,18 +404,18 @@ class BondsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.bonds)),
+    appBar: EditorialHeader(title: Text(context.l10n.bonds)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          SurfaceCard(
+          RecordGroup(
             color: context.colors.subtleSurface,
             child: Text(context.l10n.noLiveBonds, style: TextStyle(fontWeight: FontWeight.w700)),
           ),
           const SizedBox(height: 16),
           SectionHeading(context.l10n.whatPlanned),
-          SurfaceCard(
+          RecordGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -469,7 +469,7 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
     final goals = finance.goals;
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.autoInvest)),
+      appBar: EditorialHeader(title: Text(context.l10n.autoInvest)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(24),
@@ -536,7 +536,7 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
 
             // Illustrative allocation
             SectionHeading(context.l10n.sampleAllocation),
-            SurfaceCard(
+            RecordGroup(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

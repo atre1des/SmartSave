@@ -3,6 +3,7 @@ import '../../l10n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../../shared/theme.dart';
+import '../../shared/glass.dart';
 import 'assistant_session.dart';
 import 'financial_assistant_screen.dart';
 
@@ -30,27 +31,34 @@ class AssistantAccessOverlay extends StatelessWidget {
                 child: Semantics(
                   label: context.l10n.openFinanceAssistant,
                   button: true,
-                  child: FloatingActionButton.extended(
-                    key: const ValueKey('assistantBubble'),
-                    heroTag: 'smartSaveAssistantBubble',
-                    onPressed: () {
-                      assistantRouteActive.value = true;
-                      appNavigatorKey.currentState
-                          ?.push<void>(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const FinancialAssistantScreen(),
-                            ),
-                          )
-                          .whenComplete(() {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              assistantRouteActive.value = false;
+                  child: GlassSurface(
+                    radius: 28,
+                    child: FloatingActionButton.extended(
+                      key: const ValueKey('assistantBubble'),
+                      heroTag: 'smartSaveAssistantBubble',
+                      onPressed: () {
+                        assistantRouteActive.value = true;
+                        appNavigatorKey.currentState
+                            ?.push<void>(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    const FinancialAssistantScreen(),
+                              ),
+                            )
+                            .whenComplete(() {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                assistantRouteActive.value = false;
+                              });
                             });
-                          });
-                    },
-                    backgroundColor: context.colors.primary,
-                    foregroundColor: context.colors.onPrimary,
-                    icon: const Icon(Icons.chat_bubble_outline_rounded),
-                    label: Text(context.l10n.askSmartSaveShort),
+                      },
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: context.colors.action,
+                      elevation: 0,
+                      highlightElevation: 0,
+                      shape: const StadiumBorder(),
+                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      label: Text(context.l10n.askSmartSaveShort),
+                    ),
                   ),
                 ),
               ),

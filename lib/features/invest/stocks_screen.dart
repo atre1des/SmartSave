@@ -35,7 +35,7 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
     final finance = ref.watch(financeControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: EditorialHeader(
         title: Text(context.l10n.stocksForYou),
         actions: [
           PopupMenuButton<String>(
@@ -67,7 +67,7 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                 children: [
                   // Risk profile badge
-                  SurfaceCard(
+                  RecordGroup(
                     color: context.colors.subtleSurface,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     child: Row(
@@ -89,7 +89,7 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
                   const SizedBox(height: 8),
 
                   // Disclaimer
-                  SurfaceCard(
+                  RecordGroup(
                     color: context.colors.noticeSurface,
                     padding: EdgeInsets.all(12),
                     child: Row(
@@ -158,7 +158,7 @@ class _StockTile extends StatelessWidget {
   final VoidCallback onAskAI;
 
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     onTap: onTap,
     padding: const EdgeInsets.all(12),
     child: Row(

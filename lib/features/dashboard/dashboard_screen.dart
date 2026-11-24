@@ -708,7 +708,7 @@ class TotalBalanceDetailScreen extends ConsumerWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: EditorialHeader(
           leading: BackButton(),
           title: Text(context.l10n.totalBalanceTitle),
           bottom: const TabBar(

@@ -35,7 +35,7 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
         .where((product) => !_withdrawal || product.withdrawal)
         .toList();
     return Scaffold(
-      appBar: AppBar(
+      appBar: EditorialHeader(
         leading: Navigator.of(context).canPop() ? BackButton() : null,
         title: Text(context.l10n.deposits),
       ),
@@ -47,18 +47,12 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
             : ListView(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 children: [
-                  const SizedBox(height: 10),
-                  Text(
-                    context.l10n.deposits,
-                    style: Theme.of(context).textTheme.headlineLarge,
-                  ),
-                  const SizedBox(height: 5),
                   Text(
                     context.l10n.sampleDepositHeading,
                     style: TextStyle(color: context.colors.muted, fontSize: 11),
                   ),
                   const SizedBox(height: 13),
-                  Row(
+                  Wrap(
                     children: [
                       for (final term in [3, 6, 12])
                         Padding(
@@ -170,7 +164,7 @@ class _DepositRow extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     onTap: onTap,
     padding: const EdgeInsets.all(14),
     child: Row(
@@ -234,12 +228,12 @@ class DepositDetailsScreen extends StatelessWidget {
   final DepositProduct product;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.depositDetails)),
+    appBar: EditorialHeader(title: Text(context.l10n.depositDetails)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          SurfaceCard(
+          RecordGroup(
             color: context.colors.emphasis,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,7 +259,7 @@ class DepositDetailsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          SurfaceCard(
+          RecordGroup(
             child: Column(
               children: [
                 LabeledValue(
@@ -289,7 +283,7 @@ class DepositDetailsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          SurfaceCard(
+          RecordGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -312,7 +306,7 @@ class DepositDetailsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          SurfaceCard(
+          RecordGroup(
             color: context.colors.noticeSurface,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,7 +382,7 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen> {
             months: _term,
           );
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.depositCalculator)),
+      appBar: EditorialHeader(title: Text(context.l10n.depositCalculator)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(24),
@@ -417,20 +411,12 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen> {
               ],
             ),
             const SizedBox(height: 14),
-            SurfaceCard(
+            RecordGroup(
               color: context.colors.subtleSurface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(context.l10n.estimatedIncome),
-                  const SizedBox(height: 4),
-                  Text(
-                    '≈ ${context.formatTenge(income)}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  FinancialFigure('≈ ${context.formatTenge(income)}', label: context.l10n.estimatedIncome),
                   Text(
                     'in $_term months · nominal rate, no top-ups',
                     style: TextStyle(
@@ -463,7 +449,7 @@ class DepositComparisonScreen extends StatelessWidget {
   final List<DepositProduct> products;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.filtersComparison)),
+    appBar: EditorialHeader(title: Text(context.l10n.filtersComparison)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
@@ -477,7 +463,7 @@ class DepositComparisonScreen extends StatelessWidget {
             const _NoDeposits(onReset: null)
           else ...[
             for (final product in products)
-              SurfaceCard(
+              RecordGroup(
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -517,12 +503,12 @@ class WhyDepositScreen extends StatelessWidget {
   final DepositProduct product;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.whyDeposit)),
+    appBar: EditorialHeader(title: Text(context.l10n.whyDeposit)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          SurfaceCard(
+          RecordGroup(
             color: context.colors.subtleSurface,
             child: Text(
               '${product.bank} · ${(product.effectiveRateBps / 100).toStringAsFixed(2)}% ГЭСВ · ${product.termMonths} months',
@@ -531,7 +517,7 @@ class WhyDepositScreen extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           SectionHeading(context.l10n.recommendedBecause),
-          SurfaceCard(
+          RecordGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -545,7 +531,7 @@ class WhyDepositScreen extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           SectionHeading(context.l10n.checkBeforeOpening),
-          SurfaceCard(
+          RecordGroup(
             child: Text(
               context.l10n.depositTermsVary,
               style: TextStyle(fontSize: 12),
@@ -587,7 +573,7 @@ class InvestScreen extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineLarge,
           ),
           const SizedBox(height: 10),
-          SurfaceCard(
+          RecordGroup(
             color: context.colors.emphasis,
             onTap: () => _push(context, const InvestmentIntelligenceScreen()),
             child: Row(
@@ -622,7 +608,7 @@ class InvestScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          SurfaceCard(
+          RecordGroup(
             color: context.colors.subtleSurface,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
@@ -650,7 +636,7 @@ class InvestScreen extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 8),
-          SurfaceCard(
+          RecordGroup(
             color: context.colors.subtleSurface,
             onTap: () => _push(context, const BondsLaterScreen()),
             child: Row(
@@ -690,7 +676,7 @@ class _StockTile extends StatelessWidget {
   final (String, String, String, String, String, bool) stock;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     onTap: onTap,
     padding: const EdgeInsets.all(12),
     child: Row(
@@ -799,15 +785,12 @@ class _StockDetailsScreenState extends ConsumerState<StockDetailsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('${widget.stock.$1} · ${widget.stock.$2}')),
+    appBar: EditorialHeader(title: Text('${widget.stock.$1} · ${widget.stock.$2}')),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text(
-            widget.stock.$4,
-            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
-          ),
+          FinancialFigure(widget.stock.$4),
           Text(
             '${widget.stock.$5} today',
             style: TextStyle(color: context.colors.positive),
@@ -840,7 +823,7 @@ class _StockDetailsScreenState extends ConsumerState<StockDetailsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          SurfaceCard(
+          RecordGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -892,12 +875,12 @@ class BondsLaterScreen extends StatelessWidget {
   const BondsLaterScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.bondsAuto)),
+    appBar: EditorialHeader(title: Text(context.l10n.bondsAuto)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          SurfaceCard(
+          RecordGroup(
             color: context.colors.subtleSurface,
             child: Text(
               context.l10n.comingLater,
@@ -906,7 +889,7 @@ class BondsLaterScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SectionHeading(context.l10n.whatPlanned),
-          SurfaceCard(
+          RecordGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -943,7 +926,7 @@ class _NoDeposits extends StatelessWidget {
   const _NoDeposits({this.onReset});
   final VoidCallback? onReset;
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     child: Column(
       children: [
         Icon(Icons.search_off, size: 38, color: context.colors.muted),
@@ -969,7 +952,7 @@ class GoalPickerScreen extends StatelessWidget {
   const GoalPickerScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.linkGoal)),
+    appBar: EditorialHeader(title: Text(context.l10n.linkGoal)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),

@@ -92,6 +92,60 @@ void main() {
     },
   );
 
+  testWidgets(
+    'editor sheet remains scrollable on a compact keyboard viewport',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.padding = const FakeViewPadding(top: 24);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(Brightness.dark),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.8)),
+            child: child!,
+          ),
+          home: Scaffold(
+            appBar: const EditorialHeader(title: Text('Настройки')),
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showEditorSheet<void>(
+                  context: context,
+                  builder: (context) => EditorSheet(
+                    title: const Text('Ай сайынғы бюджет'),
+                    content: const TextField(),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Сақтау'),
+                      ),
+                    ],
+                  ),
+                ),
+                child: const Text('Edit'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '5000');
+      tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+      await tester.pumpAndSettle();
+      final save = find.text('Сақтау');
+      await tester.ensureVisible(save);
+      expect(tester.getBottomRight(save).dy, lessThanOrEqualTo(360));
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.byType(EditorSheet), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('high contrast disables the glass blur', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

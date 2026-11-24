@@ -126,7 +126,7 @@ class Pill extends StatelessWidget {
     selected: selected,
     onSelected: (_) => onTap(),
     showCheckmark: false,
-    labelStyle: TextStyle(
+    labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
       fontSize: 12,
       fontWeight: FontWeight.w600,
       color: selected ? context.colors.onSelection : context.colors.text,
@@ -358,4 +358,205 @@ class AppNavigationBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The title occupies its own row so toolbar actions never squeeze the heading.
+class EditorialHeader extends StatelessWidget implements PreferredSizeWidget {
+  const EditorialHeader({
+    super.key,
+    required this.title,
+    this.leading,
+    this.actions = const [],
+    this.bottom,
+  });
+
+  final Widget title;
+  final Widget? leading;
+  final List<Widget> actions;
+  final PreferredSizeWidget? bottom;
+
+  @override
+  Size get preferredSize =>
+      Size.fromHeight(108 + (bottom?.preferredSize.height ?? 0));
+
+  @override
+  Widget build(BuildContext context) {
+    final back =
+        leading ??
+        (ModalRoute.of(context)?.impliesAppBarDismissal == true
+            ? const BackButton()
+            : null);
+    return Material(
+      color: context.colors.canvas,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 48,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(start: 20, end: 16),
+                child: Row(
+                  children: [
+                    if (back != null) GlassSurface(radius: 24, child: back),
+                    const Spacer(),
+                    for (final action in actions)
+                      GlassSurface(radius: 24, child: action),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 10),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Semantics(
+                    header: true,
+                    child: DefaultTextStyle(
+                      style: glassTitle(
+                        context,
+                      ).copyWith(fontSize: 34, letterSpacing: -1.25),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: constraints.maxWidth,
+                            ),
+                            child: title,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            ?bottom,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A quiet, borderless surface for related financial records and controls.
+class RecordGroup extends StatelessWidget {
+  const RecordGroup({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.color,
+    this.onTap,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final Color? color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final neutral = colors.isDark
+        ? Color.alphaBlend(colors.text.withValues(alpha: .055), colors.canvas)
+        : colors.surface;
+    final content = Padding(
+      padding: padding,
+      child: SizedBox(width: double.infinity, child: child),
+    );
+    return Material(
+      color:
+          color == null ||
+              color == colors.surface ||
+              color == colors.subtleSurface
+          ? neutral
+          : color,
+      borderRadius: BorderRadius.circular(26),
+      clipBehavior: Clip.antiAlias,
+      child: onTap == null ? content : InkWell(onTap: onTap, child: content),
+    );
+  }
+}
+
+class FinancialFigure extends StatelessWidget {
+  const FinancialFigure(this.value, {super.key, this.label});
+
+  final String value;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (label != null)
+        Text(label!, style: Theme.of(context).textTheme.bodyMedium),
+      FittedBox(
+        alignment: AlignmentDirectional.centerStart,
+        fit: BoxFit.scaleDown,
+        child: Text(
+          value,
+          style: glassTitle(context).copyWith(
+            fontSize: 42,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+Future<T?> showEditorSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+}) => showModalBottomSheet<T>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  showDragHandle: true,
+  builder: (context) => Padding(
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: SafeArea(
+      top: false,
+      child: SingleChildScrollView(child: builder(context)),
+    ),
+  ),
+);
+
+class EditorSheet extends StatelessWidget {
+  const EditorSheet({
+    super.key,
+    required this.title,
+    required this.content,
+    required this.actions,
+  });
+
+  final Widget title;
+  final Widget content;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DefaultTextStyle(
+          style: glassTitle(context).copyWith(fontSize: 26),
+          child: title,
+        ),
+        const SizedBox(height: 16),
+        content,
+        const SizedBox(height: 16),
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          runSpacing: 8,
+          children: actions,
+        ),
+      ],
+    ),
+  );
 }

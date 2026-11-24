@@ -27,13 +27,13 @@ class _ConnectCardScreenState extends State<ConnectCardScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(context.l10n.connectCard)),
+        appBar: EditorialHeader(title: Text(context.l10n.connectCard)),
         body: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(24, 8, 24, 24), children: [
           Text(context.l10n.sampleCard, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
           Text(context.l10n.sampleCardDetails, style: TextStyle(color: context.colors.muted)),
           const SizedBox(height: 20),
-          SurfaceCard(child: Row(children: [Icon(Icons.credit_card, color: context.colors.muted), SizedBox(width: 12), Flexible(child: Text('••••  ••••  ••••  ••••', style: TextStyle(letterSpacing: 1.2)))])),
+          RecordGroup(child: Row(children: [Icon(Icons.credit_card, color: context.colors.muted), SizedBox(width: 12), Flexible(child: Text('••••  ••••  ••••  ••••', style: TextStyle(letterSpacing: 1.2)))])),
           const SizedBox(height: 20),
           Text(context.l10n.chooseBank, style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
@@ -53,7 +53,7 @@ class ConnectionFailedScreen extends StatelessWidget {
   const ConnectionFailedScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(context.l10n.connectCard)),
+        appBar: EditorialHeader(title: Text(context.l10n.connectCard)),
         body: SafeArea(child: Padding(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const Spacer(),
           Icon(Icons.error_outline_rounded, size: 56, color: context.colors.error),
@@ -62,7 +62,7 @@ class ConnectionFailedScreen extends StatelessWidget {
           const SizedBox(height: 10),
           Text(context.l10n.cardConnectionUnavailable, textAlign: TextAlign.center, style: TextStyle(color: context.colors.muted)),
           const SizedBox(height: 28),
-          SurfaceCard(color: context.colors.noticeSurface, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.commonReasons, style: TextStyle(fontWeight: FontWeight.w600)), SizedBox(height: 8), Text(context.l10n.noBankProvider), Text(context.l10n.localDemoOnly), Text(context.l10n.noCredentialsRequested)])),
+          RecordGroup(color: context.colors.noticeSurface, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.commonReasons, style: TextStyle(fontWeight: FontWeight.w600)), SizedBox(height: 8), Text(context.l10n.noBankProvider), Text(context.l10n.localDemoOnly), Text(context.l10n.noCredentialsRequested)])),
           const Spacer(),
           PrimaryAction(label: context.l10n.tryAgain, onPressed: () => Navigator.pop(context)),
           const SizedBox(height: 10),
@@ -109,7 +109,7 @@ class _RiskQuizScreenState extends State<RiskQuizScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(context.l10n.riskQuiz)),
+        appBar: EditorialHeader(title: Text(context.l10n.riskQuiz)),
         body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
           Text('Question ${_question + 1} of 5', style: TextStyle(color: context.colors.muted)),
           const SizedBox(height: 16),
@@ -122,7 +122,7 @@ class _RiskQuizScreenState extends State<RiskQuizScreen> {
             const SizedBox(height: 8),
           ],
           const SizedBox(height: 14),
-          SurfaceCard(color: context.colors.subtleSurface, child: Text(context.l10n.quizNotice, style: TextStyle(fontSize: 12))),
+          RecordGroup(color: context.colors.subtleSurface, child: Text(context.l10n.quizNotice, style: TextStyle(fontSize: 12))),
           const SizedBox(height: 20),
           PrimaryAction(label: _question == 4 ? context.l10n.seeRiskProfile : context.l10n.next, onPressed: _next),
         ])),
@@ -133,17 +133,17 @@ class RiskProfileScreen extends StatelessWidget {
   const RiskProfileScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(context.l10n.riskProfile)),
+        appBar: EditorialHeader(title: Text(context.l10n.riskProfile)),
         body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-          SurfaceCard(color: context.colors.subtleSurface, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.yourProfile), SizedBox(height: 4), Text(context.l10n.moderate, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)), SizedBox(height: 8), Text(context.l10n.moderateExplanation) ])),
+          RecordGroup(color: context.colors.subtleSurface, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.yourProfile), SizedBox(height: 4), Text(context.l10n.moderate, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)), SizedBox(height: 8), Text(context.l10n.moderateExplanation) ])),
           const SizedBox(height: 20),
           Text(context.l10n.whyResult, style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.profileWouldWait), SizedBox(height: 9), Text(context.l10n.profileHorizon), SizedBox(height: 9), Text(context.l10n.profileMix)])),
+          RecordGroup(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.profileWouldWait), SizedBox(height: 9), Text(context.l10n.profileHorizon), SizedBox(height: 9), Text(context.l10n.profileMix)])),
           const SizedBox(height: 20),
           Text(context.l10n.suggestedMix, style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
-          SurfaceCard(child: Column(children: [LabeledValue(label: context.l10n.deposits, value: '60%'), Divider(), LabeledValue(label: context.l10n.bonds, value: '25%'), Divider(), LabeledValue(label: context.l10n.stocks, value: '15%')])),
+          RecordGroup(child: Column(children: [LabeledValue(label: context.l10n.deposits, value: '60%'), Divider(), LabeledValue(label: context.l10n.bonds, value: '25%'), Divider(), LabeledValue(label: context.l10n.stocks, value: '15%')])),
           const SizedBox(height: 12),
           Text(context.l10n.sampleProfileDisclaimer, textAlign: TextAlign.center, style: TextStyle(color: context.colors.muted, fontSize: 11)),
           const SizedBox(height: 20),
