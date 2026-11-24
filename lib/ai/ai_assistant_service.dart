@@ -5,6 +5,7 @@ import '../../data/financial_math.dart';
 import '../../shared/widgets.dart';
 import '../../l10n/app_locale.dart';
 import 'models.dart';
+import 'conversation_context.dart';
 import 'openrouter_provider.dart';
 
 /// AI-powered financial assistant service that proxies through the backend to OpenRouter
@@ -178,14 +179,17 @@ Response style:
   Future<String> sendMessage(
     String prompt, {
     String languageCode = 'en',
+    List<AIMessage> history = const [],
   }) async {
     final context = await _buildFinancialContext();
     final systemPrompt = _buildSystemPrompt(context, languageCode);
 
-    final messages = [
-      AIMessage.system('$systemPrompt\n\nUser financial context:\n$context'),
-      AIMessage.user(prompt),
-    ];
+    final messages = const ConversationContext().build(
+      systemPrompt: systemPrompt,
+      financialContext: context,
+      history: history,
+      prompt: prompt,
+    );
 
     final result = await _provider.sendMessage(messages: messages);
 
@@ -209,15 +213,18 @@ Response style:
   Stream<AIStreamChunk> sendMessageStream(
     String prompt, {
     String languageCode = 'en',
+    List<AIMessage> history = const [],
     ValueChanged<bool?>? onProxyStatus,
   }) async* {
     final context = await _buildFinancialContext();
     final systemPrompt = _buildSystemPrompt(context, languageCode);
 
-    final messages = [
-      AIMessage.system('$systemPrompt\n\nUser financial context:\n$context'),
-      AIMessage.user(prompt),
-    ];
+    final messages = const ConversationContext().build(
+      systemPrompt: systemPrompt,
+      financialContext: context,
+      history: history,
+      prompt: prompt,
+    );
     debugPrint(
       '[AIAssistantService] Built messages: ${messages.length} messages',
     );
@@ -229,7 +236,7 @@ Response style:
 
     if (!isBackendHealthy) {
       final fallback = _localFallback(prompt, languageCode, offline: true);
-      yield AIStreamChunk(content: fallback, isDone: false);
+      yield AIStreamChunk(content: fallback, isDone: false, isLocalFallback: true);
       yield const AIStreamChunk(content: '', isDone: true);
       return;
     }

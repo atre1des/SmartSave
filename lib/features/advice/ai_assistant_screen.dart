@@ -1,7 +1,6 @@
 import '../../l10n/app_locale.dart';
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +10,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../ai/ai_assistant_service.dart';
+import '../../ai/conversations.dart';
 import '../../ai/models.dart';
 import '../../ai/openrouter_provider.dart';
 import '../../ai/streaming_markdown.dart';
@@ -46,8 +46,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   SmartSaveAIAssistantService? _assistantService;
 
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-  String? _currentConversationId;
-  final Map<String, List<AIMessage>> _conversations = {};
 
   // Backend connectivity status
   BackendStatus _backendStatus = BackendStatus.unknown;
@@ -57,49 +55,42 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   bool _isRateLimitError = false;
   bool _isDailyQuotaExhausted = false;
 
-
   static List<QuickAction> _quickActions(BuildContext context) => [
     QuickAction(
       type: QuickActionType.savingsGoal,
       title: context.l10n.goalAction,
       description: context.l10n.goalActionDescription,
-      prefillPrompt:
-          context.l10n.goalPrompt,
+      prefillPrompt: context.l10n.goalPrompt,
     ),
     QuickAction(
       type: QuickActionType.explainOpportunity,
       title: context.l10n.opportunityAction,
       description: context.l10n.opportunityDescription,
-      prefillPrompt:
-          context.l10n.opportunityPrompt,
+      prefillPrompt: context.l10n.opportunityPrompt,
     ),
     QuickAction(
       type: QuickActionType.compareDepositShares,
       title: context.l10n.compareAction,
       description: context.l10n.compareDescription,
-      prefillPrompt:
-          context.l10n.comparePrompt,
+      prefillPrompt: context.l10n.comparePrompt,
     ),
     QuickAction(
       type: QuickActionType.analyzePortfolio,
       title: context.l10n.portfolioAction,
       description: context.l10n.portfolioDescription,
-      prefillPrompt:
-          context.l10n.portfolioPrompt,
+      prefillPrompt: context.l10n.portfolioPrompt,
     ),
     QuickAction(
       type: QuickActionType.exploreIPO,
       title: context.l10n.ipoAction,
       description: context.l10n.ipoDescription,
-      prefillPrompt:
-          context.l10n.ipoPrompt,
+      prefillPrompt: context.l10n.ipoPrompt,
     ),
     QuickAction(
       type: QuickActionType.whatIfScenario,
       title: context.l10n.scenarioAction,
       description: context.l10n.scenarioDescription,
-      prefillPrompt:
-          context.l10n.scenarioPrompt,
+      prefillPrompt: context.l10n.scenarioPrompt,
     ),
   ];
 
@@ -113,7 +104,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     );
     // Load saved mode from session
     _mode = ref.read(assistantModeProvider);
-    _loadConversationHistory();
     // Check backend connectivity
     _checkBackendHealth();
   }
@@ -126,85 +116,39 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
   void _showProxyStatus(bool? reachable) {
     if (!mounted) return;
-    setState(() => _backendStatus = switch (reachable) {
-      null => BackendStatus.checking,
-      true => BackendStatus.connected,
-      false => BackendStatus.disconnected,
-    });
-  }
-
-  Future<void> _loadConversationHistory() async {
-    final repository = ref.read(financeRepositoryProvider);
-    String? json;
-    try {
-      json = await repository.assistantConversationHistory();
-    } catch (_) {
-      return;
-    }
-    if (!mounted) return;
-    if (json != null) {
-      final List<dynamic> decoded = jsonDecode(json);
-      for (final item in decoded) {
-        final id = item['id'] as String;
-        final messages = (item['messages'] as List<dynamic>)
-            .map(
-              (m) => AIMessage(
-                role: m['role'] as String? ?? '',
-                content: (m['content'] ?? m['text']) as String? ?? '',
-                isStreaming: m['isStreaming'] as bool? ?? false,
-                error: m['error'] as String?,
-              ),
-            )
-            .toList();
-        _conversations.putIfAbsent(id, () => messages);
-      }
-    }
-    if (_currentConversationId == null && _conversations.isNotEmpty) {
-      _selectConversation(_conversations.keys.last);
-    }
-  }
-
-  Future<void> _saveConversations() async {
-    final repository = ref.read(financeRepositoryProvider);
-    final encoded = jsonEncode(
-      _conversations.entries
-          .map(
-            (entry) => {
-              'id': entry.key,
-              'updatedAt': DateTime.now().toIso8601String(),
-              'messages': entry.value.map((m) => m.toJson()).toList(),
-            },
-          )
-          .toList(),
+    setState(
+      () => _backendStatus = switch (reachable) {
+        null => BackendStatus.checking,
+        true => BackendStatus.connected,
+        false => BackendStatus.disconnected,
+      },
     );
-    try {
-      await repository.saveAssistantConversationHistory(encoded);
-    } catch (_) {
-      if (mounted) debugPrint('[AIAssistantScreen] Could not save conversation history');
-    }
   }
 
   void _startNewConversation() {
-    _currentConversationId = 'conv_${DateTime.now().millisecondsSinceEpoch}';
-    _conversations[_currentConversationId!] = const [];
-    ref.read(assistantAIConversationProvider.notifier).state = const [];
-    _saveConversations();
+    ref.read(aiConversationsProvider).startNew();
     _scaffoldKey.currentState?.closeDrawer();
-    setState(() => _showModeSelector = true);
+    setState(() {
+      _lastError = null;
+      _showModeSelector = true;
+    });
   }
 
   void _selectConversation(String id) {
-    final messages = _conversations[id];
-    if (messages != null) {
-      _currentConversationId = id;
-      ref.read(assistantAIConversationProvider.notifier).state = messages;
-      _scaffoldKey.currentState?.closeDrawer();
-      setState(() => _showModeSelector = false);
-    }
+    unawaited(ref.read(aiConversationsProvider).select(id));
+    _scaffoldKey.currentState?.closeDrawer();
+    setState(() {
+      _lastError = null;
+      _showModeSelector = false;
+    });
   }
+
+  VoidCallback? _cancelActiveRequest;
+  ConversationRequest? _failedRequest;
 
   @override
   void dispose() {
+    _cancelActiveRequest?.call();
     _input.dispose();
     _scrollController.dispose();
     _assistantService?.dispose();
@@ -261,176 +205,66 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
   Future<void> _send([String? suggestedPrompt]) async {
     final prompt = (suggestedPrompt ?? _input.text).trim();
-    if (prompt.isEmpty || _isStreaming) return;
+    final conversations = ref.read(aiConversationsProvider);
+    final request = conversations.begin(prompt);
+    if (request == null) return;
+    _input.clear();
+    await _streamResponse(conversations, request);
+  }
 
-    debugPrint('[AIAssistantScreen] ===== SEND STARTED =====');
-
-    // Clear previous error state
+  Future<void> _streamResponse(
+    AIConversations conversations,
+    ConversationRequest request,
+  ) async {
+    _failedRequest = null;
+    _cancelActiveRequest = () => scheduleMicrotask(() {
+      unawaited(conversations.finish(request));
+    });
     setState(() {
       _lastError = null;
       _isRateLimitError = false;
       _isDailyQuotaExhausted = false;
-    });
-
-    // Start new conversation if needed
-    if (_currentConversationId == null) {
-      debugPrint('[AIAssistantScreen] Starting new conversation');
-      _startNewConversation();
-    }
-
-    _input.clear();
-    final conversationProvider = ref.read(
-      assistantAIConversationProvider.notifier,
-    );
-
-    // Add user message
-    final userMessage = AIMessage.user(prompt);
-    conversationProvider.state = [...conversationProvider.state, userMessage];
-
-    setState(() {
       _isStreaming = true;
       _streamingContent = '';
       _showModeSelector = false;
     });
     _scrollToEnd();
-
-    await _streamResponse(prompt);
-  }
-
-  /// Runs the assistant stream for [prompt] against the current conversation.
-  ///
-  /// Called by [_send] (after appending the user message) and by
-  /// [_retryLastMessage] (which reuses the existing user message, so no
-  /// duplicate is created).
-  Future<void> _streamResponse(String prompt) async {
-    final conversationNotifier = ref.read(
-      assistantAIConversationProvider.notifier,
-    );
-
+    AIMessage? reply;
+    var isLocalFallback = false;
     try {
       await for (final chunk in _assistantService!.sendMessageStream(
-        prompt,
+        request.prompt,
+        history: request.history,
         languageCode: context.l10n.localeName,
         onProxyStatus: _showProxyStatus,
       )) {
-        if (!mounted) {
-          debugPrint('[AIAssistantScreen] Not mounted, returning');
-          return;
-        }
-
-        debugPrint(
-          '[AIAssistantScreen] Received chunk: isDone=${chunk.isDone}, contentLength=${chunk.content.length}, hasError=${chunk.error != null}',
-        );
-
+        if (!mounted) return;
         if (chunk.isDone) {
-          if (chunk.error != null) {
-            // Remove the temporary empty assistant message, if present.
-            final currentMessages = ref.read(assistantAIConversationProvider);
-            if (currentMessages.isNotEmpty &&
-                currentMessages.last.role == 'assistant' &&
-                currentMessages.last.isStreaming) {
-              conversationNotifier.state =
-                  currentMessages.take(currentMessages.length - 1).toList();
-              debugPrint(
-                '[AIAssistantScreen] Removed empty streaming assistant message after error',
-              );
-            }
-            // Store error state for UI display.
+          if (chunk.error != null || _streamingContent.trim().isEmpty) {
             setState(() {
-              _lastError = chunk.error;
+              _lastError = chunk.error ?? context.l10n.aiRetryMessage;
               _isRateLimitError = chunk.isRateLimitError;
               _isDailyQuotaExhausted = chunk.isDailyQuotaExhausted;
             });
           } else {
-            debugPrint(
-              '[AIAssistantScreen] Stream completed successfully, finalizing message',
-            );
-            debugPrint(
-              '[AIAssistantScreen] Final streaming content length: ${_streamingContent.length}',
-            );
-
-            // Guard against a successful completion with no content: treat it
-            // as an error rather than persisting an empty assistant message.
-            if (_streamingContent.trim().isEmpty) {
-              debugPrint(
-                '[AIAssistantScreen] Stream completed with empty content; treating as error',
-              );
-              final currentMessages = ref.read(
-                assistantAIConversationProvider,
-              );
-              if (currentMessages.isNotEmpty &&
-                  currentMessages.last.role == 'assistant' &&
-                  currentMessages.last.isStreaming) {
-                conversationNotifier.state =
-                    currentMessages.take(currentMessages.length - 1).toList();
-              }
-              setState(() {
-                _lastError =
-                    'The AI service returned an empty response. Please try again.';
-                _isRateLimitError = false;
-                _isDailyQuotaExhausted = false;
-              });
-              continue;
-            }
-
-            // Preserve all previous messages, replace the streaming assistant
-            // message with the final content.
-            final currentMessages = ref.read(assistantAIConversationProvider);
-            if (currentMessages.isNotEmpty &&
-                currentMessages.last.role == 'assistant' &&
-                currentMessages.last.isStreaming) {
-              conversationNotifier.state = [
-                ...currentMessages.take(currentMessages.length - 1),
-                currentMessages.last.copyWith(
-                  content: _streamingContent,
-                  isStreaming: false,
-                ),
-              ];
-            } else {
-              conversationNotifier.state = [
-                ...currentMessages,
-                AIMessage.assistant(_streamingContent, isStreaming: false),
-              ];
-            }
-            debugPrint(
-              '[AIAssistantScreen] After finalizing, messages count: ${ref.read(assistantAIConversationProvider).length}',
+            reply = AIMessage.assistant(
+              _streamingContent,
+              isLocalFallback: isLocalFallback,
             );
           }
-          continue;
-        }
-
-        _streamingContent += chunk.content;
-
-        final currentMessages = ref.read(assistantAIConversationProvider);
-        if (currentMessages.isNotEmpty &&
-            currentMessages.last.role == 'assistant' &&
-            currentMessages.last.isStreaming) {
-          conversationNotifier.state = [
-            ...currentMessages.take(currentMessages.length - 1),
-            currentMessages.last.copyWith(
-              content: _streamingContent,
-              isStreaming: true,
-            ),
-          ];
         } else {
-          conversationNotifier.state = [
-            ...currentMessages,
-            AIMessage.assistant(_streamingContent, isStreaming: true),
-          ];
+          isLocalFallback |= chunk.isLocalFallback;
+          setState(() => _streamingContent += chunk.content);
+          _scrollToEnd();
         }
-        _scrollToEnd();
       }
+    } catch (_) {
+      if (mounted) setState(() => _lastError = context.l10n.aiRetryMessage);
     } finally {
+      if (mounted && _lastError != null) _failedRequest = request;
+      await conversations.finish(request, reply: reply);
+      _cancelActiveRequest = null;
       if (mounted) {
-        debugPrint('[AIAssistantStream] Finally block - saving conversation');
-        if (_currentConversationId != null) {
-          _conversations[_currentConversationId!] =
-              ref.read(assistantAIConversationProvider);
-          _saveConversations();
-          debugPrint(
-            '[AIAssistantScreen] Conversation saved, ID: $_currentConversationId',
-          );
-        }
         setState(() => _isStreaming = false);
         _scrollToEnd();
       }
@@ -438,39 +272,25 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   }
 
   void _retryLastMessage() {
-    if (_isStreaming) return;
-    final messages = ref.read(assistantAIConversationProvider);
-    if (messages.isEmpty) return;
-    final lastUserMsg = messages.where((m) => m.isUser).lastOrNull;
-    if (lastUserMsg == null) return;
-
-    // Clear previous error state
-    setState(() {
-      _lastError = null;
-      _isRateLimitError = false;
-      _isDailyQuotaExhausted = false;
-    });
-
-    setState(() {
-      _isStreaming = true;
-      _streamingContent = '';
-      _showModeSelector = false;
-    });
-    _scrollToEnd();
-
-    // Re-run the stream for the existing user message WITHOUT re-adding it,
-    // so retry never duplicates the user message.
-    _streamResponse(lastUserMsg.text);
+    final conversations = ref.read(aiConversationsProvider);
+    final failed = _failedRequest;
+    if (_lastError == null ||
+        failed == null ||
+        failed.id != conversations.activeId) {
+      return;
+    }
+    final last = conversations.messages.lastOrNull;
+    if (last == null || !last.isUser || last.content != failed.prompt) return;
+    final request = conversations.begin(last.content, retry: true);
+    if (request != null) _streamResponse(conversations, request);
   }
 
   void _clearConversation() {
-    // Clear only the active conversation, keep other stored conversations
-    if (_currentConversationId != null) {
-      _conversations[_currentConversationId!] = const [];
-      _saveConversations();
-    }
-    ref.read(assistantAIConversationProvider.notifier).state = const [];
-    setState(() => _showModeSelector = true);
+    ref.read(aiConversationsProvider).clear();
+    setState(() {
+      _lastError = null;
+      _showModeSelector = true;
+    });
   }
 
   void _toggleMode() {
@@ -483,7 +303,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     _assistantService!.setMode(_mode);
   }
 
-  Widget _buildDrawer() {
+  Widget _buildDrawer(AIConversations conversations) {
     return Drawer(
       child: SafeArea(
         child: Column(
@@ -530,7 +350,9 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
               leading: const Icon(Icons.add_circle_outline),
               title: Text(context.l10n.newChat),
               subtitle: Text(context.l10n.startConversation),
-              onTap: _startNewConversation,
+              onTap: conversations.busy || !conversations.ready
+                  ? null
+                  : _startNewConversation,
             ),
             ListTile(
               leading: const Icon(Icons.description_outlined),
@@ -563,7 +385,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
             const Divider(height: 16),
 
             // Recent Chats
-            if (_conversations.isNotEmpty)
+            if (conversations.entries.isNotEmpty)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,11 +406,12 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                     ),
                     Expanded(
                       child: ListView(
-                        children: _conversations.entries.map((entry) {
+                        children: conversations.entries.map((entry) {
                           final firstUserMsg = entry.value
                               .where((m) => m.isUser)
                               .firstOrNull;
-                          final title = firstUserMsg?.text ?? context.l10n.untitledChat;
+                          final title =
+                              firstUserMsg?.text ?? context.l10n.untitledChat;
                           final preview = title.length > 30
                               ? '${title.substring(0, 30)}...'
                               : title;
@@ -600,24 +423,16 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                             ),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete_outline, size: 16),
-                              onPressed: () {
-                                setState(() {
-                                  _conversations.remove(entry.key);
-                                  if (_currentConversationId == entry.key) {
-                                    _currentConversationId = null;
-                                    ref
-                                            .read(
-                                              assistantAIConversationProvider
-                                                  .notifier,
-                                            )
-                                            .state =
-                                        const [];
-                                  }
-                                });
-                                _saveConversations();
-                              },
+                              onPressed: conversations.busy
+                                  ? null
+                                  : () {
+                                      conversations.delete(entry.key);
+                                      setState(() => _lastError = null);
+                                    },
                             ),
-                            onTap: () => _selectConversation(entry.key),
+                            onTap: conversations.busy
+                                ? null
+                                : () => _selectConversation(entry.key),
                           );
                         }).toList(),
                       ),
@@ -633,9 +448,9 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messages = ref.watch(assistantAIConversationProvider);
-    final waitingForFirstChunk =
-        _isStreaming && (messages.isEmpty || messages.last.isUser) && _lastError == null;
+    final conversations = ref.watch(aiConversationsProvider);
+    final messages = conversations.messages;
+    final waitingForFirstChunk = _isStreaming && _lastError == null;
     final isConnected = _backendStatus == BackendStatus.connected;
     final isChecking = _backendStatus == BackendStatus.checking;
 
@@ -788,18 +603,24 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
           ),
         ],
       ),
-      drawer: _buildDrawer(),
+      drawer: _buildDrawer(conversations),
       body: SafeArea(
         child: Column(
           children: [
             if (!_showModeSelector || messages.isNotEmpty)
-              _DisclaimerBanner(isConnected: isConnected, isChecking: isChecking),
+              _DisclaimerBanner(
+                isConnected: isConnected,
+                isChecking: isChecking,
+              ),
 
             Expanded(
               child: messages.isEmpty && _showModeSelector
                   ? ListView(
                       children: [
-                        _DisclaimerBanner(isConnected: isConnected, isChecking: isChecking),
+                        _DisclaimerBanner(
+                          isConnected: isConnected,
+                          isChecking: isChecking,
+                        ),
                         _ModeSelector(
                           currentMode: _mode,
                           onToggle: _toggleMode,
@@ -833,10 +654,10 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                                   18,
                                 ),
                                 itemCount:
-                                    messages.length + (waitingForFirstChunk ? 1 : 0),
+                                    messages.length +
+                                    (waitingForFirstChunk ? 1 : 0),
                                 itemBuilder: (context, index) {
-                                  if (index == messages.length ||
-                                      messages[index].isStreaming) {
+                                  if (index == messages.length) {
                                     return _StreamingBubble(
                                       content: _streamingContent,
                                     );
@@ -856,7 +677,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                 error: messages.last.error!,
                 onRetry: _retryLastMessage,
               )
-            else if (_lastError != null)
+            else if (_lastError != null &&
+                _failedRequest?.id == conversations.activeId)
               _ErrorBanner(
                 error: _lastError!,
                 onRetry: _retryLastMessage,
@@ -868,7 +690,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
             _Composer(
               controller: _input,
               onSend: _send,
-              busy: _isStreaming,
+              busy: conversations.busy || !conversations.ready,
               mode: _mode,
               onModeToggle: _toggleMode,
             ),
@@ -880,7 +702,10 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 }
 
 class _DisclaimerBanner extends StatelessWidget {
-  const _DisclaimerBanner({required this.isConnected, required this.isChecking});
+  const _DisclaimerBanner({
+    required this.isConnected,
+    required this.isChecking,
+  });
   final bool isChecking;
   final bool isConnected;
 
@@ -944,8 +769,7 @@ class _ModeSelector extends StatelessWidget {
               child: _ModeCard(
                 icon: Icons.school_outlined,
                 title: context.l10n.beginnerChoice,
-                description:
-                    context.l10n.aiBeginnerExplainer,
+                description: context.l10n.aiBeginnerExplainer,
                 selected: currentMode == AssistantMode.beginner,
                 onTap: onToggle,
               ),
@@ -955,8 +779,7 @@ class _ModeSelector extends StatelessWidget {
               child: _ModeCard(
                 icon: Icons.analytics_outlined,
                 title: context.l10n.experiencedChoice,
-                description:
-                    context.l10n.aiAdvancedExplainer,
+                description: context.l10n.aiAdvancedExplainer,
                 selected: currentMode == AssistantMode.experienced,
                 onTap: onToggle,
               ),
@@ -1039,7 +862,10 @@ class _QuickActionsSection extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(context.l10n.quickActions, style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          context.l10n.quickActions,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
@@ -1179,8 +1005,7 @@ class _MessageBubble extends StatelessWidget {
                     isStreaming: message.isStreaming,
                     selectable: true,
                     styleSheet: _assistantMarkdownStyleSheet(context),
-                    onTapLink: (url, title, text) {
-                    },
+                    onTapLink: (url, title, text) {},
                   ),
           );
         },
@@ -1313,8 +1138,7 @@ class _StreamingBubble extends StatelessWidget {
                       isStreaming: true,
                       selectable: true,
                       styleSheet: _assistantMarkdownStyleSheet(context),
-                      onTapLink: (url, title, text) {
-                      },
+                      onTapLink: (url, title, text) {},
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -1415,15 +1239,23 @@ class _Composer extends StatelessWidget {
   final VoidCallback onModeToggle;
 
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
-    final desktop = kIsWeb || switch (defaultTargetPlatform) {
-      TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.linux => true,
-      _ => false,
-    };
+    final desktop =
+        kIsWeb ||
+        switch (defaultTargetPlatform) {
+          TargetPlatform.windows ||
+          TargetPlatform.macOS ||
+          TargetPlatform.linux => true,
+          _ => false,
+        };
     final keyboard = HardwareKeyboard.instance;
-    final enter = event.logicalKey == LogicalKeyboardKey.enter ||
+    final enter =
+        event.logicalKey == LogicalKeyboardKey.enter ||
         event.logicalKey == LogicalKeyboardKey.numpadEnter;
-    if (!desktop || !enter || keyboard.isControlPressed ||
-        keyboard.isMetaPressed || keyboard.isAltPressed) {
+    if (!desktop ||
+        !enter ||
+        keyboard.isControlPressed ||
+        keyboard.isMetaPressed ||
+        keyboard.isAltPressed) {
       return KeyEventResult.ignored;
     }
     final value = controller.value;
@@ -1499,24 +1331,24 @@ class _Composer extends StatelessWidget {
                 canRequestFocus: false,
                 onKeyEvent: _handleKey,
                 child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.newline,
-                readOnly: busy,
-                decoration: InputDecoration(
-                  hintText: busy
-                      ? context.l10n.waiting
-                      : context.l10n.askSmartSave,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 12,
+                  controller: controller,
+                  minLines: 1,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.newline,
+                  readOnly: busy,
+                  decoration: InputDecoration(
+                    hintText: busy
+                        ? context.l10n.waiting
+                        : context.l10n.askSmartSave,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 12,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    isDense: true,
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  isDense: true,
                 ),
-              ),
               ),
             ),
             const SizedBox(width: 8),

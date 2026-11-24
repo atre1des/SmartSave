@@ -178,6 +178,29 @@ test('success: non-streaming 200 passes the completion through', async () => {
   assert.equal(upstreamCalls.length, 1);
 });
 
+test('forwards multilingual history to OpenRouter in the original role order', async () => {
+  const messages = [
+    { role: 'system', content: 'SmartSave system instructions' },
+    { role: 'user', content: 'Compare an ETF with a single stock.' },
+    { role: 'assistant', content: 'The ETF holds several assets. Say the gain is 1 000 ₸.' },
+    { role: 'user', content: 'Объясни это по-русски.' },
+    { role: 'assistant', content: 'ETF держит несколько активов.' },
+    { role: 'user', content: 'Енді осыны қазақша түсіндір.' },
+  ];
+  upstreamResponse = () => sseResponse([
+    'data: {"choices":[{"delta":{"content":"Мысал"}}]}\n\n',
+    'data: [DONE]\n\n',
+  ]);
+
+  const response = await post({ messages, stream: true });
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /Мысал/);
+  assert.equal(upstreamCalls.length, 1);
+  const outgoing = JSON.parse(upstreamCalls[0].options.body);
+  assert.deepEqual(outgoing.messages, messages);
+  assert.equal(outgoing.stream, true);
+});
+
 // Client-selected free model passes through; no model switching.
 test('success: client-selected free model is forwarded unchanged (no model switch)', async () => {
   upstreamResponse = () => jsonResponse({ choices: [{ message: { content: 'nemotron reply' } }] });

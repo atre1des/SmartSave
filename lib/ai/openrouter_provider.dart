@@ -472,6 +472,7 @@ class AIStreamChunk {
     required this.content,
     required this.isDone,
     this.error,
+    this.isLocalFallback = false,
     this.isRateLimitError = false,
     this.isDailyQuotaExhausted = false,
     this.retryAfterSeconds,
@@ -480,6 +481,7 @@ class AIStreamChunk {
   final String content;
   final bool isDone;
   final String? error;
+  final bool isLocalFallback;
 
   /// Whether this error is an HTTP 429 rate limit error
   final bool isRateLimitError;
