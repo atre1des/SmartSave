@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
+import 'glass.dart';
 
 String formatTenge(int amount) {
   final digits = amount.abs().toString();
@@ -262,59 +263,97 @@ class AppNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
-      color: colors.surface,
-      child: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(6, 4, 6, 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            for (var i = 0; i < destinations.length; i++)
-              Expanded(
-                child: Semantics(
-                  selected: i == selectedIndex,
-                  button: true,
-                  child: InkWell(
-                    onTap: () => onSelected(i),
-                    borderRadius: BorderRadius.circular(18),
-                    child: Ink(
-                      decoration: ShapeDecoration(
-                        color: i == selectedIndex ? colors.selection : null,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 60),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(3, 8, 3, 8),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              destinations[i].icon,
-                              const SizedBox(height: 3),
-                              Text(
-                                destinations[i].label,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.labelMedium
-                                    ?.copyWith(
-                                      fontSize: 11,
-                                      color: i == selectedIndex
-                                          ? colors.onSelection
-                                          : colors.muted,
-                                    ),
-                              ),
-                            ],
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 300);
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(18, 5, 18, 12),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: GlassSurface(
+            radius: 36,
+            padding: const EdgeInsets.all(5),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Stack(
+                alignment: Alignment.center,
+                children: [
+                  AnimatedPositionedDirectional(
+                    duration: duration,
+                    curve: Curves.easeOutBack,
+                    start:
+                        constraints.maxWidth *
+                        selectedIndex /
+                        destinations.length,
+                    width: constraints.maxWidth / destinations.length,
+                    top: 0,
+                    bottom: 0,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: colors.action.withValues(
+                            alpha: colors.isDark ? .2 : .11,
                           ),
+                          borderRadius: BorderRadius.circular(30),
                         ),
                       ),
                     ),
                   ),
-                ),
+                  Row(
+                    children: [
+                      for (var i = 0; i < destinations.length; i++)
+                        Expanded(
+                          child: Semantics(
+                            selected: i == selectedIndex,
+                            button: true,
+                            label: destinations[i].label,
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(28),
+                                onTap: () => onSelected(i),
+                                child: ExcludeSemantics(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 7,
+                                      horizontal: 2,
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        destinations[i].icon,
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          destinations[i].label,
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: i == selectedIndex
+                                                ? colors.action
+                                                : colors.muted,
+                                            fontWeight: i == selectedIndex
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
-          ],
+            ),
+          ),
         ),
       ),
     );

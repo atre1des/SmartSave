@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_save/shared/appearance.dart';
 import 'package:smart_save/shared/theme.dart';
+import 'package:smart_save/shared/glass.dart';
 import 'package:smart_save/shared/widgets.dart';
 
 double contrast(Color first, Color second) {
@@ -77,7 +78,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       final home = tester.widget<Text>(find.text('Басты бет'));
-      expect(home.style?.color, const Color(0xFF020202));
+      expect(home.style?.color, const Color(0xFF8FD1B1));
       expect(
         Theme.of(
           tester.element(find.text('Басты бет')),
@@ -88,4 +89,19 @@ void main() {
       expect(selected, 1);
     },
   );
+
+  testWidgets('high contrast disables the glass blur', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(highContrast: true),
+          child: const Scaffold(body: GlassSurface(child: Text('Control'))),
+        ),
+      ),
+    );
+    expect(
+      tester.widget<BackdropFilter>(find.byType(BackdropFilter)).enabled,
+      isFalse,
+    );
+  });
 }

@@ -7,6 +7,7 @@ import '../../data/finance_repository.dart';
 import '../../data/financial_math.dart';
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
+import '../../shared/glass.dart';
 import '../../shared/widgets.dart';
 import '../goals/goals_screen.dart';
 import '../invest/investment_intelligence_screen.dart';
@@ -39,6 +40,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: finance.isLoading
             ? Center(child: CircularProgressIndicator(color: context.colors.text))
             : loadError != null
@@ -58,7 +60,7 @@ class DashboardScreen extends ConsumerWidget {
                 onRefresh: finance.refresh,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                  padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.paddingOf(context).bottom),
                   children: [
                     // Header with greeting and profile avatar
                     Row(
@@ -70,7 +72,7 @@ class DashboardScreen extends ConsumerWidget {
                             children: [
                               Text(_getGreeting(context), style: Theme.of(context).textTheme.bodySmall),
                               const SizedBox(height: 2),
-                              Text(context.l10n.yourFinances, style: Theme.of(context).textTheme.headlineMedium),
+                              Text(context.l10n.yourFinances, style: glassTitle(context)),
                             ],
                           ),
                         ),
@@ -87,41 +89,54 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    // Total balance card
-                    InkWell(
-                      onTap: () => _push(context, const TotalBalanceDetailScreen()),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: context.colors.emphasis,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(context.l10n.totalBalance, style: TextStyle(color: context.colors.emphasisMuted, fontSize: 12)),
-                          const SizedBox(height: 3),
-                          FittedBox(
-                            alignment: Alignment.centerLeft,
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              context.formatTenge(finance.balance),
-                              style: TextStyle(fontSize: 30, height: 1.35, fontWeight: FontWeight.w700, color: context.colors.onEmphasis),
+                    Semantics(
+                      button: true,
+                      child: InkWell(
+                        onTap: () => _push(context, const TotalBalanceDetailScreen()),
+                        borderRadius: BorderRadius.circular(34),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(34),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [context.colors.surface, context.colors.progress.withValues(alpha: context.colors.isDark ? .17 : .13)],
                             ),
                           ),
-                          const SizedBox(height: 7),
-                          Text(context.l10n.spentMonth, style: TextStyle(color: context.colors.emphasisMuted, fontSize: 11)),
-                          Text(context.formatTenge(finance.monthlySpend), style: TextStyle(color: context.colors.onEmphasis, fontWeight: FontWeight.w600, fontSize: 15)),
-                        ],
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(22, 21, 22, 18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(children: [
+                                  Expanded(child: Text(context.l10n.totalBalance, style: Theme.of(context).textTheme.bodyMedium)),
+                                  Icon(Icons.north_east, color: context.colors.action, size: 19),
+                                ]),
+                                const SizedBox(height: 10),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(context.formatTenge(finance.balance), style: glassTitle(context).copyWith(fontSize: 48)),
+                                ),
+                                const SizedBox(height: 18),
+                                Divider(height: 1, color: context.colors.outline.withValues(alpha: .55)),
+                                const SizedBox(height: 12),
+                                Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  spacing: 18,
+                                  runSpacing: 6,
+                                  children: [
+                                    Text(context.l10n.spentMonth, style: Theme.of(context).textTheme.bodySmall),
+                                    Text(context.formatTenge(finance.monthlySpend), style: Theme.of(context).textTheme.titleMedium),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        ),
+                      ),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Quick Actions Grid - Banking app style shortcuts
-                    _QuickActionsGrid(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 27),
 
                     // Goal Progress Section (preserved from original)
                     if (goals.isNotEmpty) ...[
@@ -151,26 +166,22 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                     const SizedBox(height: 20),
 
-                    // Top spending this month
+                    // Put recent activity ahead of research shortcuts.
+                    SectionHeading(context.l10n.recent, trailing: context.l10n.seeAll, onTrailing: () => _push(context, const TransactionsScreen())),
+                    for (final transaction in finance.transactions.take(2))
+                      _RecentTransaction(
+                        transaction: transaction,
+                        onTap: () => _push(context, TransactionDetailsScreen(transaction: transaction)),
+                      ),
+                    const SizedBox(height: 24),
                     SectionHeading(context.l10n.topSpending, trailing: context.l10n.seeAll, onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
                     if (topSpending.isEmpty)
                       Text(context.l10n.addTransactionsHint, style: TextStyle(color: context.colors.muted))
                     else
                       for (final entry in topSpending.take(3))
                         _SpendingBar(label: entry.key, amount: entry.value, max: topSpending.first.value),
-
-                    const SizedBox(height: 12),
-
-                    // Recent transactions
-                    SectionHeading(context.l10n.recent, trailing: context.l10n.seeAll, onTrailing: () => _push(context, const TransactionsScreen())),
-                    for (final transaction in finance.transactions.take(2))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 7),
-                        child: _RecentTransaction(
-                          transaction: transaction,
-                          onTap: () => _push(context, TransactionDetailsScreen(transaction: transaction)),
-                        ),
-                      ),
+                    const SizedBox(height: 28),
+                    _QuickActionsGrid(),
                   ],
               ),
             ),
@@ -242,34 +253,7 @@ class _QuickActionsGrid extends ConsumerWidget {
       children: [
         Text(context.l10n.quickActions, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: context.colors.text)),
         const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final scaledLabel = MediaQuery.textScalerOf(context).scale(14);
-            final columns = constraints.maxWidth >= 600
-                ? 3
-                : constraints.maxWidth < 280 || scaledLabel > 22
-                ? 1
-                : 2;
-            return Column(
-              children: [
-                for (var start = 0; start < actions.length; start += columns) ...[
-                  if (start > 0) const SizedBox(height: 12),
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var column = 0; column < columns; column++) ...[
-                          if (column > 0) const SizedBox(width: 12),
-                          Expanded(child: actions[start + column]),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            );
-          },
-        ),
+        for (final action in actions) action,
       ],
     );
   }
@@ -289,34 +273,13 @@ class _QuickActionItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: Icon(icon, color: context.colors.action),
+    title: Text(label, style: Theme.of(context).textTheme.titleMedium),
+    subtitle: Text(description, style: Theme.of(context).textTheme.bodySmall),
+    trailing: Icon(Icons.chevron_right, color: context.colors.muted),
     onTap: onTap,
-    padding: const EdgeInsets.all(14),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: context.colors.subtleSurface,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(7),
-            child: Icon(icon, color: context.colors.action, size: 20),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          description,
-          style: TextStyle(color: context.colors.muted, fontSize: 11),
-        ),
-      ],
-    ),
   );
 }
 
@@ -326,11 +289,18 @@ class _GoalProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: goals.map((goal) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: _SingleGoalCard(goal: goal),
-      )).toList(),
+    return Material(
+      color: context.colors.surface,
+      borderRadius: BorderRadius.circular(27),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < goals.length; i++) ...[
+            if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
+            _SingleGoalCard(goal: goals[i]),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -347,10 +317,11 @@ class _SingleGoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final monthly = monthlyGoalContribution(targetTenge: goal.target, savedTenge: goal.saved, monthsRemaining: _monthsLeft(goal.deadline));
 
-    return SurfaceCard(
+    return InkWell(
       onTap: () => _push(context, GoalProgressScreen(goal: goal)),
-      padding: const EdgeInsets.all(16),
-      child: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -375,7 +346,7 @@ class _SingleGoalCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ProgressTrack(value: goal.target == 0 ? 0 : goal.saved / goal.target, height: 10),
+          ProgressTrack(value: goal.target == 0 ? 0 : goal.saved / goal.target, height: 5),
           const SizedBox(height: 8),
           Wrap(
             spacing: 12,
@@ -386,6 +357,7 @@ class _SingleGoalCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

@@ -221,6 +221,8 @@ void main() {
 
         await tester.pageBack();
         await tester.pumpAndSettle();
+        tester.state<ScrollableState>(dashboardScroll).position.jumpTo(0);
+        await tester.pumpAndSettle();
         await tester.scrollUntilVisible(
           find.text('Goal Progress'),
           150,
@@ -259,7 +261,11 @@ void main() {
               matching: find.byType(Row),
             )
             .first;
-        await tester.ensureVisible(find.text('Top spending this month'));
+        await tester.scrollUntilVisible(
+          find.text('Top spending this month'),
+          100,
+          scrollable: dashboardScroll,
+        );
         await tester.tap(
           find.descendant(of: spendingHeading, matching: find.text('See all')),
         );

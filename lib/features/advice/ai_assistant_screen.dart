@@ -16,6 +16,7 @@ import '../../ai/openrouter_provider.dart';
 import '../../ai/streaming_markdown.dart';
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
+import '../../shared/glass.dart';
 import '../invest/investment_intelligence_screen.dart';
 import 'advice_screens.dart';
 import 'assistant_session.dart';
@@ -305,45 +306,27 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
   Widget _buildDrawer(AIConversations conversations) {
     return Drawer(
+      backgroundColor: context.colors.canvas,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadiusDirectional.horizontal(
+          end: Radius.circular(30),
+        ),
+      ),
       child: SafeArea(
         child: Column(
           children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: context.colors.emphasis,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(16),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 26, 20, 16),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  context.l10n.conversationHistory,
+                  style: glassTitle(
+                    context,
+                  ).copyWith(fontSize: 28, letterSpacing: -1),
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(Icons.auto_awesome, color: context.colors.progress, size: 24),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.l10n.assistant,
-                          style: TextStyle(
-                            color: context.colors.onEmphasis,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          context.l10n.chooseExplore,
-                          style: TextStyle(color: context.colors.onEmphasis, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
-            const SizedBox(height: 8),
 
             // Fixed entries
             ListTile(
@@ -470,58 +453,40 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        title: Text(context.l10n.assistant),
+        toolbarHeight: 82,
+        titleSpacing: 4,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.assistant,
+              style: glassTitle(
+                context,
+              ).copyWith(fontSize: 28, letterSpacing: -1),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              isChecking
+                  ? context.l10n.aiConnecting
+                  : isConnected
+                  ? context.l10n.proxyReachable
+                  : context.l10n.offlineMode,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: isConnected
+                    ? context.colors.action
+                    : context.colors.muted,
+              ),
+            ),
+          ],
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.menu),
+          tooltip: context.l10n.conversationHistory,
+          icon: const Icon(Icons.history_rounded),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
         actions: [
-          // AI status indicator
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isConnected ? context.colors.subtleSurface : context.colors.noticeSurface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isChecking)
-                      SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: context.colors.warning,
-                        ),
-                      )
-                    else
-                      Icon(
-                        isConnected ? Icons.cloud_done : Icons.cloud_off,
-                        size: 14,
-                        color: isConnected ? context.colors.positive : context.colors.warning,
-                      ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isChecking
-                          ? context.l10n.aiConnecting
-                          : isConnected
-                          ? context.l10n.proxyReachable
-                          : context.l10n.offlineMode,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: isConnected ? context.colors.positive : context.colors.warning,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
           PopupMenuButton<String>(
             tooltip: context.l10n.assistantFeature,
             onSelected: (value) {
@@ -712,8 +677,14 @@ class _DisclaimerBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
-    color: isConnected ? context.colors.subtleSurface : context.colors.noticeSurface,
+    margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+    decoration: BoxDecoration(
+      color: isConnected
+          ? context.colors.surface
+          : context.colors.noticeSurface.withValues(alpha: .65),
+      borderRadius: BorderRadius.circular(18),
+    ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -841,7 +812,9 @@ class _ModeCard extends StatelessWidget {
             description,
             style: TextStyle(
               fontSize: 11,
-              color: selected ? context.colors.onEmphasis : context.colors.muted,
+              color: selected
+                  ? context.colors.onEmphasis
+                  : context.colors.muted,
               height: 1.3,
             ),
           ),
@@ -924,11 +897,7 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
     children: [
-      Icon(
-        Icons.auto_awesome_rounded,
-        size: 38,
-        color: context.colors.text,
-      ),
+      Icon(Icons.auto_awesome_rounded, size: 38, color: context.colors.text),
       const SizedBox(height: 12),
       Text(
         context.l10n.localWelcome,
@@ -982,21 +951,25 @@ class _MessageBubble extends StatelessWidget {
                   ? constraints.maxHeight
                   : double.infinity,
             ),
-            margin: const EdgeInsets.only(bottom: 10),
+            margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
-              color: message.isUser ? context.colors.emphasis : context.colors.surface,
-              border: message.isUser
-                  ? null
-                  : Border.all(color: context.colors.outline),
-              borderRadius: BorderRadius.circular(16),
+              color: message.isUser
+                  ? context.colors.primary
+                  : context.colors.surface,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(24),
+                topRight: const Radius.circular(24),
+                bottomLeft: Radius.circular(message.isUser ? 24 : 7),
+                bottomRight: Radius.circular(message.isUser ? 7 : 24),
+              ),
             ),
             child: message.isUser
                 ? SelectableText(
                     message.text,
                     style: TextStyle(
-                      color: message.isUser ? context.colors.onEmphasis : context.colors.text,
-                      fontSize: 12,
+                      color: context.colors.onPrimary,
+                      fontSize: 14,
                       height: 1.4,
                     ),
                   )
@@ -1058,7 +1031,9 @@ MarkdownStyleSheet _assistantMarkdownStyleSheet(BuildContext context) {
     ),
     blockquotePadding: const EdgeInsets.only(left: 12, top: 6, bottom: 6),
     blockquoteDecoration: BoxDecoration(
-      border: Border(left: BorderSide(color: context.colors.progress, width: 3)),
+      border: Border(
+        left: BorderSide(color: context.colors.progress, width: 3),
+      ),
     ),
     code: theme.textTheme.bodyMedium?.copyWith(
       fontFamily: 'monospace',
@@ -1287,96 +1262,105 @@ class _Composer extends StatelessWidget {
       14,
       12 + MediaQuery.paddingOf(context).bottom,
     ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Mode indicator
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              mode == AssistantMode.beginner
-                  ? context.l10n.beginnerMode
-                  : context.l10n.experiencedMode,
-              style: TextStyle(
-                color: context.colors.muted,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            TextButton(
-              onPressed: onModeToggle,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                context.l10n.switchMode,
+    child: GlassSurface(
+      radius: 30,
+      padding: const EdgeInsets.fromLTRB(11, 2, 7, 7),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Mode indicator
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                mode == AssistantMode.beginner
+                    ? context.l10n.beginnerMode
+                    : context.l10n.experiencedMode,
                 style: TextStyle(
-                  color: context.colors.action,
+                  color: context.colors.muted,
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Focus(
-                canRequestFocus: false,
-                onKeyEvent: _handleKey,
-                child: TextField(
-                  controller: controller,
-                  minLines: 1,
-                  maxLines: 4,
-                  textInputAction: TextInputAction.newline,
-                  readOnly: busy,
-                  decoration: InputDecoration(
-                    hintText: busy
-                        ? context.l10n.waiting
-                        : context.l10n.askSmartSave,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 15,
-                      vertical: 12,
-                    ),
-                    filled: true,
-                    fillColor: context.colors.surface,
-                    isDense: true,
+              TextButton(
+                onPressed: onModeToggle,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  context.l10n.switchMode,
+                  style: TextStyle(
+                    color: context.colors.action,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              height: 48,
-              width: 48,
-              child: IconButton.filled(
-                tooltip: context.l10n.sendQuestion,
-                onPressed: busy ? null : () => onSend(controller.text),
-                style: IconButton.styleFrom(
-                  backgroundColor: context.colors.primary,
-                  foregroundColor: context.colors.onPrimary,
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Focus(
+                  canRequestFocus: false,
+                  onKeyEvent: _handleKey,
+                  child: TextField(
+                    controller: controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.newline,
+                    readOnly: busy,
+                    decoration: InputDecoration(
+                      hintText: busy
+                          ? context.l10n.waiting
+                          : context.l10n.askSmartSave,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 15,
+                        vertical: 12,
+                      ),
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
                 ),
-                icon: busy
-                    ? SizedBox(
-                        width: 17,
-                        height: 17,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: context.colors.onPrimary,
-                        ),
-                      )
-                    : const Icon(Icons.arrow_upward_rounded),
               ),
-            ),
-          ],
-        ),
-      ],
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 48,
+                width: 48,
+                child: IconButton.filled(
+                  tooltip: context.l10n.sendQuestion,
+                  onPressed: busy ? null : () => onSend(controller.text),
+                  style: IconButton.styleFrom(
+                    backgroundColor: context.colors.primary,
+                    foregroundColor: context.colors.onPrimary,
+                  ),
+                  icon: busy
+                      ? SizedBox(
+                          width: 17,
+                          height: 17,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: context.colors.onPrimary,
+                          ),
+                        )
+                      : const Icon(Icons.arrow_upward_rounded),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     ),
   );
 }

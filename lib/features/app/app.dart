@@ -613,7 +613,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     width: 24,
     height: 24,
     colorFilter: ColorFilter.mode(
-      isSelected ? context.colors.onSelection : context.colors.muted,
+      isSelected ? context.colors.action : context.colors.muted,
       BlendMode.srcIn,
     ),
   );
@@ -637,16 +637,23 @@ class _AppShellState extends ConsumerState<AppShell> {
         }
       },
       child: Scaffold(
+        extendBody: selected == 0 || selected == 3,
         body: IndexedStack(index: selected, children: _pages),
-        bottomNavigationBar: AppNavigationBar(
-          selectedIndex: selected,
-          onSelected: (index) =>
-              ref.read(selectedTabIndexProvider.notifier).state = index,
-          destinations: [
-            for (var i = 0; i < tabs.length; i++)
-              (icon: _buildTabIcon(tabs[i].asset, i == selected), label: tabs[i].label),
-          ],
-        ),
+        bottomNavigationBar:
+            selected == 2 && MediaQuery.viewInsetsOf(context).bottom > 0
+            ? null
+            : AppNavigationBar(
+                selectedIndex: selected,
+                onSelected: (index) =>
+                    ref.read(selectedTabIndexProvider.notifier).state = index,
+                destinations: [
+                  for (var i = 0; i < tabs.length; i++)
+                    (
+                      icon: _buildTabIcon(tabs[i].asset, i == selected),
+                      label: tabs[i].label,
+                    ),
+                ],
+              ),
       ),
     );
   }

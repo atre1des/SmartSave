@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
+import '../../shared/glass.dart';
 import '../../shared/widgets.dart';
 import 'investment_intelligence_screen.dart';
 import 'invest_screen.dart';
@@ -24,195 +25,44 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userName = ref.watch(authStateProvider).valueOrNull?.displayName ?? 'User';
     final finance = ref.watch(financeControllerProvider);
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: finance.isLoading
             ? Center(child: CircularProgressIndicator(color: context.colors.text))
             : RefreshIndicator(
                 onRefresh: finance.refresh,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                  padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.paddingOf(context).bottom),
                   children: [
-                    // Personalized greeting
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Should we begin, $userName?',
-                                style: Theme.of(context).textTheme.headlineMedium,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                context.l10n.investExploreIntro,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.colors.muted),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        CircleAvatar(
-                          backgroundColor: context.colors.subtleSurface,
-                          foregroundColor: context.colors.text,
-                          child: const Icon(Icons.psychology_outlined, size: 28),
-                        ),
-                      ],
-                    ),
-                    // Investment Intelligence
-                    SectionHeading(context.l10n.investmentIntelligence, trailing: context.l10n.explore, onTrailing: () => _openFeature(const InvestmentIntelligenceScreen())),
-                    const SizedBox(height: 12),
-                    SurfaceCard(
-                      onTap: () => _openFeature(const InvestmentIntelligenceScreen()),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: context.colors.subtleSurface,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.psychology_outlined, color: context.colors.text, size: 24),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      context.l10n.aiBeginners,
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      context.l10n.investBasicsIntro,
-                                      style: TextStyle(color: context.colors.muted, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(Icons.chevron_right, color: context.colors.muted),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(height: 1),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: context.colors.noticeSurface,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.description_outlined, color: context.colors.warning, size: 24),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      context.l10n.thesisReview,
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      context.l10n.thesisTrackingIntro,
-                                      style: TextStyle(color: context.colors.muted, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(Icons.chevron_right, color: context.colors.muted),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(height: 1),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: context.colors.noticeSurface,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.waves_outlined, color: context.colors.error, size: 24),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      context.l10n.liquidityAnalysis,
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      context.l10n.liquidityExecutionIntro,
-                                      style: TextStyle(color: context.colors.muted, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(Icons.chevron_right, color: context.colors.muted),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(height: 1),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: context.colors.subtleSurface,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.timeline_outlined, color: context.colors.progress, size: 24),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      context.l10n.economicRipple,
-                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      context.l10n.macroImpactIntro,
-                                      style: TextStyle(color: context.colors.muted, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(Icons.chevron_right, color: context.colors.muted),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Stocks for You
+                    Text(context.l10n.investmentIntelligence, style: glassTitle(context)),
+                    const SizedBox(height: 10),
+                    Text(context.l10n.investExploreIntro, style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 27),
                     SectionHeading(context.l10n.stocksForYou, trailing: context.l10n.viewAll, onTrailing: () => _openFeature(const StocksScreen())),
+                    Text(context.l10n.sampleStockNotice, style: Theme.of(context).textTheme.bodySmall),
                     const SizedBox(height: 12),
                     _StocksPreview(onTap: () => _openFeature(const StocksScreen())),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+                    SectionHeading(context.l10n.explore),
+                    const SizedBox(height: 6),
+                    for (final (index, icon, title, detail) in [
+                      (0, Icons.auto_awesome, context.l10n.aiBeginners, context.l10n.investBasicsIntro),
+                      (1, Icons.description_outlined, context.l10n.thesisReview, context.l10n.thesisTrackingIntro),
+                      (2, Icons.waves_outlined, context.l10n.liquidityAnalysis, context.l10n.liquidityExecutionIntro),
+                      (3, Icons.timeline_outlined, context.l10n.economicRipple, context.l10n.macroImpactIntro),
+                    ])
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(icon, color: context.colors.action),
+                        title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+                        subtitle: Text(detail, style: Theme.of(context).textTheme.bodySmall),
+                        trailing: Icon(Icons.chevron_right, color: context.colors.muted),
+                        onTap: () => _openFeature(InvestmentIntelligenceScreen(initialTab: index)),
+                      ),
+                    const SizedBox(height: 20),
 
                     // Bonds
                     SectionHeading(context.l10n.bonds, trailing: context.l10n.comingSoon, onTrailing: () => _openFeature(const BondsScreen())),
@@ -343,42 +193,49 @@ class _StockTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => SurfaceCard(
-    onTap: onTap,
-    padding: const EdgeInsets.all(12),
-    child: Row(
-      children: [
-        CircleAvatar(
-          backgroundColor: context.colors.subtleSurface,
-          child: Text(
-            stock.$2.substring(0, 2),
-            style: TextStyle(color: context.colors.text, fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(stock.$1, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              Text('${stock.$2} · ${stock.$3} risk', style: TextStyle(color: context.colors.muted, fontSize: 11)),
-              Text(
-                stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile,
-                style: TextStyle(fontSize: 10, color: stock.$6 ? context.colors.positive : context.colors.error),
+  Widget build(BuildContext context) {
+    final magnitude = double.parse(stock.$5.substring(1, stock.$5.length - 1).replaceAll(',', '.'));
+    final gain = stock.$5.startsWith('+');
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      onTap: onTap,
+      title: Text(stock.$1, style: Theme.of(context).textTheme.titleLarge),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${stock.$2} · ${stock.$3}'),
+          Text(stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile),
+        ],
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(stock.$4, style: Theme.of(context).textTheme.titleMedium),
+          Text(stock.$5, style: TextStyle(color: gain ? context.colors.positive : context.colors.error, fontSize: 12)),
+          const SizedBox(height: 4),
+          ExcludeSemantics(
+            child: SizedBox(
+              width: 48,
+              child: Align(
+                alignment: gain ? Alignment.centerRight : Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: (magnitude / 2.3).clamp(0, 1),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: gain ? context.colors.progress : context.colors.warning,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: const SizedBox(height: 3),
+                  ),
+                ),
               ),
-            ],
+            ),
           ),
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(stock.$4, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-            Text(stock.$5, style: TextStyle(fontSize: 12, color: stock.$5.startsWith('+') ? context.colors.positive : context.colors.error)),
-          ],
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class BondsScreen extends StatelessWidget {
