@@ -47,8 +47,8 @@ class AssistantAccessOverlay extends StatelessWidget {
                             });
                           });
                     },
-                    backgroundColor: AppColors.firefly,
-                    foregroundColor: Colors.white,
+                    backgroundColor: context.colors.primary,
+                    foregroundColor: context.colors.onPrimary,
                     icon: const Icon(Icons.chat_bubble_outline_rounded),
                     label: Text(context.l10n.askSmartSaveShort),
                   ),

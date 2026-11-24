@@ -4,7 +4,10 @@ import 'theme.dart';
 
 String formatTenge(int amount) {
   final digits = amount.abs().toString();
-  final grouped = digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ' ');
+  final grouped = digits.replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => ' ',
+  );
   return '${amount < 0 ? '−' : ''}$grouped ₸';
 }
 
@@ -33,8 +36,8 @@ class SectionHeading extends StatelessWidget {
           onPressed: onTrailing,
           child: Text(
             action,
-            style: const TextStyle(
-              color: AppColors.prussianBlue,
+            style: TextStyle(
+              color: context.colors.action,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -46,123 +49,274 @@ class SectionHeading extends StatelessWidget {
 }
 
 class SurfaceCard extends StatelessWidget {
-  const SurfaceCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.color = Colors.white, this.onTap});
+  const SurfaceCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.color,
+    this.onTap,
+  });
   final Widget child;
   final EdgeInsetsGeometry padding;
-  final Color color;
+  final Color? color;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(color: color, border: color == Colors.white ? Border.all(color: AppColors.border) : null, borderRadius: BorderRadius.circular(16)),
-      child: child,
+    final colors = context.colors;
+    final fill = color ?? colors.surface;
+    final radius = BorderRadius.circular(16);
+    final shape = RoundedRectangleBorder(
+      borderRadius: radius,
+      side: fill == colors.surface
+          ? BorderSide(color: colors.outline)
+          : BorderSide.none,
     );
-    return onTap == null ? content : Material(color: Colors.transparent, child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(16), child: content));
+    final content = SizedBox(
+      width: double.infinity,
+      child: Padding(padding: padding, child: child),
+    );
+    return Material(
+      color: fill,
+      shape: shape,
+      clipBehavior: Clip.antiAlias,
+      child: onTap == null ? content : InkWell(onTap: onTap, child: content),
+    );
   }
 }
 
 class PrimaryButton extends StatelessWidget {
-  const PrimaryButton({super.key, required this.label, required this.onPressed, this.icon});
+  const PrimaryButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: FilledButton.icon(
-          onPressed: onPressed,
-          icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 18),
-          label: Text(label),
-          style: FilledButton.styleFrom(backgroundColor: AppColors.firefly, foregroundColor: Colors.white, shape: const StadiumBorder()),
-        ),
-      );
+    width: double.infinity,
+    height: 52,
+    child: FilledButton.icon(
+      onPressed: onPressed,
+      icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 18),
+      label: Text(label),
+    ),
+  );
 }
 
 class Pill extends StatelessWidget {
-  const Pill({super.key, required this.label, required this.selected, required this.onTap});
+  const Pill({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        showCheckmark: false,
-        labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? Colors.white : AppColors.firefly),
-        backgroundColor: Colors.white,
-        selectedColor: AppColors.firefly,
-        side: BorderSide(color: selected ? AppColors.firefly : AppColors.border),
-        shape: const StadiumBorder(),
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      );
+    label: Text(label),
+    selected: selected,
+    onSelected: (_) => onTap(),
+    showCheckmark: false,
+    labelStyle: TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: selected ? context.colors.onSelection : context.colors.text,
+    ),
+    backgroundColor: context.colors.surface,
+    selectedColor: context.colors.selection,
+    side: BorderSide(
+      color: selected ? context.colors.selection : context.colors.fieldOutline,
+    ),
+    shape: const StadiumBorder(),
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+  );
 }
 
 class ProgressTrack extends StatelessWidget {
-  const ProgressTrack({super.key, required this.value, this.height = 10, this.color = AppColors.mint});
+  const ProgressTrack({
+    super.key,
+    required this.value,
+    this.height = 10,
+    this.color,
+  });
   final double value;
   final double height;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(height / 2),
-        child: LinearProgressIndicator(value: value.clamp(0, 1), minHeight: height, backgroundColor: AppColors.mintLight, color: color),
-      );
+    borderRadius: BorderRadius.circular(height / 2),
+    child: LinearProgressIndicator(
+      value: value.clamp(0, 1),
+      minHeight: height,
+      backgroundColor: context.colors.mutedSurface,
+      color: color ?? context.colors.progress,
+    ),
+  );
 }
 
 class LabeledValue extends StatelessWidget {
-  const LabeledValue({super.key, required this.label, required this.value, this.trailing});
+  const LabeledValue({
+    super.key,
+    required this.label,
+    required this.value,
+    this.trailing,
+  });
   final String label;
   final String value;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: Theme.of(context).textTheme.bodySmall), const SizedBox(height: 4), Text(value, style: Theme.of(context).textTheme.titleMedium)])), ?trailing]),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 4),
+              Text(value, style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+        ),
+        ?trailing,
+      ],
+    ),
+  );
 }
 
 class PrimaryAction extends StatelessWidget {
-  const PrimaryAction({super.key, required this.label, required this.onPressed, this.busy = false});
+  const PrimaryAction({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.busy = false,
+  });
   final String label;
   final VoidCallback? onPressed;
   final bool busy;
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 52,
-        child: FilledButton(
-          onPressed: busy ? null : onPressed,
-          style: FilledButton.styleFrom(backgroundColor: AppColors.firefly, foregroundColor: Colors.white, shape: const StadiumBorder()),
-          child: busy ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ),
-      );
+    height: 52,
+    child: FilledButton(
+      onPressed: busy ? null : onPressed,
+
+      child: busy
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+    ),
+  );
 }
 
 class SecondaryAction extends StatelessWidget {
-  const SecondaryAction({super.key, required this.label, required this.onPressed});
+  const SecondaryAction({
+    super.key,
+    required this.label,
+    required this.onPressed,
+  });
   final String label;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 52,
-        child: OutlinedButton(
-          onPressed: onPressed,
-          style: OutlinedButton.styleFrom(foregroundColor: AppColors.firefly, side: const BorderSide(color: AppColors.firefly, width: 1.5), shape: const StadiumBorder()),
-          child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ),
-      );
+    height: 52,
+    child: OutlinedButton(
+      onPressed: onPressed,
+
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+    ),
+  );
 }
 
 void showMessage(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+class AppNavigationBar extends StatelessWidget {
+  const AppNavigationBar({
+    super.key,
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<({String label, Widget icon})> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Material(
+      color: colors.surface,
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            for (var i = 0; i < destinations.length; i++)
+              Expanded(
+                child: Semantics(
+                  selected: i == selectedIndex,
+                  button: true,
+                  child: InkWell(
+                    onTap: () => onSelected(i),
+                    borderRadius: BorderRadius.circular(18),
+                    child: Ink(
+                      decoration: ShapeDecoration(
+                        color: i == selectedIndex ? colors.selection : null,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 60),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(3, 8, 3, 8),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              destinations[i].icon,
+                              const SizedBox(height: 3),
+                              Text(
+                                destinations[i].label,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.labelMedium
+                                    ?.copyWith(
+                                      fontSize: 11,
+                                      color: i == selectedIndex
+                                          ? colors.onSelection
+                                          : colors.muted,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

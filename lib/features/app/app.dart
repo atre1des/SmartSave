@@ -44,9 +44,9 @@ class AppEntry extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Scaffold(
+      loading: () => Scaffold(
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.firefly),
+          child: CircularProgressIndicator(color: context.colors.text),
         ),
       ),
       error: (error, stack) => Scaffold(
@@ -54,13 +54,13 @@ class AppEntry extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, color: AppColors.wine, size: 48),
+              Icon(Icons.error_outline, color: context.colors.error, size: 48),
               const SizedBox(height: 16),
               Text(context.l10n.authError),
               const SizedBox(height: 8),
               Text(
                 context.l10n.restartApp,
-                style: TextStyle(color: AppColors.muted),
+                style: TextStyle(color: context.colors.muted),
               ),
             ],
           ),
@@ -82,10 +82,10 @@ class EmailVerificationScreen extends ConsumerWidget {
           child: Column(
             children: [
               const Spacer(flex: 2),
-              const Icon(
+              Icon(
                 Icons.email_outlined,
                 size: 80,
-                color: AppColors.firefly,
+                color: context.colors.text,
               ),
               const SizedBox(height: 24),
               Text(
@@ -97,7 +97,7 @@ class EmailVerificationScreen extends ConsumerWidget {
               Text(
                 context.l10n.emailVerificationNotice,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.muted, fontSize: 16),
+                style: TextStyle(color: context.colors.muted, fontSize: 16),
               ),
               const SizedBox(height: 24),
               PrimaryAction(
@@ -226,7 +226,7 @@ class WelcomeScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
-              ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
+              ).textTheme.bodyLarge?.copyWith(color: context.colors.muted),
             ),
             const Spacer(flex: 3),
             PrimaryAction(
@@ -447,7 +447,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             Text(
               context.l10n.firebaseCredentials,
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.muted, fontSize: 11),
+              style: TextStyle(color: context.colors.muted, fontSize: 11),
             ),
           ],
         ),
@@ -499,14 +499,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             Container(
               height: 230,
               decoration: BoxDecoration(
-                color: AppColors.mintLight,
+                color: context.colors.subtleSurface,
                 borderRadius: BorderRadius.circular(28),
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(
                   Icons.pie_chart_outline_rounded,
                   size: 112,
-                  color: AppColors.firefly,
+                  color: context.colors.text,
                 ),
               ),
             ),
@@ -520,7 +520,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               _copy(context).$2,
               style: Theme.of(
                 context,
-              ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
+              ).textTheme.bodyLarge?.copyWith(color: context.colors.muted),
             ),
             const SizedBox(height: 24),
             Center(
@@ -539,7 +539,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   width: index == _step ? 20 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: index == _step ? AppColors.firefly : AppColors.mint,
+                    color: index == _step ? context.colors.emphasis : context.colors.progress,
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
@@ -613,7 +613,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     width: 24,
     height: 24,
     colorFilter: ColorFilter.mode(
-      isSelected ? AppColors.firefly : AppColors.muted,
+      isSelected ? context.colors.onSelection : context.colors.muted,
       BlendMode.srcIn,
     ),
   );
@@ -629,7 +629,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       (label: strings.myAccount, asset: 'assets/figma/tab-profile.svg'),
     ];
     final selected = ref.watch(selectedTabIndexProvider);
-    final navigationTheme = NavigationBarTheme.of(context);
     return PopScope(
       canPop: selected == 0 || Navigator.of(context).canPop(),
       onPopInvokedWithResult: (didPop, _) {
@@ -639,35 +638,14 @@ class _AppShellState extends ConsumerState<AppShell> {
       },
       child: Scaffold(
         body: IndexedStack(index: selected, children: _pages),
-        bottomNavigationBar: NavigationBarTheme(
-          data: navigationTheme.copyWith(
-            labelTextStyle: WidgetStateProperty.resolveWith((states) {
-              final style =
-                  navigationTheme.labelTextStyle?.resolve(states) ??
-                  Theme.of(context).textTheme.labelMedium;
-              return style?.copyWith(
-                color: states.contains(WidgetState.selected)
-                    ? AppColors.firefly
-                    : AppColors.muted,
-              );
-            }),
-          ),
-          child: NavigationBar(
-            height: 80,
-            selectedIndex: selected,
-            onDestinationSelected: (index) =>
-                ref.read(selectedTabIndexProvider.notifier).state = index,
-            backgroundColor: Colors.white,
-            indicatorColor: Colors.transparent,
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: [
-              for (var i = 0; i < tabs.length; i++)
-                NavigationDestination(
-                  icon: _buildTabIcon(tabs[i].asset, i == selected),
-                  label: tabs[i].label,
-                ),
-            ],
-          ),
+        bottomNavigationBar: AppNavigationBar(
+          selectedIndex: selected,
+          onSelected: (index) =>
+              ref.read(selectedTabIndexProvider.notifier).state = index,
+          destinations: [
+            for (var i = 0; i < tabs.length; i++)
+              (icon: _buildTabIcon(tabs[i].asset, i == selected), label: tabs[i].label),
+          ],
         ),
       ),
     );

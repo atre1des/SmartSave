@@ -6,6 +6,7 @@ import '../../l10n/app_locale.dart';
 
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
+import '../../shared/appearance.dart';
 import '../../shared/widgets.dart';
 import '../app/demo_flow_screens.dart';
 
@@ -21,9 +22,9 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const CircleAvatar(
-                  backgroundColor: AppColors.mintLight,
-                  foregroundColor: AppColors.firefly,
+                CircleAvatar(
+                  backgroundColor: context.colors.subtleSurface,
+                  foregroundColor: context.colors.text,
                   child: Text('Y'),
                 ),
                 const SizedBox(width: 12),
@@ -33,7 +34,7 @@ class ProfileScreen extends ConsumerWidget {
                     Text(context.l10n.yourName, style: Theme.of(context).textTheme.titleLarge),
                     Text(
                       context.l10n.moderateInvestorKazakhstan,
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      style: TextStyle(color: context.colors.muted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -103,7 +104,7 @@ class _SettingRow extends StatelessWidget {
   const _SettingRow({required this.title, required this.subtitle, required this.icon, required this.onTap});
   final String title, subtitle; final IconData icon; final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => ListTile(contentPadding: const EdgeInsets.symmetric(vertical: 3), leading: Icon(icon, color: AppColors.firefly), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)), subtitle: Text(subtitle, style: const TextStyle(color: AppColors.muted, fontSize: 11)), trailing: const Icon(Icons.chevron_right), onTap: onTap);
+  Widget build(BuildContext context) => ListTile(contentPadding: const EdgeInsets.symmetric(vertical: 3), leading: Icon(icon, color: context.colors.text), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)), subtitle: Text(subtitle, style: TextStyle(color: context.colors.muted, fontSize: 11)), trailing: const Icon(Icons.chevron_right), onTap: onTap);
 }
 
 class ProfileDetailsScreen extends ConsumerStatefulWidget {
@@ -129,7 +130,7 @@ class _ProfileDetailsScreenState extends ConsumerState<ProfileDetailsScreen> {
   void dispose() { _name.dispose(); _contact.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.profile)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    const Center(child: CircleAvatar(radius: 34, backgroundColor: AppColors.mintLight, child: Text('Y', style: TextStyle(fontSize: 24)))),
+    Center(child: CircleAvatar(radius: 34, backgroundColor: context.colors.subtleSurface, child: Text('Y', style: TextStyle(fontSize: 24)))),
     TextButton(onPressed: () => showMessage(context, context.l10n.noPhotoUpload), child: Text(context.l10n.changePhoto)),
     TextField(controller: _name, decoration: InputDecoration(labelText: context.l10n.name)),
     const SizedBox(height: 14), TextField(controller: _contact, readOnly: true, decoration: InputDecoration(labelText: context.l10n.emailOrPhone)),
@@ -155,7 +156,25 @@ class _ProfileDetailsScreenState extends ConsumerState<ProfileDetailsScreen> {
         }
       },
     ),
-    const SizedBox(height: 12), Text(context.l10n.countryDisclosure, style: TextStyle(color: AppColors.muted, fontSize: 11)),
+    if (AppearanceScope.of(context) case final appearance?) ...[
+      const SizedBox(height: 14),
+      DropdownButtonFormField<ThemeMode>(
+        initialValue: appearance.value,
+        decoration: InputDecoration(labelText: context.l10n.appearance),
+        items: [
+          DropdownMenuItem(value: ThemeMode.system, child: Text(context.l10n.themeSystem)),
+          DropdownMenuItem(value: ThemeMode.light, child: Text(context.l10n.themeLight)),
+          DropdownMenuItem(value: ThemeMode.dark, child: Text(context.l10n.themeDark)),
+        ],
+        onChanged: (mode) async {
+          if (mode == null) return;
+          if (!await appearance.select(mode) && context.mounted) {
+            showMessage(context, context.l10n.themeSaveFailed);
+          }
+        },
+      ),
+    ],
+    const SizedBox(height: 12), Text(context.l10n.countryDisclosure, style: TextStyle(color: context.colors.muted, fontSize: 11)),
     const SizedBox(height: 20), PrimaryAction(label: context.l10n.save, onPressed: () async {
       final authService = ref.read(authServiceProvider);
       final result = await authService.updateProfile(displayName: _name.text.trim());
@@ -185,8 +204,8 @@ class _ConnectedAccountsScreenState extends State<ConnectedAccountsScreen> {
   bool _connected = true;
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.connectedAccounts)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    if (_connected) SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [CircleAvatar(backgroundColor: AppColors.mintLight, child: Text('KA')), SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.kaspiDemoCard, style: TextStyle(fontWeight: FontWeight.w600)), Text(context.l10n.readOnlyDemo, style: TextStyle(color: AppColors.muted, fontSize: 11))]))]), const SizedBox(height: 14), Text(context.l10n.sampleLastSync, style: TextStyle(fontSize: 12)), Row(children: [TextButton(onPressed: () => showMessage(context, context.l10n.bankSyncUnavailable), child: Text(context.l10n.syncNow)), const Spacer(), TextButton(onPressed: () => setState(() => _connected = false), child: Text(context.l10n.disconnect))])])) else SurfaceCard(child: Text(context.l10n.noDemoCard)),
-    const SizedBox(height: 14), SurfaceCard(color: AppColors.mintLight, child: Text(context.l10n.noBankIntegration, style: TextStyle(fontSize: 12))),
+    if (_connected) SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [CircleAvatar(backgroundColor: context.colors.subtleSurface, child: Text('KA')), SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.kaspiDemoCard, style: TextStyle(fontWeight: FontWeight.w600)), Text(context.l10n.readOnlyDemo, style: TextStyle(color: context.colors.muted, fontSize: 11))]))]), const SizedBox(height: 14), Text(context.l10n.sampleLastSync, style: TextStyle(fontSize: 12)), Row(children: [TextButton(onPressed: () => showMessage(context, context.l10n.bankSyncUnavailable), child: Text(context.l10n.syncNow)), const Spacer(), TextButton(onPressed: () => setState(() => _connected = false), child: Text(context.l10n.disconnect))])])) else SurfaceCard(child: Text(context.l10n.noDemoCard)),
+    const SizedBox(height: 14), SurfaceCard(color: context.colors.subtleSurface, child: Text(context.l10n.noBankIntegration, style: TextStyle(fontSize: 12))),
     const SizedBox(height: 18), PrimaryAction(label: context.l10n.addCard, onPressed: () => _push(context, const ConnectCardScreen())),
   ])));
 }
@@ -201,8 +220,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   final _descriptions = {'Goal reminders': 'Monthly saving reminder', 'Budget alerts': 'When a category goes over budget', 'Advice of the day': 'One short tip each morning', 'Deposit rate changes': 'When sample rates change', 'Market news': 'Updates on your sample watchlist'};
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.notifications)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    for (final entry in _values.entries) SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600)), subtitle: Text(_descriptions[entry.key]!, style: const TextStyle(fontSize: 12, color: AppColors.muted)), value: entry.value, onChanged: (value) => setState(() => _values[entry.key] = value)),
-    const SizedBox(height: 10), Text(context.l10n.noDemoPush, style: TextStyle(color: AppColors.muted, fontSize: 11)),
+    for (final entry in _values.entries) SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600)), subtitle: Text(_descriptions[entry.key]!, style: TextStyle(fontSize: 12, color: context.colors.muted)), value: entry.value, onChanged: (value) => setState(() => _values[entry.key] = value)),
+    const SizedBox(height: 10), Text(context.l10n.noDemoPush, style: TextStyle(color: context.colors.muted, fontSize: 11)),
   ])));
 }
 
@@ -215,7 +234,7 @@ class AdviceHistoryScreen extends StatelessWidget {
       ('Deposit', 'Freedom Bank · 19.50% ГЭСВ', 'Viewed'),
       ('Stock', 'Halyk Bank (HSBK) fits Moderate', 'Saved'),
       ('Savings', 'Save 23 000 ₸ per month for New laptop', 'Applied'),
-    ]) SurfaceCard(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${item.$1} · ${item.$3}', style: const TextStyle(color: AppColors.muted, fontSize: 11)), const SizedBox(height: 5), Text(item.$2, style: const TextStyle(fontWeight: FontWeight.w600)), TextButton(onPressed: () => showDialog<void>(context: context, builder: (context) => AlertDialog(title: Text(context.l10n.aboutDemoItem), content: Text(context.l10n.adviceHistoryNotice), actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.close))])), child: Text(context.l10n.whyThis))])),
+    ]) SurfaceCard(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${item.$1} · ${item.$3}', style: TextStyle(color: context.colors.muted, fontSize: 11)), const SizedBox(height: 5), Text(item.$2, style: const TextStyle(fontWeight: FontWeight.w600)), TextButton(onPressed: () => showDialog<void>(context: context, builder: (context) => AlertDialog(title: Text(context.l10n.aboutDemoItem), content: Text(context.l10n.adviceHistoryNotice), actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.close))])), child: Text(context.l10n.whyThis))])),
   ])));
 }
 
@@ -279,9 +298,9 @@ class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.privacyData)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(context.l10n.personalAdviceConsent), subtitle: Text(context.l10n.neededForAdvice, style: TextStyle(fontSize: 12, color: AppColors.muted)), value: _personalAdvice, onChanged: (value) => setState(() => _personalAdvice = value)),
-    SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(context.l10n.shareStats), subtitle: Text(context.l10n.improvesApp, style: TextStyle(fontSize: 12, color: AppColors.muted)), value: _analytics, onChanged: (value) => setState(() => _analytics = value)),
-    const SizedBox(height: 12), SurfaceCard(color: AppColors.mintLight, child: Text(context.l10n.privacyDisclosure, style: TextStyle(fontSize: 12))),
+    SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(context.l10n.personalAdviceConsent), subtitle: Text(context.l10n.neededForAdvice, style: TextStyle(fontSize: 12, color: context.colors.muted)), value: _personalAdvice, onChanged: (value) => setState(() => _personalAdvice = value)),
+    SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(context.l10n.shareStats), subtitle: Text(context.l10n.improvesApp, style: TextStyle(fontSize: 12, color: context.colors.muted)), value: _analytics, onChanged: (value) => setState(() => _analytics = value)),
+    const SizedBox(height: 12), SurfaceCard(color: context.colors.subtleSurface, child: Text(context.l10n.privacyDisclosure, style: TextStyle(fontSize: 12))),
     const SizedBox(height: 12),
     OutlinedButton(onPressed: _working ? null : _export, child: Text(context.l10n.exportData)),
     OutlinedButton(
@@ -300,7 +319,7 @@ class _PrivacyDataScreenState extends ConsumerState<PrivacyDataScreen> {
       };
     }),
     OutlinedButton(onPressed: _working ? null : _showLegacyRecovery, child: Text(context.l10n.recoverLegacy)),
-    const SizedBox(height: 8), TextButton(onPressed: () => _push(context, const DeleteAccountScreen()), child: Text(context.l10n.deleteAccount, style: TextStyle(color: AppColors.wine))),
+    const SizedBox(height: 8), TextButton(onPressed: () => _push(context, const DeleteAccountScreen()), child: Text(context.l10n.deleteAccount, style: TextStyle(color: context.colors.error))),
   ])));
 }
 
@@ -374,9 +393,9 @@ class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.subscription)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    SurfaceCard(color: AppColors.mintLight, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.freeCurrent, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)), SizedBox(height: 10), Text(context.l10n.featureExpenses), Text(context.l10n.featureGoals), Text(context.l10n.featureDeposits)])),
-    const SizedBox(height: 14), SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Premium', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)), Text(context.l10n.pricePending, style: TextStyle(color: AppColors.muted)), SizedBox(height: 10), Text(context.l10n.featureFree), Text(context.l10n.featureStocksBonds), Text(context.l10n.featurePersonalPlan), Text(context.l10n.featureAdviceHistory)])),
-    const SizedBox(height: 12), Text(context.l10n.noSubscriptionBilling, style: TextStyle(color: AppColors.muted, fontSize: 11)),
+    SurfaceCard(color: context.colors.subtleSurface, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.freeCurrent, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)), SizedBox(height: 10), Text(context.l10n.featureExpenses), Text(context.l10n.featureGoals), Text(context.l10n.featureDeposits)])),
+    const SizedBox(height: 14), SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Premium', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)), Text(context.l10n.pricePending, style: TextStyle(color: context.colors.muted)), SizedBox(height: 10), Text(context.l10n.featureFree), Text(context.l10n.featureStocksBonds), Text(context.l10n.featurePersonalPlan), Text(context.l10n.featureAdviceHistory)])),
+    const SizedBox(height: 12), Text(context.l10n.noSubscriptionBilling, style: TextStyle(color: context.colors.muted, fontSize: 11)),
     const SizedBox(height: 18), PrimaryAction(label: context.l10n.tryPremium, onPressed: () => showMessage(context, context.l10n.premiumPreview)),
   ])));
 }
@@ -402,7 +421,7 @@ class _HelpScreenState extends State<HelpScreen> {
     return Scaffold(appBar: AppBar(title: Text(context.l10n.helpSupport)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
       TextField(controller: _search, onChanged: (_) => setState(() {}), decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: context.l10n.showHelp)),
       const SizedBox(height: 12),
-      for (final faq in filtered) Card(color: Colors.white, child: ExpansionTile(title: Text(faq.$1, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), children: [Padding(padding: const EdgeInsets.all(16), child: Text(faq.$2, style: const TextStyle(fontSize: 12, color: AppColors.muted)))])),
+      for (final faq in filtered) Card(color: context.colors.surface, child: ExpansionTile(title: Text(faq.$1, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), children: [Padding(padding: const EdgeInsets.all(16), child: Text(faq.$2, style: TextStyle(fontSize: 12, color: context.colors.muted)))])),
       const SizedBox(height: 12), PrimaryAction(label: context.l10n.supportChat, onPressed: () => showMessage(context, context.l10n.noLiveSupport)),
       TextButton(onPressed: () => showMessage(context, context.l10n.privacyHelp), child: Text(context.l10n.privacyPolicy)),
     ])));

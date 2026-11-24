@@ -30,7 +30,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
     return Scaffold(
       body: SafeArea(
         child: finance.isLoading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.firefly))
+            ? Center(child: CircularProgressIndicator(color: context.colors.text))
             : RefreshIndicator(
                 onRefresh: finance.refresh,
                 child: ListView(
@@ -51,7 +51,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 context.l10n.investExploreIntro,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.colors.muted),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -59,8 +59,8 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                           ),
                         ),
                         CircleAvatar(
-                          backgroundColor: AppColors.mintLight,
-                          foregroundColor: AppColors.firefly,
+                          backgroundColor: context.colors.subtleSurface,
+                          foregroundColor: context.colors.text,
                           child: const Icon(Icons.psychology_outlined, size: 28),
                         ),
                       ],
@@ -79,10 +79,10 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.mintLight,
+                                  color: context.colors.subtleSurface,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.psychology_outlined, color: AppColors.firefly, size: 24),
+                                child: Icon(Icons.psychology_outlined, color: context.colors.text, size: 24),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -96,12 +96,12 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       context.l10n.investBasicsIntro,
-                                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                                      style: TextStyle(color: context.colors.muted, fontSize: 12),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, color: AppColors.muted),
+                              Icon(Icons.chevron_right, color: context.colors.muted),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -112,10 +112,10 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.paleGold,
+                                  color: context.colors.noticeSurface,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.description_outlined, color: AppColors.gold, size: 24),
+                                child: Icon(Icons.description_outlined, color: context.colors.warning, size: 24),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -129,12 +129,12 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       context.l10n.thesisTrackingIntro,
-                                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                                      style: TextStyle(color: context.colors.muted, fontSize: 12),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, color: AppColors.muted),
+                              Icon(Icons.chevron_right, color: context.colors.muted),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -145,10 +145,10 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.paleRose,
+                                  color: context.colors.noticeSurface,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.waves_outlined, color: AppColors.wine, size: 24),
+                                child: Icon(Icons.waves_outlined, color: context.colors.error, size: 24),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -162,12 +162,12 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       context.l10n.liquidityExecutionIntro,
-                                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                                      style: TextStyle(color: context.colors.muted, fontSize: 12),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, color: AppColors.muted),
+                              Icon(Icons.chevron_right, color: context.colors.muted),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -178,10 +178,10 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.mintLight,
+                                  color: context.colors.subtleSurface,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.timeline_outlined, color: AppColors.mint, size: 24),
+                                child: Icon(Icons.timeline_outlined, color: context.colors.progress, size: 24),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -195,12 +195,12 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       context.l10n.macroImpactIntro,
-                                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                                      style: TextStyle(color: context.colors.muted, fontSize: 12),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, color: AppColors.muted),
+                              Icon(Icons.chevron_right, color: context.colors.muted),
                             ],
                           ),
                         ],
@@ -218,7 +218,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                     SectionHeading(context.l10n.bonds, trailing: context.l10n.comingSoon, onTrailing: () => _openFeature(const BondsScreen())),
                     const SizedBox(height: 12),
                     SurfaceCard(
-                      color: AppColors.mintLight,
+                      color: context.colors.subtleSurface,
                       onTap: () => _openFeature(const BondsScreen()),
                       padding: const EdgeInsets.all(16),
                       child: Row(
@@ -226,10 +226,10 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: context.colors.surface,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.account_balance_outlined, color: AppColors.firefly, size: 24),
+                            child: Icon(Icons.account_balance_outlined, color: context.colors.text, size: 24),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -243,12 +243,12 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   context.l10n.bondIntro,
-                                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                                  style: TextStyle(color: context.colors.muted, fontSize: 12),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.chevron_right, color: AppColors.muted),
+                          Icon(Icons.chevron_right, color: context.colors.muted),
                         ],
                       ),
                     ),
@@ -258,7 +258,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                     SectionHeading(context.l10n.autoInvest, trailing: context.l10n.setUp, onTrailing: () => _openFeature(const AutoInvestScreen())),
                     const SizedBox(height: 12),
                     SurfaceCard(
-                      color: AppColors.paleGold,
+                      color: context.colors.noticeSurface,
                       onTap: () => _openFeature(const AutoInvestScreen()),
                       padding: const EdgeInsets.all(16),
                       child: Row(
@@ -266,10 +266,10 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: context.colors.surface,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.autorenew_outlined, color: AppColors.gold, size: 24),
+                            child: Icon(Icons.autorenew_outlined, color: context.colors.warning, size: 24),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -283,19 +283,19 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   context.l10n.createAllocation,
-                                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                                  style: TextStyle(color: context.colors.muted, fontSize: 12),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.chevron_right, color: AppColors.muted),
+                          Icon(Icons.chevron_right, color: context.colors.muted),
                         ],
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       context.l10n.demoTransfersNotice,
-                      style: TextStyle(color: AppColors.muted, fontSize: 11),
+                      style: TextStyle(color: context.colors.muted, fontSize: 11),
                     ),
                   ],
                 ),
@@ -330,7 +330,7 @@ class _StocksPreview extends ConsumerWidget {
         ),
         TextButton(
           onPressed: onTap,
-          child: Text(context.l10n.viewAllStocks, style: TextStyle(color: AppColors.prussianBlue, fontWeight: FontWeight.w600)),
+          child: Text(context.l10n.viewAllStocks, style: TextStyle(color: context.colors.action, fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -349,10 +349,10 @@ class _StockTile extends StatelessWidget {
     child: Row(
       children: [
         CircleAvatar(
-          backgroundColor: AppColors.mintLight,
+          backgroundColor: context.colors.subtleSurface,
           child: Text(
             stock.$2.substring(0, 2),
-            style: const TextStyle(color: AppColors.firefly, fontWeight: FontWeight.w600),
+            style: TextStyle(color: context.colors.text, fontWeight: FontWeight.w600),
           ),
         ),
         const SizedBox(width: 11),
@@ -361,10 +361,10 @@ class _StockTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(stock.$1, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              Text('${stock.$2} · ${stock.$3} risk', style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+              Text('${stock.$2} · ${stock.$3} risk', style: TextStyle(color: context.colors.muted, fontSize: 11)),
               Text(
                 stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile,
-                style: TextStyle(fontSize: 10, color: stock.$6 ? AppColors.success : AppColors.wine),
+                style: TextStyle(fontSize: 10, color: stock.$6 ? context.colors.positive : context.colors.error),
               ),
             ],
           ),
@@ -373,7 +373,7 @@ class _StockTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(stock.$4, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-            Text(stock.$5, style: TextStyle(fontSize: 12, color: stock.$5.startsWith('+') ? AppColors.success : AppColors.wine)),
+            Text(stock.$5, style: TextStyle(fontSize: 12, color: stock.$5.startsWith('+') ? context.colors.positive : context.colors.error)),
           ],
         ),
       ],
@@ -392,7 +392,7 @@ class BondsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           SurfaceCard(
-            color: AppColors.mintLight,
+            color: context.colors.subtleSurface,
             child: Text(context.l10n.noLiveBonds, style: TextStyle(fontWeight: FontWeight.w700)),
           ),
           const SizedBox(height: 16),
@@ -414,7 +414,7 @@ class BondsScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             context.l10n.bondDataNotice,
-            style: TextStyle(color: AppColors.muted, fontSize: 12),
+            style: TextStyle(color: context.colors.muted, fontSize: 12),
           ),
           const SizedBox(height: 20),
           PrimaryAction(
@@ -463,7 +463,7 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
             const SizedBox(height: 8),
             Text(
               context.l10n.illustrativePlan,
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
+              style: TextStyle(color: context.colors.muted, fontSize: 12),
             ),
             const SizedBox(height: 24),
 
@@ -528,10 +528,10 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
                     style: TextStyle(fontSize: 12),
                   ),
                   const SizedBox(height: 16),
-                  _AllocationRow(label: context.l10n.conservativeDeposits, percent: 40, color: AppColors.mint),
-                  _AllocationRow(label: context.l10n.kazakhBankShares, percent: 35, color: AppColors.firefly),
-                  _AllocationRow(label: context.l10n.bonds, percent: 15, color: AppColors.gold),
-                  _AllocationRow(label: context.l10n.cashReserve, percent: 10, color: AppColors.lime),
+                  _AllocationRow(label: context.l10n.conservativeDeposits, percent: 40, color: context.colors.progress),
+                  _AllocationRow(label: context.l10n.kazakhBankShares, percent: 35, color: context.colors.text),
+                  _AllocationRow(label: context.l10n.bonds, percent: 15, color: context.colors.warning),
+                  _AllocationRow(label: context.l10n.cashReserve, percent: 10, color: context.colors.highlight),
                 ],
               ),
             ),
@@ -546,7 +546,7 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
             const SizedBox(height: 12),
             Text(
               context.l10n.planLocalOnly,
-              style: TextStyle(color: AppColors.muted, fontSize: 11),
+              style: TextStyle(color: context.colors.muted, fontSize: 11),
             ),
           ],
         ),

@@ -791,5 +791,21 @@
     }
   },
   "aiConnecting": "Connecting…",
-  "aiWakingNotice": "Connecting to the AI proxy. A hosted service may need about a minute to wake up."
+  "aiWakingNotice": "Connecting to the AI proxy. A hosted service may need about a minute to wake up.",
+  "appearance": "Appearance",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "themeSaveFailed": "Could not save the appearance setting.",
+  "goalSuggestion": "Want to reach “{goal}” faster? You need {amount}/month. Explore adding money to a deposit or an investment scenario.",
+  "@goalSuggestion": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  }
 }

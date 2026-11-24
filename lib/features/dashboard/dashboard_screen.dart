@@ -40,7 +40,7 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: finance.isLoading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.firefly))
+            ? Center(child: CircularProgressIndicator(color: context.colors.text))
             : loadError != null
             ? Center(
                 child: Padding(
@@ -77,9 +77,9 @@ class DashboardScreen extends ConsumerWidget {
                         IconButton(
                           tooltip: context.l10n.openAccount,
                           onPressed: () => ref.read(selectedTabIndexProvider.notifier).state = 4,
-                          icon: const CircleAvatar(
-                            backgroundColor: AppColors.mintLight,
-                            foregroundColor: AppColors.firefly,
+                          icon: CircleAvatar(
+                            backgroundColor: context.colors.subtleSurface,
+                            foregroundColor: context.colors.text,
                             child: Text('Y', style: TextStyle(fontWeight: FontWeight.w700)),
                           ),
                         ),
@@ -94,25 +94,25 @@ class DashboardScreen extends ConsumerWidget {
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: AppColors.firefly,
+                          color: context.colors.emphasis,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(context.l10n.totalBalance, style: TextStyle(color: AppColors.mint, fontSize: 12)),
+                          Text(context.l10n.totalBalance, style: TextStyle(color: context.colors.emphasisMuted, fontSize: 12)),
                           const SizedBox(height: 3),
                           FittedBox(
                             alignment: Alignment.centerLeft,
                             fit: BoxFit.scaleDown,
                             child: Text(
                               context.formatTenge(finance.balance),
-                              style: const TextStyle(fontSize: 30, height: 1.35, fontWeight: FontWeight.w700, color: Colors.white),
+                              style: TextStyle(fontSize: 30, height: 1.35, fontWeight: FontWeight.w700, color: context.colors.onEmphasis),
                             ),
                           ),
                           const SizedBox(height: 7),
-                          Text(context.l10n.spentMonth, style: TextStyle(color: AppColors.mint, fontSize: 11)),
-                          Text(context.formatTenge(finance.monthlySpend), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+                          Text(context.l10n.spentMonth, style: TextStyle(color: context.colors.emphasisMuted, fontSize: 11)),
+                          Text(context.formatTenge(finance.monthlySpend), style: TextStyle(color: context.colors.onEmphasis, fontWeight: FontWeight.w600, fontSize: 15)),
                         ],
                         ),
                         ),
@@ -132,14 +132,14 @@ class DashboardScreen extends ConsumerWidget {
                       SectionHeading(context.l10n.goals),
                       const SizedBox(height: 12),
                         SurfaceCard(
-                          color: AppColors.mintLight,
+                          color: context.colors.subtleSurface,
                           padding: const EdgeInsets.all(20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(context.l10n.noGoals, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                               const SizedBox(height: 6),
-                              Text(context.l10n.createGoalHint, style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                              Text(context.l10n.createGoalHint, style: TextStyle(fontSize: 12, color: context.colors.muted)),
                               const SizedBox(height: 12),
                               PrimaryAction(
                                 label: context.l10n.createFirstGoal,
@@ -154,7 +154,7 @@ class DashboardScreen extends ConsumerWidget {
                     // Top spending this month
                     SectionHeading(context.l10n.topSpending, trailing: context.l10n.seeAll, onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
                     if (topSpending.isEmpty)
-                      Text(context.l10n.addTransactionsHint, style: TextStyle(color: AppColors.muted))
+                      Text(context.l10n.addTransactionsHint, style: TextStyle(color: context.colors.muted))
                     else
                       for (final entry in topSpending.take(3))
                         _SpendingBar(label: entry.key, amount: entry.value, max: topSpending.first.value),
@@ -240,28 +240,33 @@ class _QuickActionsGrid extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(context.l10n.quickActions, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
+        Text(context.l10n.quickActions, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: context.colors.text)),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
-            // Calculate aspect ratio based on available width to prevent overflow
-            final cardWidth = (constraints.maxWidth - 12) / 2; // 12 = crossAxisSpacing
-            // Fixed card height accommodates a two-line title and a two-line
-            // description: padding 32 + icon 52 + gaps 16 + label ~38 +
-            // description ~31 ≈ 169, rounded up to 172 for safety.
-            final estimatedHeight = 172.0;
-            final aspectRatio = cardWidth / estimatedHeight;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: aspectRatio.clamp(0.5, 2.0),
-              ),
-              itemCount: actions.length,
-              itemBuilder: (context, index) => actions[index],
+            final scaledLabel = MediaQuery.textScalerOf(context).scale(14);
+            final columns = constraints.maxWidth >= 600
+                ? 3
+                : constraints.maxWidth < 280 || scaledLabel > 22
+                ? 1
+                : 2;
+            return Column(
+              children: [
+                for (var start = 0; start < actions.length; start += columns) ...[
+                  if (start > 0) const SizedBox(height: 12),
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var column = 0; column < columns; column++) ...[
+                          if (column > 0) const SizedBox(width: 12),
+                          Expanded(child: actions[start + column]),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             );
           },
         ),
@@ -284,29 +289,33 @@ class _QuickActionItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => InkWell(
+  Widget build(BuildContext context) => SurfaceCard(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(16),
-    child: SurfaceCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.mintLight,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: AppColors.firefly, size: 28),
+    padding: const EdgeInsets.all(14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: context.colors.subtleSurface,
+            borderRadius: BorderRadius.circular(10),
           ),
-          const SizedBox(height: 12),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Text(description, style: TextStyle(color: AppColors.muted, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
-        ],
-      ),
+          child: Padding(
+            padding: const EdgeInsets.all(7),
+            child: Icon(icon, color: context.colors.action, size: 20),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          description,
+          style: TextStyle(color: context.colors.muted, fontSize: 11),
+        ),
+      ],
     ),
   );
 }
@@ -354,7 +363,7 @@ class _SingleGoalCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       context.l10n.amountOf(context.formatTenge(goal.saved), context.formatTenge(goal.target)),
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      style: TextStyle(color: context.colors.muted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -393,9 +402,9 @@ class _SpendingBar extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 7),
     child: Row(
       children: [
-        SizedBox(width: 80, child: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.firefly))),
-        Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: ProgressTrack(value: max == 0 ? 0 : amount / max, height: 8, color: label == 'Shopping' ? AppColors.gold : label == 'Transport' ? AppColors.mint : AppColors.firefly))),
-        SizedBox(width: 92, child: Text(context.formatTenge(amount), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.firefly, fontWeight: FontWeight.w600, fontSize: 13))),
+        SizedBox(width: 80, child: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.colors.text))),
+        Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: ProgressTrack(value: max == 0 ? 0 : amount / max, height: 8, color: label == 'Shopping' ? context.colors.warning : label == 'Transport' ? context.colors.progress : context.colors.text))),
+        SizedBox(width: 92, child: Text(context.formatTenge(amount), textAlign: TextAlign.right, style: TextStyle(color: context.colors.text, fontWeight: FontWeight.w600, fontSize: 13))),
       ],
     ),
   );
@@ -412,13 +421,13 @@ class _RecentTransaction extends StatelessWidget {
     onTap: onTap,
     child: Row(
       children: [
-        const CircleAvatar(radius: 14, backgroundColor: AppColors.mintLight, child: SizedBox.shrink()),
+        CircleAvatar(radius: 14, backgroundColor: context.colors.subtleSurface, child: SizedBox.shrink()),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(transaction.merchant, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          Text('${transaction.category} · ${_time(transaction.occurredAt)}', style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          Text('${transaction.category} · ${_time(transaction.occurredAt)}', style: TextStyle(fontSize: 11, color: context.colors.muted)),
         ])),
-        Text(context.formatSignedTenge(transaction.amount, income: transaction.isIncome), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.firefly)),
+        Text(context.formatSignedTenge(transaction.amount, income: transaction.isIncome), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.colors.text)),
       ],
     ),
   );
@@ -472,7 +481,7 @@ class _SpendingTabContent extends ConsumerWidget {
         children: [
           SectionHeading(context.l10n.topSpending, trailing: context.l10n.seeAll, onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
           if (topSpending.isEmpty)
-            Text(context.l10n.addTransactionsHint, style: TextStyle(color: AppColors.muted))
+            Text(context.l10n.addTransactionsHint, style: TextStyle(color: context.colors.muted))
           else
             ...[for (final entry in topSpending.take(3)) _SpendingBar(label: entry.key, amount: entry.value, max: topSpending.first.value)],
           const SizedBox(height: 12),
@@ -482,9 +491,9 @@ class _SpendingTabContent extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 7),
               child: Row(
                 children: [
-                  SizedBox(width: 80, child: Text(entry.key, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.firefly))),
-                  Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: ProgressTrack(value: topSpending.first.value == 0 ? 0 : entry.value / topSpending.first.value, height: 8, color: entry.key == 'Shopping' ? AppColors.gold : entry.key == 'Transport' ? AppColors.mint : AppColors.firefly))),
-                  SizedBox(width: 92, child: Text(context.formatTenge(entry.value), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.firefly, fontWeight: FontWeight.w600, fontSize: 13))),
+                  SizedBox(width: 80, child: Text(entry.key, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.colors.text))),
+                  Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: ProgressTrack(value: topSpending.first.value == 0 ? 0 : entry.value / topSpending.first.value, height: 8, color: entry.key == 'Shopping' ? context.colors.warning : entry.key == 'Transport' ? context.colors.progress : context.colors.text))),
+                  SizedBox(width: 92, child: Text(context.formatTenge(entry.value), textAlign: TextAlign.right, style: TextStyle(color: context.colors.text, fontWeight: FontWeight.w600, fontSize: 13))),
                 ],
               ),
             ),

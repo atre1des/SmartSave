@@ -1,11 +1,11 @@
 # GitHub Actions CI Workflow for SmartSave
-# Runs on push and pull requests to main and development branches
+# The experimental design runs the same checks on push.
 
 name: CI
 
 on:
   push:
-    branches: [main, development]
+    branches: [main, development, experimental/ui-v2]
   pull_request:
     branches: [main, development]
 

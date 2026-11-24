@@ -312,14 +312,14 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.firefly,
+                color: context.colors.emphasis,
                 borderRadius: BorderRadius.vertical(
                   bottom: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.auto_awesome, color: AppColors.mint, size: 24),
+                  Icon(Icons.auto_awesome, color: context.colors.progress, size: 24),
                   SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -328,14 +328,14 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                         Text(
                           context.l10n.assistant,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: context.colors.onEmphasis,
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
                           ),
                         ),
                         Text(
                           context.l10n.chooseExplore,
-                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                          style: TextStyle(color: context.colors.onEmphasis, fontSize: 11),
                         ),
                       ],
                     ),
@@ -400,7 +400,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
-                          color: AppColors.muted,
+                          color: context.colors.muted,
                         ),
                       ),
                     ),
@@ -483,26 +483,26 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isConnected ? AppColors.mintLight : AppColors.paleGold,
+                  color: isConnected ? context.colors.subtleSurface : context.colors.noticeSurface,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (isChecking)
-                      const SizedBox(
+                      SizedBox(
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.gold,
+                          color: context.colors.warning,
                         ),
                       )
                     else
                       Icon(
                         isConnected ? Icons.cloud_done : Icons.cloud_off,
                         size: 14,
-                        color: isConnected ? AppColors.success : AppColors.gold,
+                        color: isConnected ? context.colors.positive : context.colors.warning,
                       ),
                     const SizedBox(width: 4),
                     Text(
@@ -514,7 +514,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: isConnected ? AppColors.success : AppColors.gold,
+                        color: isConnected ? context.colors.positive : context.colors.warning,
                       ),
                     ),
                   ],
@@ -713,13 +713,13 @@ class _DisclaimerBanner extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: double.infinity,
     padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
-    color: isConnected ? AppColors.mintLight : AppColors.paleGold,
+    color: isConnected ? context.colors.subtleSurface : context.colors.noticeSurface,
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
           isConnected ? Icons.info_outline : Icons.warning_amber_rounded,
-          color: isConnected ? AppColors.firefly : AppColors.gold,
+          color: isConnected ? context.colors.text : context.colors.warning,
           size: 18,
         ),
         const SizedBox(width: 8),
@@ -731,7 +731,7 @@ class _DisclaimerBanner extends StatelessWidget {
                 ? context.l10n.aiProxyNotice
                 : context.l10n.aiOfflineNotice,
             style: TextStyle(
-              color: isConnected ? AppColors.firefly : AppColors.gold,
+              color: isConnected ? context.colors.text : context.colors.warning,
               fontSize: 10,
               height: 1.35,
             ),
@@ -760,7 +760,7 @@ class _ModeSelector extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           context.l10n.chooseLevel,
-          style: TextStyle(color: AppColors.muted, fontSize: 12),
+          style: TextStyle(color: context.colors.muted, fontSize: 12),
         ),
         const SizedBox(height: 16),
         Row(
@@ -812,9 +812,9 @@ class _ModeCard extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: selected ? AppColors.firefly : Colors.white,
+        color: selected ? context.colors.emphasis : context.colors.surface,
         border: Border.all(
-          color: selected ? AppColors.firefly : AppColors.border,
+          color: selected ? context.colors.text : context.colors.outline,
           width: selected ? 2 : 1,
         ),
         borderRadius: BorderRadius.circular(16),
@@ -825,7 +825,7 @@ class _ModeCard extends StatelessWidget {
           Icon(
             icon,
             size: 28,
-            color: selected ? Colors.white : AppColors.firefly,
+            color: selected ? context.colors.onEmphasis : context.colors.text,
           ),
           const SizedBox(height: 12),
           Text(
@@ -833,7 +833,7 @@ class _ModeCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : AppColors.firefly,
+              color: selected ? context.colors.onEmphasis : context.colors.text,
             ),
           ),
           const SizedBox(height: 6),
@@ -841,7 +841,7 @@ class _ModeCard extends StatelessWidget {
             description,
             style: TextStyle(
               fontSize: 11,
-              color: selected ? Colors.white70 : AppColors.muted,
+              color: selected ? context.colors.onEmphasis : context.colors.muted,
               height: 1.3,
             ),
           ),
@@ -894,8 +894,8 @@ class _QuickActionChip extends StatelessWidget {
     avatar: Icon(_iconForAction(action.type), size: 16),
     label: Text(action.title, style: const TextStyle(fontSize: 12)),
     onPressed: onTap,
-    backgroundColor: AppColors.mintLight,
-    side: BorderSide(color: AppColors.border),
+    backgroundColor: context.colors.subtleSurface,
+    side: BorderSide(color: context.colors.outline),
   );
 
   IconData _iconForAction(QuickActionType type) {
@@ -924,10 +924,10 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
     children: [
-      const Icon(
+      Icon(
         Icons.auto_awesome_rounded,
         size: 38,
-        color: AppColors.firefly,
+        color: context.colors.text,
       ),
       const SizedBox(height: 12),
       Text(
@@ -937,7 +937,7 @@ class _EmptyState extends StatelessWidget {
       const SizedBox(height: 6),
       Text(
         context.l10n.assistantWelcome,
-        style: TextStyle(color: AppColors.muted, fontSize: 12),
+        style: TextStyle(color: context.colors.muted, fontSize: 12),
       ),
       const SizedBox(height: 20),
       OutlinedButton.icon(
@@ -985,17 +985,17 @@ class _MessageBubble extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
-              color: message.isUser ? AppColors.firefly : Colors.white,
+              color: message.isUser ? context.colors.emphasis : context.colors.surface,
               border: message.isUser
                   ? null
-                  : Border.all(color: AppColors.border),
+                  : Border.all(color: context.colors.outline),
               borderRadius: BorderRadius.circular(16),
             ),
             child: message.isUser
                 ? SelectableText(
                     message.text,
                     style: TextStyle(
-                      color: message.isUser ? Colors.white : AppColors.firefly,
+                      color: message.isUser ? context.colors.onEmphasis : context.colors.text,
                       fontSize: 12,
                       height: 1.4,
                     ),
@@ -1018,65 +1018,65 @@ MarkdownStyleSheet _assistantMarkdownStyleSheet(BuildContext context) {
   final theme = Theme.of(context);
   return MarkdownStyleSheet.fromTheme(theme).copyWith(
     p: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       height: 1.5,
       fontSize: 13,
     ),
     h1: theme.textTheme.headlineSmall?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontWeight: FontWeight.w700,
       fontSize: 18,
     ),
     h2: theme.textTheme.titleLarge?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontWeight: FontWeight.w600,
       fontSize: 16,
     ),
     h3: theme.textTheme.titleMedium?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontWeight: FontWeight.w600,
       fontSize: 14,
     ),
     strong: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontWeight: FontWeight.w700,
     ),
     em: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontStyle: FontStyle.italic,
     ),
     listBullet: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       height: 1.5,
       fontSize: 13,
     ),
     listBulletPadding: const EdgeInsets.only(left: 20, top: 2, bottom: 2),
     listIndent: 18,
     blockquote: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.muted,
+      color: context.colors.muted,
       fontStyle: FontStyle.italic,
     ),
     blockquotePadding: const EdgeInsets.only(left: 12, top: 6, bottom: 6),
     blockquoteDecoration: BoxDecoration(
-      border: Border(left: BorderSide(color: AppColors.mint, width: 3)),
+      border: Border(left: BorderSide(color: context.colors.progress, width: 3)),
     ),
     code: theme.textTheme.bodyMedium?.copyWith(
       fontFamily: 'monospace',
       fontSize: 12,
-      backgroundColor: AppColors.mintLight,
-      color: AppColors.firefly,
+      backgroundColor: context.colors.subtleSurface,
+      color: context.colors.text,
     ),
     codeblockDecoration: BoxDecoration(
-      color: const Color(0xFF1E1E1E),
+      color: context.colors.text,
       borderRadius: BorderRadius.circular(8),
     ),
     codeblockPadding: const EdgeInsets.all(12),
     a: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.prussianBlue,
+      color: context.colors.action,
       decoration: TextDecoration.underline,
     ),
     horizontalRuleDecoration: BoxDecoration(
-      border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+      border: Border(top: BorderSide(color: context.colors.outline, width: 1)),
     ),
   );
 }
@@ -1125,8 +1125,8 @@ class _StreamingBubble extends StatelessWidget {
                   vertical: 11,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AppColors.border),
+                  color: context.colors.surface,
+                  border: Border.all(color: context.colors.outline),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -1144,12 +1144,12 @@ class _StreamingBubble extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: AppColors.mint,
+                            color: context.colors.progress,
                           ),
                         ),
                       ],
@@ -1191,16 +1191,16 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
-      color: AppColors.paleRose,
+      color: context.colors.noticeSurface,
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: AppColors.wine, size: 18),
+          Icon(Icons.error_outline, color: context.colors.error, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               displayError,
-              style: const TextStyle(
-                color: AppColors.wine,
+              style: TextStyle(
+                color: context.colors.error,
                 fontSize: 11,
                 height: 1.3,
               ),
@@ -1209,7 +1209,7 @@ class _ErrorBanner extends StatelessWidget {
           TextButton(
             onPressed: onRetry,
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.wine,
+              foregroundColor: context.colors.error,
               padding: EdgeInsets.zero,
               minimumSize: const Size(48, 32),
             ),
@@ -1299,7 +1299,7 @@ class _Composer extends StatelessWidget {
                   ? context.l10n.beginnerMode
                   : context.l10n.experiencedMode,
               style: TextStyle(
-                color: AppColors.muted,
+                color: context.colors.muted,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
               ),
@@ -1314,7 +1314,7 @@ class _Composer extends StatelessWidget {
               child: Text(
                 context.l10n.switchMode,
                 style: TextStyle(
-                  color: AppColors.prussianBlue,
+                  color: context.colors.action,
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1345,7 +1345,7 @@ class _Composer extends StatelessWidget {
                       vertical: 12,
                     ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: context.colors.surface,
                     isDense: true,
                   ),
                 ),
@@ -1359,16 +1359,16 @@ class _Composer extends StatelessWidget {
                 tooltip: context.l10n.sendQuestion,
                 onPressed: busy ? null : () => onSend(controller.text),
                 style: IconButton.styleFrom(
-                  backgroundColor: AppColors.firefly,
-                  foregroundColor: Colors.white,
+                  backgroundColor: context.colors.primary,
+                  foregroundColor: context.colors.onPrimary,
                 ),
                 icon: busy
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 17,
                         height: 17,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: context.colors.onPrimary,
                         ),
                       )
                     : const Icon(Icons.arrow_upward_rounded),

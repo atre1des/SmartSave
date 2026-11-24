@@ -26,7 +26,7 @@ class MyAccountScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(context.l10n.myAccount)),
       body: SafeArea(
         child: finance.isLoading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.firefly))
+            ? Center(child: CircularProgressIndicator(color: context.colors.text))
             : ListView(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 children: [
@@ -61,7 +61,7 @@ class MyAccountScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
 
                   // Settings section
-                  Text(context.l10n.settings, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
+                  Text(context.l10n.settings, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: context.colors.text)),
                   const SizedBox(height: 12),
                   _SettingRow(
                     title: context.l10n.profile,
@@ -122,8 +122,8 @@ class _UserIdentitySection extends ConsumerWidget {
     return Row(
       children: [
         CircleAvatar(
-          backgroundColor: AppColors.mintLight,
-          foregroundColor: AppColors.firefly,
+          backgroundColor: context.colors.subtleSurface,
+          foregroundColor: context.colors.text,
           radius: 28,
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : 'Y',
@@ -139,7 +139,7 @@ class _UserIdentitySection extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 context.l10n.kazakhstan,
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: context.colors.muted, fontSize: 12),
               ),
             ],
           ),
@@ -166,10 +166,10 @@ class _RiskProfileCard extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.mintLight,
+              color: context.colors.subtleSurface,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.shield_outlined, color: AppColors.firefly, size: 24),
+            child: Icon(Icons.shield_outlined, color: context.colors.text, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -183,12 +183,12 @@ class _RiskProfileCard extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   '$riskLabel investor · Tap to retake quiz',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: context.colors.muted, fontSize: 12),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.muted),
+          Icon(Icons.chevron_right, color: context.colors.muted),
         ],
       ),
     );
@@ -207,23 +207,23 @@ class _GoalsSection extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(context.l10n.myGoals, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
+            Text(context.l10n.myGoals, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: context.colors.text)),
             TextButton(
               onPressed: () => _push(context, const GoalsScreen()),
-              child: Text(context.l10n.viewAll, style: TextStyle(color: AppColors.prussianBlue, fontWeight: FontWeight.w600)),
+              child: Text(context.l10n.viewAll, style: TextStyle(color: context.colors.action, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
         const SizedBox(height: 12),
         if (finance.goals.isEmpty)
           SurfaceCard(
-            color: AppColors.mintLight,
+            color: context.colors.subtleSurface,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(context.l10n.noGoals, style: TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
-                Text(context.l10n.createGoalHint, style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                Text(context.l10n.createGoalHint, style: TextStyle(fontSize: 12, color: context.colors.muted)),
                 const SizedBox(height: 12),
                 PrimaryAction(
                   label: context.l10n.createFirstGoal,
@@ -283,7 +283,7 @@ class _GoalCard extends StatelessWidget {
         const SizedBox(height: 8),
         Text('${context.formatTenge(goal.saved)} / ${context.formatTenge(goal.target)} · ${context.l10n.monthsLeft(_monthsLeft(goal.deadline))}', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 2),
-        Text(context.l10n.onTrack, style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(context.l10n.onTrack, style: TextStyle(color: context.colors.positive, fontSize: 11, fontWeight: FontWeight.w600)),
       ],
     ),
   );
@@ -304,22 +304,27 @@ class _AISuggestionCard extends ConsumerWidget {
     final monthly = monthlyGoalContribution(targetTenge: goal.target, savedTenge: goal.saved, monthsRemaining: months);
 
     return SurfaceCard(
-      color: AppColors.paleGold,
+      color: context.colors.noticeSurface,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 20),
-              SizedBox(width: 8),
-              Text(context.l10n.recommendationSmartSave, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: context.colors.premium,
+                foregroundColor: context.colors.onPremium,
+                child: const Icon(Icons.lightbulb_outline, size: 17),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(context.l10n.recommendationSmartSave, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            'Want to reach "${goal.name}" faster? You need ${context.formatTenge(monthly)}/month. Explore adding money to a deposit or an investment scenario.',
-            style: TextStyle(fontSize: 12, color: AppColors.firefly),
+            context.l10n.goalSuggestion(goal.name, context.formatTenge(monthly)),
+            style: TextStyle(fontSize: 12, color: context.colors.text),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -339,7 +344,7 @@ class _AISuggestionCard extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             context.l10n.accountInvestmentDisclaimer,
-            style: TextStyle(color: AppColors.muted, fontSize: 10),
+            style: TextStyle(color: context.colors.muted, fontSize: 10),
           ),
         ],
       ),
@@ -361,9 +366,9 @@ class _SettingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListTile(
     contentPadding: const EdgeInsets.symmetric(vertical: 3),
-    leading: Icon(icon, color: AppColors.firefly),
+    leading: Icon(icon, color: context.colors.text),
     title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-    subtitle: Text(subtitle, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+    subtitle: Text(subtitle, style: TextStyle(color: context.colors.muted, fontSize: 11)),
     trailing: const Icon(Icons.chevron_right),
     onTap: onTap,
   );

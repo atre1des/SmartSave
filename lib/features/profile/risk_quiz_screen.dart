@@ -102,7 +102,7 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
         actions: [
           TextButton(
             onPressed: _finish,
-            child: Text(context.l10n.finish, style: TextStyle(color: AppColors.firefly)),
+            child: Text(context.l10n.finish, style: TextStyle(color: context.colors.text)),
           ),
         ],
       ),
@@ -115,29 +115,29 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
               // Progress indicator
               LinearProgressIndicator(
                 value: (_step + 1) / _questions.length,
-                color: AppColors.firefly,
-                backgroundColor: AppColors.mintLight,
+                color: context.colors.text,
+                backgroundColor: context.colors.subtleSurface,
                 minHeight: 6,
                 borderRadius: BorderRadius.circular(3),
               ),
               const SizedBox(height: 8),
               Text(
                 'Question ${_step + 1} of ${_questions.length}',
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: context.colors.muted, fontSize: 12),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               Container(
                 height: 200,
                 decoration: BoxDecoration(
-                  color: AppColors.mintLight,
+                  color: context.colors.subtleSurface,
                   borderRadius: BorderRadius.circular(28),
                 ),
                 child: Center(
                   child: Icon(
                     Icons.shield_outlined,
                     size: 80,
-                    color: AppColors.firefly,
+                    color: context.colors.text,
                   ),
                 ),
               ),
@@ -213,9 +213,9 @@ class _QuizOption extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: selected ? AppColors.firefly : Colors.white,
+        color: selected ? context.colors.emphasis : context.colors.surface,
         border: Border.all(
-          color: selected ? AppColors.firefly : AppColors.border,
+          color: selected ? context.colors.text : context.colors.outline,
           width: selected ? 2 : 1,
         ),
         borderRadius: BorderRadius.circular(16),
@@ -226,15 +226,15 @@ class _QuizOption extends StatelessWidget {
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: selected ? Colors.white : Colors.transparent,
+              color: selected ? context.colors.surface : Colors.transparent,
               border: Border.all(
-                color: selected ? Colors.white : AppColors.border,
+                color: selected ? context.colors.surface : context.colors.outline,
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(12),
             ),
             child: selected
-                ? const Icon(Icons.check, color: AppColors.firefly, size: 16)
+                ? Icon(Icons.check, color: context.colors.text, size: 16)
                 : null,
           ),
           const SizedBox(width: 16),
@@ -244,7 +244,7 @@ class _QuizOption extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : AppColors.firefly,
+                color: selected ? context.colors.onEmphasis : context.colors.text,
               ),
             ),
           ),

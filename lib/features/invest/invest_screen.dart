@@ -41,8 +41,8 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
       ),
       body: SafeArea(
         child: finance.isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: AppColors.firefly),
+            ? Center(
+                child: CircularProgressIndicator(color: context.colors.text),
               )
             : ListView(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -55,7 +55,7 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
                   const SizedBox(height: 5),
                   Text(
                     context.l10n.sampleDepositHeading,
-                    style: TextStyle(color: AppColors.muted, fontSize: 11),
+                    style: TextStyle(color: context.colors.muted, fontSize: 11),
                   ),
                   const SizedBox(height: 13),
                   Row(
@@ -95,7 +95,7 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
                     const SizedBox(height: 6),
                     Text(
                       context.l10n.compareLimit,
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      style: TextStyle(color: context.colors.muted, fontSize: 12),
                     ),
                   ],
                   const SizedBox(height: 6),
@@ -149,7 +149,7 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
                   const SizedBox(height: 8),
                   Text(
                     context.l10n.sampleDepositDisclaimer,
-                    style: TextStyle(color: AppColors.muted, fontSize: 11),
+                    style: TextStyle(color: context.colors.muted, fontSize: 11),
                   ),
                 ],
               ),
@@ -179,11 +179,11 @@ class _DepositRow extends StatelessWidget {
           Checkbox(value: selected, onChanged: (_) => onTap())
         else
           CircleAvatar(
-            backgroundColor: AppColors.mintLight,
+            backgroundColor: context.colors.subtleSurface,
             child: Text(
               product.bank.substring(0, 2).toUpperCase(),
-              style: const TextStyle(
-                color: AppColors.firefly,
+              style: TextStyle(
+                color: context.colors.text,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -202,11 +202,11 @@ class _DepositRow extends StatelessWidget {
               ),
               Text(
                 '${product.product} · ${product.termMonths} mo',
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                style: TextStyle(color: context.colors.muted, fontSize: 11),
               ),
               Text(
                 'Nominal ${(product.nominalRateBps / 100).toStringAsFixed(2)}%',
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                style: TextStyle(color: context.colors.muted, fontSize: 11),
               ),
             ],
           ),
@@ -220,7 +220,7 @@ class _DepositRow extends StatelessWidget {
             ),
             Text(
               context.l10n.effectiveRate,
-              style: TextStyle(color: AppColors.muted, fontSize: 10),
+              style: TextStyle(color: context.colors.muted, fontSize: 10),
             ),
           ],
         ),
@@ -240,26 +240,26 @@ class DepositDetailsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           SurfaceCard(
-            color: AppColors.firefly,
+            color: context.colors.emphasis,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '${product.bank} · ${product.product}',
-                  style: const TextStyle(color: AppColors.mintLight),
+                  style: TextStyle(color: context.colors.subtleSurface),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '${(product.effectiveRateBps / 100).toStringAsFixed(2)}%',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.onEmphasis,
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
                   context.l10n.effectiveIndicative,
-                  style: TextStyle(color: AppColors.mint),
+                  style: TextStyle(color: context.colors.progress),
                 ),
               ],
             ),
@@ -313,7 +313,7 @@ class DepositDetailsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           SurfaceCard(
-            color: AppColors.paleGold,
+            color: context.colors.noticeSurface,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -418,7 +418,7 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen> {
             ),
             const SizedBox(height: 14),
             SurfaceCard(
-              color: AppColors.mintLight,
+              color: context.colors.subtleSurface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -433,9 +433,9 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen> {
                   ),
                   Text(
                     'in $_term months · nominal rate, no top-ups',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.muted,
+                      color: context.colors.muted,
                     ),
                   ),
                 ],
@@ -444,7 +444,7 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen> {
             const SizedBox(height: 12),
             Text(
               context.l10n.depositCalculationNotice,
-              style: TextStyle(fontSize: 11, color: AppColors.muted),
+              style: TextStyle(fontSize: 11, color: context.colors.muted),
             ),
             const SizedBox(height: 20),
             PrimaryAction(
@@ -504,7 +504,7 @@ class DepositComparisonScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             context.l10n.compareSampleRates,
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
+            style: TextStyle(color: context.colors.muted, fontSize: 11),
           ),
         ],
       ),
@@ -523,7 +523,7 @@ class WhyDepositScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           SurfaceCard(
-            color: AppColors.mintLight,
+            color: context.colors.subtleSurface,
             child: Text(
               '${product.bank} · ${(product.effectiveRateBps / 100).toStringAsFixed(2)}% ГЭСВ · ${product.termMonths} months',
               style: const TextStyle(fontWeight: FontWeight.w600),
@@ -555,7 +555,7 @@ class WhyDepositScreen extends StatelessWidget {
           SectionHeading(context.l10n.dataSources),
           Text(
             context.l10n.sampleRateDateNotice,
-            style: TextStyle(color: AppColors.muted, fontSize: 12),
+            style: TextStyle(color: context.colors.muted, fontSize: 12),
           ),
           const SizedBox(height: 20),
           PrimaryAction(
@@ -588,13 +588,13 @@ class InvestScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           SurfaceCard(
-            color: AppColors.firefly,
+            color: context.colors.emphasis,
             onTap: () => _push(context, const InvestmentIntelligenceScreen()),
             child: Row(
               children: [
                 Icon(
                   Icons.auto_awesome,
-                  color: AppColors.mint,
+                  color: context.colors.progress,
                   size: 24,
                 ),
                 SizedBox(width: 10),
@@ -605,25 +605,25 @@ class InvestScreen extends StatelessWidget {
                       Text(
                         context.l10n.investmentIntelligence,
                         style: TextStyle(
-                          color: Colors.white,
+                          color: context.colors.onEmphasis,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       SizedBox(height: 4),
                       Text(
                         context.l10n.challengeThesis,
-                        style: TextStyle(color: Colors.white70, fontSize: 10),
+                        style: TextStyle(color: context.colors.onEmphasis, fontSize: 10),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: Colors.white),
+                Icon(Icons.chevron_right, color: context.colors.onEmphasis),
               ],
             ),
           ),
           const SizedBox(height: 10),
           SurfaceCard(
-            color: AppColors.mintLight,
+            color: context.colors.subtleSurface,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
               children: [
@@ -651,7 +651,7 @@ class InvestScreen extends StatelessWidget {
             ),
           const SizedBox(height: 8),
           SurfaceCard(
-            color: AppColors.mintLight,
+            color: context.colors.subtleSurface,
             onTap: () => _push(context, const BondsLaterScreen()),
             child: Row(
               children: [
@@ -665,7 +665,7 @@ class InvestScreen extends StatelessWidget {
                       ),
                       Text(
                         context.l10n.comingLater,
-                        style: TextStyle(color: AppColors.muted, fontSize: 12),
+                        style: TextStyle(color: context.colors.muted, fontSize: 12),
                       ),
                     ],
                   ),
@@ -677,7 +677,7 @@ class InvestScreen extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             context.l10n.fictionalStocks,
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
+            style: TextStyle(color: context.colors.muted, fontSize: 11),
           ),
         ],
       ),
@@ -696,11 +696,11 @@ class _StockTile extends StatelessWidget {
     child: Row(
       children: [
         CircleAvatar(
-          backgroundColor: AppColors.mintLight,
+          backgroundColor: context.colors.subtleSurface,
           child: Text(
             stock.$2.substring(0, 2),
-            style: const TextStyle(
-              color: AppColors.firefly,
+            style: TextStyle(
+              color: context.colors.text,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -723,7 +723,7 @@ class _StockTile extends StatelessWidget {
                 '${stock.$2} · ${stock.$3} risk',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                style: TextStyle(color: context.colors.muted, fontSize: 11),
               ),
               Text(
                 stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile,
@@ -731,7 +731,7 @@ class _StockTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 10,
-                  color: stock.$6 ? AppColors.success : AppColors.wine,
+                  color: stock.$6 ? context.colors.positive : context.colors.error,
                 ),
               ),
             ],
@@ -755,8 +755,8 @@ class _StockTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   color: stock.$5.startsWith('+')
-                      ? AppColors.success
-                      : AppColors.wine,
+                      ? context.colors.positive
+                      : context.colors.error,
                 ),
               ),
             ],
@@ -810,7 +810,7 @@ class _StockDetailsScreenState extends ConsumerState<StockDetailsScreen> {
           ),
           Text(
             '${widget.stock.$5} today',
-            style: const TextStyle(color: AppColors.success),
+            style: TextStyle(color: context.colors.positive),
           ),
           const SizedBox(height: 14),
           Row(
@@ -829,13 +829,13 @@ class _StockDetailsScreenState extends ConsumerState<StockDetailsScreen> {
           Container(
             height: 150,
             decoration: BoxDecoration(
-              color: AppColors.mintLight,
+              color: context.colors.subtleSurface,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Center(
               child: Text(
                 context.l10n.sampleTrend,
-                style: TextStyle(color: AppColors.muted),
+                style: TextStyle(color: context.colors.muted),
               ),
             ),
           ),
@@ -862,7 +862,7 @@ class _StockDetailsScreenState extends ConsumerState<StockDetailsScreen> {
                 const SizedBox(height: 4),
                 Text(
                   context.l10n.companySampleWarning,
-                  style: TextStyle(fontSize: 12, color: AppColors.muted),
+                  style: TextStyle(fontSize: 12, color: context.colors.muted),
                 ),
               ],
             ),
@@ -870,7 +870,7 @@ class _StockDetailsScreenState extends ConsumerState<StockDetailsScreen> {
           const SizedBox(height: 12),
           Text(
             context.l10n.sampleAdviceSource,
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
+            style: TextStyle(color: context.colors.muted, fontSize: 11),
           ),
           const SizedBox(height: 18),
           FutureBuilder<bool>(
@@ -898,7 +898,7 @@ class BondsLaterScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         children: [
           SurfaceCard(
-            color: AppColors.mintLight,
+            color: context.colors.subtleSurface,
             child: Text(
               context.l10n.comingLater,
               style: TextStyle(fontWeight: FontWeight.w700),
@@ -923,7 +923,7 @@ class BondsLaterScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             context.l10n.licensedBrokerNotice,
-            style: TextStyle(color: AppColors.muted, fontSize: 12),
+            style: TextStyle(color: context.colors.muted, fontSize: 12),
           ),
           const SizedBox(height: 20),
           PrimaryAction(
@@ -946,7 +946,7 @@ class _NoDeposits extends StatelessWidget {
   Widget build(BuildContext context) => SurfaceCard(
     child: Column(
       children: [
-        const Icon(Icons.search_off, size: 38, color: AppColors.muted),
+        Icon(Icons.search_off, size: 38, color: context.colors.muted),
         const SizedBox(height: 10),
         Text(
           context.l10n.noMatchingDeposits,
@@ -956,7 +956,7 @@ class _NoDeposits extends StatelessWidget {
         Text(
           context.l10n.fewerFilters,
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.muted, fontSize: 12),
+          style: TextStyle(color: context.colors.muted, fontSize: 12),
         ),
         if (onReset != null)
           TextButton(onPressed: onReset, child: Text(context.l10n.resetFilters)),
@@ -976,7 +976,7 @@ class GoalPickerScreen extends StatelessWidget {
         children: [
           Text(
             context.l10n.depositGoalNotice,
-            style: TextStyle(color: AppColors.muted),
+            style: TextStyle(color: context.colors.muted),
           ),
           const SizedBox(height: 16),
           for (final name in ['New laptop', 'Emergency fund', 'Trip'])
