@@ -13,7 +13,7 @@ This review covers Home, Investment Intelligence and AI chat on `experimental/ui
 | Attachments in display order | SmartSave application |
 | --- | --- |
 | 1–2 · Apple Wallet | Move the amount and label out of a heavy card. Use right-aligned transaction values, a single grouped activity surface and quiet dividers. Balance detail remains outside this review. |
-| 3 and 9 · Fuse Plus, repeated attachment | Keep the dark canvas nearly black, with limited surface tint and big type. Apply this restraint to the chat transcript and market overview. |
+| 3 and 9 · Fuse Plus, repeated attachment | Use a soft charcoal dark canvas, with limited surface tint and big type. Apply this restraint to the chat transcript and market overview. |
 | 4 · Binance | Place signed data in a zero-centered analytical chart. Use selectable market and research views. |
 | 5 · Starling | Give the balance its own atmospheric space. Place records lower on the page, on a distinct surface. |
 | 6 · Public portfolio | Give price comparisons shared space and a common scale. Keep section navigation and the dock compact. |
@@ -30,6 +30,6 @@ This review covers Home, Investment Intelligence and AI chat on `experimental/ui
 
 The six images are actual Flutter widget renders at 430 × 920 logical pixels, exported at 2×. They use one local SQLite fixture with fictional financial records and a saved fictional conversation. The capture renderer uses Noto Sans and DejaVu glyph fallbacks. The chat status reflects the offline fixture.
 
-The floating control materials use clipped Flutter blur, an opaque high-contrast fallback and a reduced-motion selection mode. Native iOS glass and device-level keyboard, safe area, Reduce Transparency and frame timing still need device review. No new packages were required.
+The dark canvas blends the approved black and ice colors for a softer charcoal backdrop. The floating control materials use clipped Flutter blur, an opaque high-contrast fallback and a reduced-motion selection mode. Native iOS glass and device-level keyboard, safe area, Reduce Transparency and frame timing still need device review. No new packages were required.
 
 Flutter analysis finished with zero diagnostics. The complete Flutter suite passed 65 tests with coverage enabled. The two compact account journeys exercise the new research segment and history sheet. Streaming and conversation persistence were exercised with mocked requests.

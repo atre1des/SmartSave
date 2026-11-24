@@ -18,6 +18,8 @@ void main() {
       final colors = AppColors(brightness);
       for (final (text, surface) in [
         (colors.text, colors.canvas),
+        (colors.muted, colors.canvas),
+        (colors.action, colors.canvas),
         (colors.text, colors.surface),
         (colors.muted, colors.surface),
         (colors.onPrimary, colors.primary),
@@ -82,8 +84,8 @@ void main() {
       expect(
         Theme.of(
           tester.element(find.text('Басты бет')),
-        ).scaffoldBackgroundColor,
-        const Color(0xFF020202),
+        ).scaffoldBackgroundColor.toARGB32(),
+        0xFF1B1C1C,
       );
       await tester.tap(find.text('Инвестиции'));
       expect(selected, 1);

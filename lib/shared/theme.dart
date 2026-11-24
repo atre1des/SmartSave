@@ -17,6 +17,8 @@ abstract final class _Brand {
   static const deepTeal = Color(0xFF034044);
   static const white = Color(0xFFFFFFFF);
   static const green = Color(0xFF73BEA5);
+
+  static final charcoal = Color.lerp(black, ice, .105)!;
 }
 
 class AppColors {
@@ -24,7 +26,7 @@ class AppColors {
 
   final Brightness brightness;
   bool get isDark => brightness == Brightness.dark;
-  Color get canvas => isDark ? _Brand.black : _Brand.ice;
+  Color get canvas => isDark ? _Brand.charcoal : _Brand.ice;
   Color get surface => isDark ? _Brand.deep : _Brand.white;
   Color get subtleSurface => isDark ? _Brand.deepTeal : _Brand.ice;
   Color get mutedSurface => isDark ? _Brand.slate : _Brand.sage;
