@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,14 +21,14 @@ class InvestmentIntelligenceScreen extends StatelessWidget {
     length: 4,
     child: Scaffold(
       appBar: AppBar(
-        title: const Text('Investment Intelligence'),
-        bottom: const TabBar(
+        title: Text(context.l10n.investmentIntelligence),
+        bottom: TabBar(
           isScrollable: true,
           tabs: [
-            Tab(text: 'AI Investing for Beginners'),
-            Tab(text: 'Thesis autopsy'),
-            Tab(text: 'Liquidity'),
-            Tab(text: 'Economic ripple'),
+            Tab(text: context.l10n.aiBeginners),
+            Tab(text: context.l10n.thesisAutopsyTab),
+            Tab(text: context.l10n.liquidity),
+            Tab(text: context.l10n.economicRippleTab),
           ],
         ),
       ),
@@ -46,13 +48,13 @@ class _AIBeginnerTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => ListView(
     padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
     children: [
-      const Text(
-        'Learn the basics of investing step by step.',
+      Text(
+        context.l10n.learnInvest,
         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 5),
-      const Text(
-        'No live market data or AI provider is configured. This section uses local educational content.',
+      Text(
+        context.l10n.noLiveEducation,
         style: TextStyle(color: AppColors.muted, fontSize: 11),
       ),
       const SizedBox(height: 16),
@@ -60,43 +62,43 @@ class _AIBeginnerTab extends ConsumerWidget {
       // Topic cards
       _TopicCard(
         icon: Icons.savings_outlined,
-        title: 'Deposits vs Investments',
-        description: 'Understand the difference between bank deposits and investing in shares.',
+        title: context.l10n.depositVsInvest,
+        description: context.l10n.depositLessonDescription,
         onTap: () => _showLesson(context, 'deposits_vs_investments'),
       ),
       const SizedBox(height: 10),
       _TopicCard(
         icon: Icons.flag_outlined,
-        title: 'Setting Savings Goals',
-        description: 'How to create realistic targets and track progress.',
+        title: context.l10n.settingGoals,
+        description: context.l10n.goalLessonDescription,
         onTap: () => _showLesson(context, 'savings_goals'),
       ),
       const SizedBox(height: 10),
       _TopicCard(
         icon: Icons.pie_chart_outline,
-        title: 'Diversification Basics',
-        description: 'Why spreading your money across different assets matters.',
+        title: context.l10n.diversification,
+        description: context.l10n.diversificationDescription,
         onTap: () => _showLesson(context, 'diversification'),
       ),
       const SizedBox(height: 10),
       _TopicCard(
         icon: Icons.shield_outlined,
-        title: 'Risk & Your Profile',
-        description: 'Discover your risk tolerance and match investments to it.',
+        title: context.l10n.riskAndProfile,
+        description: context.l10n.riskLessonDescription,
         onTap: () => _showLesson(context, 'risk_profile'),
       ),
       const SizedBox(height: 10),
       _TopicCard(
         icon: Icons.trending_up,
-        title: 'Compound Growth',
-        description: 'How time and reinvested returns build wealth.',
+        title: context.l10n.compoundGrowth,
+        description: context.l10n.growthLessonDescription,
         onTap: () => _showLesson(context, 'compound_growth'),
       ),
       const SizedBox(height: 10),
       _TopicCard(
         icon: Icons.lightbulb_outline,
-        title: 'Common Beginner Mistakes',
-        description: 'Learn what to avoid when starting your investing journey.',
+        title: context.l10n.beginnerMistakes,
+        description: context.l10n.mistakesLessonDescription,
         onTap: () => _showLesson(context, 'beginner_mistakes'),
       ),
       const SizedBox(height: 20),
@@ -109,7 +111,7 @@ class _AIBeginnerTab extends ConsumerWidget {
             MaterialPageRoute<void>(builder: (_) => const _AIAssistantScreenRoute()),
           );
         },
-        child: const Row(
+        child: Row(
           children: [
             Icon(Icons.auto_awesome, color: AppColors.mint, size: 24),
             SizedBox(width: 12),
@@ -118,7 +120,7 @@ class _AIBeginnerTab extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Ask SmartSave AI',
+                    context.l10n.askAi,
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -127,7 +129,7 @@ class _AIBeginnerTab extends ConsumerWidget {
                   ),
                   SizedBox(height: 2),
                   Text(
-                    'Open the AI assistant for personalized guidance',
+                    context.l10n.openAiForGuidance,
                     style: TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 ],
@@ -138,8 +140,8 @@ class _AIBeginnerTab extends ConsumerWidget {
         ),
       ),
       const SizedBox(height: 12),
-      const Text(
-        'Educational content only — not financial advice. Investments can lose value.',
+      Text(
+        context.l10n.educationRisk,
         style: TextStyle(color: AppColors.muted, fontSize: 11),
       ),
     ],
@@ -147,79 +149,42 @@ class _AIBeginnerTab extends ConsumerWidget {
 }
 
 void _showLesson(BuildContext context, String lessonId) {
-  final lessons = {
-    'deposits_vs_investments': (
-      'Deposits vs Investments',
-      'Bank deposits offer fixed returns with capital protection (up to KDIF limits). '
-      'Investing in shares offers variable returns with potential for higher growth '
-      'but also risk of loss. Your money is not guaranteed when investing.',
-    ),
-    'savings_goals': (
-      'Setting Savings Goals',
-      'A good goal is Specific, Measurable, Achievable, Relevant, and Time-bound (SMART). '
-      'Example: "Save ₸500,000 for a laptop in 12 months" → ₸41,667/month. '
-      'Track progress monthly and adjust as needed.',
-    ),
-    'diversification': (
-      'Diversification Basics',
-      'Don\'t put all your eggs in one basket. Spread investments across:\n'
-      '• Different asset types (deposits, shares, bonds)\n'
-      '• Different sectors (banking, energy, tech)\n'
-      '• Different geographies (Kazakhstan, global)\n'
-      'This reduces the impact of any single investment performing poorly.',
-    ),
-    'risk_profile': (
-      'Risk & Your Profile',
-      'Risk tolerance depends on your:\n'
-      '• Time horizon (how long until you need the money)\n'
-      '• Financial cushion (emergency fund size)\n'
-      '• Comfort with volatility\n\n'
-      'Conservative: Capital preservation, short horizon\n'
-      'Moderate: Balanced growth, medium horizon\n'
-      'Aggressive: Maximum growth, long horizon',
-    ),
-    'compound_growth': (
-      'Compound Growth',
-      'When you earn returns on your returns, growth accelerates over time.\n'
-      'Example: ₸100,000 at 15%/year → ₸404,556 in 10 years (simple) vs ₸1,030,925 (compounded).\n'
-      'Start early, reinvest returns, stay invested.',
-    ),
-    'beginner_mistakes': (
-      'Common Beginner Mistakes',
-      '1. Investing money you can\'t afford to lose\n'
-      '2. Trying to time the market\n'
-      '3. Following hype without research\n'
-      '4. Not diversifying\n'
-      '5. Panic selling during downturns\n'
-      '6. Ignoring fees and taxes\n'
-      '7. Expecting quick riches',
-    ),
+  final strings = context.l10n;
+  final lesson = switch (lessonId) {
+    'deposits_vs_investments' => (strings.depositVsInvest, strings.lessonDepositsBody),
+    'savings_goals' => (strings.settingGoals, strings.lessonGoalsBody),
+    'diversification' => (strings.diversification, strings.lessonDiversificationBody),
+    'risk_profile' => (strings.riskAndProfile, strings.lessonRiskBody),
+    'compound_growth' => (strings.compoundGrowth, strings.lessonGrowthBody),
+    'beginner_mistakes' => (strings.beginnerMistakes, strings.lessonMistakesBody),
+    _ => null,
   };
-
-  final (String, String) lesson = lessons[lessonId] ?? ('Lesson', 'Content coming soon.');
+  if (lesson == null) return;
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    builder: (_) => Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        18,
-        20,
-        MediaQuery.viewInsetsOf(context).bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(lesson.$1, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          Text(lesson.$2, style: const TextStyle(fontSize: 13, height: 1.5)),
-          const SizedBox(height: 20),
-          PrimaryAction(
-            label: 'Got it',
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
+    builder: (context) => SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          18,
+          20,
+          MediaQuery.viewInsetsOf(context).bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(lesson.$1, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            Text(lesson.$2, style: const TextStyle(fontSize: 13, height: 1.5)),
+            const SizedBox(height: 20),
+            PrimaryAction(
+              label: context.l10n.gotIt,
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -393,7 +358,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
             children: [
               Expanded(
                 child: _MetricCard(
-                  label: 'Active theses',
+                  label: context.l10n.activeTheses,
                   value: '${theses.length}',
                   icon: Icons.description_outlined,
                 ),
@@ -401,7 +366,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricCard(
-                  label: 'Conditions needing attention',
+                  label: context.l10n.conditionsAttention,
                   value: '${overview.attentionCount}',
                   icon: Icons.fact_check_outlined,
                 ),
@@ -411,7 +376,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
           const SizedBox(height: 8),
           Text(
             overview.latestAssessment == null
-                ? 'Latest assessment: none yet'
+                ? context.l10n.latestAssessmentNone
                 : 'Latest assessment: ${overview.latestAssessment!.toLocal()} · ${overview.changedCount} recent condition change(s)',
             style: const TextStyle(color: AppColors.muted, fontSize: 10),
           ),
@@ -419,11 +384,11 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const SectionHeading('Your investment theses'),
+              SectionHeading(context.l10n.yourTheses),
               TextButton.icon(
                 onPressed: _createThesis,
                 icon: const Icon(Icons.add),
-                label: const Text('New thesis'),
+                label: Text(context.l10n.newThesis),
               ),
             ],
           ),
@@ -433,18 +398,18 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Start with your reasoning, not a stock tip.',
+                  Text(
+                    context.l10n.thesisIntro,
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Record what you believe, what could prove it wrong, and which evidence would change your mind.',
+                  Text(
+                    context.l10n.thesisEvidence,
                     style: TextStyle(fontSize: 12),
                   ),
                   const SizedBox(height: 12),
                   PrimaryAction(
-                    label: 'Create your first thesis',
+                    label: context.l10n.createFirstThesis,
                     onPressed: _createThesis,
                   ),
                 ],
@@ -500,7 +465,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
                             const SizedBox(height: 4),
                             Text(
                               thesis.rationale.isEmpty
-                                  ? 'No thesis rationale added yet'
+                                  ? context.l10n.noThesisRationale
                                   : thesis.rationale,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -515,8 +480,8 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
                 ),
               ),
           const SizedBox(height: 8),
-          const Text(
-            'Structured local review · No AI provider or market feed is configured.',
+          Text(
+            context.l10n.thesisLocalOnly,
             style: TextStyle(color: AppColors.muted, fontSize: 11),
           ),
         ],
@@ -530,7 +495,7 @@ class _SourceBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SurfaceCard(
     color: AppColors.firefly,
-    child: const Row(
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(Icons.shield_outlined, color: AppColors.mint, size: 22),
@@ -540,7 +505,7 @@ class _SourceBanner extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Kazakhstan market data · Not connected',
+                context.l10n.kzMarketUnconnected,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -548,7 +513,7 @@ class _SourceBanner extends StatelessWidget {
               ),
               SizedBox(height: 5),
               Text(
-                'No live KASE/AIX prices or issuer disclosures are imported. Evidence you add is identified as user-provided.',
+                context.l10n.evidenceUserProvided,
                 style: TextStyle(color: Colors.white70, fontSize: 11),
               ),
             ],
@@ -669,7 +634,7 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(
-        widget.thesis == null ? 'New investment thesis' : 'Edit thesis',
+        widget.thesis == null ? context.l10n.newInvestmentThesis : context.l10n.editThesis,
       ),
     ),
     body: SafeArea(
@@ -678,14 +643,14 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const Text(
-              'Capture your own investment case. Optional fields can be completed later.',
+            Text(
+              context.l10n.captureThesis,
               style: TextStyle(color: AppColors.muted, fontSize: 12),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _name,
-              decoration: const InputDecoration(labelText: 'Security name'),
+              decoration: InputDecoration(labelText: context.l10n.securityName),
               validator: (value) => value == null || value.trim().isEmpty
                   ? 'Add a security name.'
                   : null,
@@ -696,7 +661,7 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _ticker,
-                    decoration: const InputDecoration(labelText: 'Ticker'),
+                    decoration: InputDecoration(labelText: context.l10n.ticker),
                     validator: (value) => value == null || value.trim().isEmpty
                         ? 'Required.'
                         : null,
@@ -706,7 +671,7 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _exchange,
-                    decoration: const InputDecoration(labelText: 'Exchange'),
+                    decoration: InputDecoration(labelText: context.l10n.exchange),
                   ),
                 ),
               ],
@@ -714,8 +679,8 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
             const SizedBox(height: 10),
             TextFormField(
               controller: _identifier,
-              decoration: const InputDecoration(
-                labelText: 'ISIN / identifier (optional)',
+              decoration: InputDecoration(
+                labelText: context.l10n.isinOptional,
               ),
             ),
             const SizedBox(height: 10),
@@ -723,16 +688,16 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
               controller: _rationale,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Why are you interested?',
+              decoration: InputDecoration(
+                labelText: context.l10n.whyInterested,
               ),
             ),
             const SizedBox(height: 10),
             TextFormField(
               controller: _horizon,
-              decoration: const InputDecoration(
-                labelText: 'Investment horizon (optional)',
-                hintText: 'e.g. 3–5 years',
+              decoration: InputDecoration(
+                labelText: context.l10n.horizonOptional,
+                hintText: context.l10n.horizonExample,
               ),
             ),
             const SizedBox(height: 10),
@@ -740,8 +705,8 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
               controller: _assumptions,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Supporting evidence or assumptions',
+              decoration: InputDecoration(
+                labelText: context.l10n.supportingEvidence,
               ),
             ),
             const SizedBox(height: 10),
@@ -749,8 +714,8 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
               controller: _risks,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Principal risks you recognize',
+              decoration: InputDecoration(
+                labelText: context.l10n.principalRisks,
               ),
             ),
             const SizedBox(height: 10),
@@ -758,13 +723,13 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
               controller: _invalidation,
               minLines: 2,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'What would weaken or invalidate the thesis?',
+              decoration: InputDecoration(
+                labelText: context.l10n.invalidateThesis,
               ),
             ),
             const SizedBox(height: 18),
             PrimaryAction(
-              label: widget.thesis == null ? 'Save thesis' : 'Update thesis',
+              label: widget.thesis == null ? context.l10n.saveThesis : context.l10n.updateThesis,
               busy: _saving,
               onPressed: _save,
             ),
@@ -843,7 +808,7 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
       title: Text(widget.thesis.ticker),
       actions: [
         IconButton(
-          tooltip: 'Edit thesis',
+          tooltip: context.l10n.editThesis,
           onPressed: () async {
             final navigator = Navigator.of(context);
             await navigator.push<void>(
@@ -891,18 +856,18 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SectionHeading('Testable conditions'),
+                  SectionHeading(context.l10n.testableConditions),
                   TextButton.icon(
                     onPressed: _addCondition,
                     icon: const Icon(Icons.add),
-                    label: const Text('Add'),
+                    label: Text(context.l10n.add),
                   ),
                 ],
               ),
               if (conditions.isEmpty)
-                const SurfaceCard(
+                SurfaceCard(
                   child: Text(
-                    'No conditions yet. Add measurable thresholds or qualitative disclosure checks.',
+                    context.l10n.noConditions,
                     style: TextStyle(color: AppColors.muted, fontSize: 12),
                   ),
                 )
@@ -917,32 +882,32 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
                   ),
               const SizedBox(height: 12),
               PrimaryAction(
-                label: 'Assess available evidence',
+                label: context.l10n.assessEvidence,
                 onPressed: () => _assess(conditions),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 8),
                 child: Text(
-                  'Local rules compare only values you enter. No external source or AI model verifies them.',
+                  context.l10n.evidenceLocalRules,
                   style: TextStyle(color: AppColors.muted, fontSize: 11),
                 ),
               ),
               const SizedBox(height: 18),
-              const SectionHeading('Bear case & research gaps'),
+              SectionHeading(context.l10n.bearCase),
               if (latest == null)
-                const SurfaceCard(
+                SurfaceCard(
                   child: Text(
-                    'Run an assessment to create a dated review snapshot.',
+                    context.l10n.runAssessment,
                     style: TextStyle(color: AppColors.muted, fontSize: 12),
                   ),
                 )
               else
                 _AssessmentCard(assessment: latest),
               const SizedBox(height: 16),
-              const SectionHeading('Assessment history'),
+              SectionHeading(context.l10n.assessmentHistory),
               if (history.isEmpty)
-                const Text(
-                  'No saved assessments yet.',
+                Text(
+                  context.l10n.noAssessments,
                   style: TextStyle(color: AppColors.muted, fontSize: 12),
                 )
               else
@@ -960,7 +925,7 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
                   if (context.mounted) Navigator.pop(context);
                 },
                 icon: const Icon(Icons.delete_outline),
-                label: const Text('Delete thesis'),
+                label: Text(context.l10n.deleteThesis),
               ),
             ],
           );
@@ -1042,7 +1007,7 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(
-        widget.condition == null ? 'Add condition' : 'Edit condition',
+        widget.condition == null ? context.l10n.addCondition : context.l10n.editCondition,
       ),
     ),
     body: Form(
@@ -1052,9 +1017,9 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
         children: [
           TextFormField(
             controller: _description,
-            decoration: const InputDecoration(
-              labelText: 'Condition',
-              hintText: 'Operating cash flow remains positive',
+            decoration: InputDecoration(
+              labelText: context.l10n.condition,
+              hintText: context.l10n.positiveCashFlow,
             ),
             validator: (v) => v == null || v.trim().isEmpty
                 ? 'Describe the condition.'
@@ -1063,9 +1028,9 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
           const SizedBox(height: 10),
           TextFormField(
             controller: _metric,
-            decoration: const InputDecoration(
-              labelText: 'Metric (optional)',
-              hintText: 'Operating cash flow, KZT',
+            decoration: InputDecoration(
+              labelText: context.l10n.metric,
+              hintText: context.l10n.operatingCashFlow,
             ),
           ),
           const SizedBox(height: 10),
@@ -1074,17 +1039,17 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
               Expanded(
                 child: DropdownButtonFormField<ConditionComparator>(
                   initialValue: _comparator,
-                  decoration: const InputDecoration(
-                    labelText: 'Expected condition',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.expectedCondition,
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: ConditionComparator.atLeast,
-                      child: Text('At least'),
+                      child: Text(context.l10n.atLeast),
                     ),
                     DropdownMenuItem(
                       value: ConditionComparator.atMost,
-                      child: Text('At most'),
+                      child: Text(context.l10n.atMost),
                     ),
                   ],
                   onChanged: (value) => setState(
@@ -1099,9 +1064,9 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Threshold',
-                    hintText: 'Blank = qualitative',
+                  decoration: InputDecoration(
+                    labelText: context.l10n.threshold,
+                    hintText: context.l10n.qualitativeIfBlank,
                   ),
                   validator: (v) =>
                       v != null &&
@@ -1117,9 +1082,9 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
           TextFormField(
             controller: _observed,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Observed value (optional)',
-              helperText: 'Numeric comparison requires source and period.',
+            decoration: InputDecoration(
+              labelText: context.l10n.observedValue,
+              helperText: context.l10n.numericEvidenceRequirement,
             ),
             validator: (v) =>
                 v != null &&
@@ -1131,15 +1096,15 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
           const SizedBox(height: 10),
           TextFormField(
             controller: _period,
-            decoration: const InputDecoration(
-              labelText: 'Reporting period / observation date',
+            decoration: InputDecoration(
+              labelText: context.l10n.observationPeriod,
             ),
           ),
           const SizedBox(height: 10),
           TextFormField(
             controller: _source,
-            decoration: const InputDecoration(
-              labelText: 'Evidence source / reference',
+            decoration: InputDecoration(
+              labelText: context.l10n.evidenceSource,
             ),
           ),
           const SizedBox(height: 10),
@@ -1147,18 +1112,18 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
             controller: _note,
             minLines: 2,
             maxLines: 4,
-            decoration: const InputDecoration(labelText: 'Evidence note'),
+            decoration: InputDecoration(labelText: context.l10n.evidenceNote),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'No source is automatically fetched. Qualitative conditions remain insufficient until reviewed against a disclosure.',
+          Text(
+            context.l10n.qualitativeDisclaimer,
             style: TextStyle(color: AppColors.muted, fontSize: 11),
           ),
           const SizedBox(height: 18),
           PrimaryAction(
             label: widget.condition == null
-                ? 'Save condition'
-                : 'Update condition',
+                ? context.l10n.saveCondition
+                : context.l10n.updateCondition,
             onPressed: _save,
           ),
         ],
@@ -1320,11 +1285,11 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = switch (status) {
-      EvidenceStatus.supported => 'Supported',
-      EvidenceStatus.weakening => 'Weakening',
-      EvidenceStatus.contradicted => 'Contradicted',
-      EvidenceStatus.insufficient => 'Insufficient',
-      EvidenceStatus.notEvaluated => 'Not evaluated',
+      EvidenceStatus.supported => context.l10n.evidenceSupported,
+      EvidenceStatus.weakening => context.l10n.evidenceWeakening,
+      EvidenceStatus.contradicted => context.l10n.evidenceContradicted,
+      EvidenceStatus.insufficient => context.l10n.evidenceInsufficient,
+      EvidenceStatus.notEvaluated => context.l10n.evidenceNotEvaluated,
     };
     final color = status == EvidenceStatus.supported
         ? AppColors.success
@@ -1394,13 +1359,13 @@ class _LiquidityTabState extends ConsumerState<_LiquidityTab> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       children: [
-        const Text(
-          'Test a hypothetical position against historical trading activity.',
+        Text(
+          context.l10n.testLiquidity,
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 5),
-        const Text(
-          'No live KASE/AIX volume, bid–ask spread, or order-book depth is connected.',
+        Text(
+          context.l10n.noLiveLiquidity,
           style: TextStyle(color: AppColors.muted, fontSize: 11),
         ),
         const SizedBox(height: 16),
@@ -1413,8 +1378,8 @@ class _LiquidityTabState extends ConsumerState<_LiquidityTab> {
               initialValue: theses.any((item) => item.id == _selectedThesisId)
                   ? _selectedThesisId
                   : null,
-              decoration: const InputDecoration(
-                labelText: 'Security / saved thesis (optional)',
+              decoration: InputDecoration(
+                labelText: context.l10n.optionalSecurity,
               ),
               items: [
                 for (final thesis in theses)
@@ -1442,16 +1407,16 @@ class _LiquidityTabState extends ConsumerState<_LiquidityTab> {
         const SizedBox(height: 10),
         TextField(
           controller: _date,
-          decoration: const InputDecoration(
-            labelText: 'Observation date (YYYY-MM-DD)',
+          decoration: InputDecoration(
+            labelText: context.l10n.observationDate,
           ),
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 10),
         TextField(
           controller: _source,
-          decoration: const InputDecoration(
-            labelText: 'Volume source / reference',
+          decoration: InputDecoration(
+            labelText: context.l10n.volumeSource,
           ),
           onChanged: (_) => setState(() {}),
         ),
@@ -1470,9 +1435,9 @@ class _LiquidityTabState extends ConsumerState<_LiquidityTab> {
         ),
         const SizedBox(height: 8),
         if (analysis == null)
-          const SurfaceCard(
+          SurfaceCard(
             child: Text(
-              'Enter an order size to see the historical-volume scenario.',
+              context.l10n.enterHistoricalOrder,
               style: TextStyle(color: AppColors.muted, fontSize: 12),
             ),
           )
@@ -1483,8 +1448,8 @@ class _LiquidityTabState extends ConsumerState<_LiquidityTab> {
             date: _date.text,
           ),
         const SizedBox(height: 12),
-        const Text(
-          'This compares an order with the supplied historical volume only. It does not predict an execution price, current liquidity, or available depth. A displayed market price is not a promise that the whole position can be sold at that price.',
+        Text(
+          context.l10n.liquidityDisclaimer,
           style: TextStyle(color: AppColors.muted, fontSize: 11),
         ),
       ],
@@ -1511,10 +1476,10 @@ class _LiquidityResult extends StatelessWidget {
       children: [
         Text(
           analysis.status == 'scenario'
-              ? 'Historical-volume scenario'
+              ? context.l10n.historicalScenario
               : analysis.status == 'stale'
-              ? 'Stale observation'
-              : 'Insufficient evidence',
+              ? context.l10n.staleObservation
+              : context.l10n.insufficientEvidence,
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 7),
@@ -1609,31 +1574,31 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
       return ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         children: [
-          const Text(
-            'Explore a macro shock through your own portfolio assumptions.',
+          Text(
+            context.l10n.macroIntro,
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 5),
-          const Text(
-            'No company sensitivities or economic data are imported. Portfolio values and sensitivities are user-provided assumptions.',
+          Text(
+            context.l10n.macroDisclaimer,
             style: TextStyle(color: AppColors.muted, fontSize: 11),
           ),
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const SectionHeading('Portfolio holdings (KZT)'),
+              SectionHeading(context.l10n.portfolioHoldings),
               TextButton.icon(
                 onPressed: _addHolding,
                 icon: const Icon(Icons.add),
-                label: const Text('Add holding'),
+                label: Text(context.l10n.addHolding),
               ),
             ],
           ),
           if (holdings.isEmpty)
-            const SurfaceCard(
+            SurfaceCard(
               child: Text(
-                'Add a holding to start. Enter a KZT market value and only sensitivities you can justify; leave unknown assumptions blank.',
+                context.l10n.holdingStart,
                 style: TextStyle(color: AppColors.muted, fontSize: 12),
               ),
             )
@@ -1657,7 +1622,7 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
                               ),
                             ),
                             Text(
-                              '${formatTenge(holding.marketValueKzt)} · user-entered value',
+                              '${context.formatTenge(holding.marketValueKzt)} · user-entered value',
                               style: const TextStyle(
                                 color: AppColors.muted,
                                 fontSize: 10,
@@ -1667,7 +1632,7 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Remove holding',
+                        tooltip: context.l10n.removeHolding,
                         onPressed: () async {
                           await ref
                               .read(financeRepositoryProvider)
@@ -1683,19 +1648,19 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
           const SizedBox(height: 10),
           DropdownButtonFormField<EconomicScenario>(
             initialValue: _scenario,
-            decoration: const InputDecoration(labelText: 'Scenario'),
-            items: const [
+            decoration: InputDecoration(labelText: context.l10n.scenario),
+            items: [
               DropdownMenuItem(
                 value: EconomicScenario.tengeDepreciation,
-                child: Text('Tenge depreciation vs foreign currency'),
+                child: Text(context.l10n.tengeDepreciation),
               ),
               DropdownMenuItem(
                 value: EconomicScenario.oilPriceDecrease,
-                child: Text('Oil price decrease'),
+                child: Text(context.l10n.oilPriceDrop),
               ),
               DropdownMenuItem(
                 value: EconomicScenario.interestRateIncrease,
-                child: Text('Interest rate increase'),
+                child: Text(context.l10n.interestIncrease),
               ),
             ],
             onChanged: (value) {
@@ -1738,8 +1703,8 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
           ),
           if (holdings.isNotEmpty) _RippleResults(result: result),
           const SizedBox(height: 12),
-          const Text(
-            'Calculation: estimated holding return (%) = user-entered sensitivity × scenario magnitude. FX and oil sensitivities are return-% per 1% macro move; interest sensitivity is return-% per 1 percentage-point rate increase. Values are rounded to whole KZT and are not forecasts.',
+          Text(
+            context.l10n.macroFormula,
             style: TextStyle(color: AppColors.muted, fontSize: 10),
           ),
         ],
@@ -1760,8 +1725,8 @@ class _RippleResults extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Scenario comparison',
+            Text(
+              context.l10n.scenarioComparison,
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -1769,19 +1734,19 @@ class _RippleResults extends StatelessWidget {
             ),
             const SizedBox(height: 7),
             Text(
-              'Before  ${formatTenge(result.beforeKzt)}',
+              'Before  ${context.formatTenge(result.beforeKzt)}',
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
             Text(
               result.afterKzt == null
-                  ? 'After  Not estimated · add all selected sensitivities'
-                  : 'After  ${formatTenge(result.afterKzt!)}',
+                  ? context.l10n.notEstimatedAfter
+                  : 'After  ${context.formatTenge(result.afterKzt!)}',
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
             Text(
               result.changeKzt == null
-                  ? 'Total change unavailable because one or more holding sensitivities are unknown.'
-                  : 'Change  ${formatTenge(result.changeKzt!)}',
+                  ? context.l10n.portfolioUnknownNotice
+                  : 'Change  ${context.formatTenge(result.changeKzt!)}',
               style: const TextStyle(
                 color: AppColors.mint,
                 fontWeight: FontWeight.w700,
@@ -1812,8 +1777,8 @@ class _RippleResults extends StatelessWidget {
                       ),
                       Text(
                         item.returnPercent == null
-                            ? 'Insufficient data: sensitivity not entered for this scenario.'
-                            : 'Assumed impact ${item.returnPercent!.toStringAsFixed(2)}% · ${formatTenge(item.changeKzt!)}',
+                            ? context.l10n.sensitivityMissing
+                            : 'Assumed impact ${item.returnPercent!.toStringAsFixed(2)}% · ${context.formatTenge(item.changeKzt!)}',
                         style: const TextStyle(
                           color: AppColors.muted,
                           fontSize: 10,
@@ -1904,22 +1869,22 @@ class _HoldingFormState extends ConsumerState<_HoldingForm> {
     child: ListView(
       shrinkWrap: true,
       children: [
-        Text('Add holding', style: Theme.of(context).textTheme.titleLarge),
+        Text(context.l10n.addHolding, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 10),
         TextField(
           controller: _name,
-          decoration: const InputDecoration(labelText: 'Security name'),
+          decoration: InputDecoration(labelText: context.l10n.securityName),
         ),
         const SizedBox(height: 9),
         TextField(
           controller: _ticker,
-          decoration: const InputDecoration(labelText: 'Ticker'),
+          decoration: InputDecoration(labelText: context.l10n.ticker),
         ),
         const SizedBox(height: 9),
         TextField(
           controller: _value,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Market value in KZT'),
+          decoration: InputDecoration(labelText: context.l10n.marketValue),
         ),
         const SizedBox(height: 9),
         TextField(
@@ -1928,8 +1893,8 @@ class _HoldingFormState extends ConsumerState<_HoldingForm> {
             decimal: true,
             signed: true,
           ),
-          decoration: const InputDecoration(
-            labelText: 'FX return-% per 1% tenge depreciation (optional)',
+          decoration: InputDecoration(
+            labelText: context.l10n.fxSensitivity,
           ),
         ),
         const SizedBox(height: 9),
@@ -1939,8 +1904,8 @@ class _HoldingFormState extends ConsumerState<_HoldingForm> {
             decimal: true,
             signed: true,
           ),
-          decoration: const InputDecoration(
-            labelText: 'Return-% per 1% oil price change (optional)',
+          decoration: InputDecoration(
+            labelText: context.l10n.oilSensitivity,
           ),
         ),
         const SizedBox(height: 9),
@@ -1950,17 +1915,17 @@ class _HoldingFormState extends ConsumerState<_HoldingForm> {
             decimal: true,
             signed: true,
           ),
-          decoration: const InputDecoration(
-            labelText: 'Return-% per 1 pp rate increase (optional)',
+          decoration: InputDecoration(
+            labelText: context.l10n.rateSensitivity,
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
-          'Sensitivities are your assumptions, not issuer data. Leave unknown values blank.',
+        Text(
+          context.l10n.sensitivityNotice,
           style: TextStyle(color: AppColors.muted, fontSize: 10),
         ),
         const SizedBox(height: 12),
-        PrimaryAction(label: 'Save holding', onPressed: _save),
+        PrimaryAction(label: context.l10n.saveHolding, onPressed: _save),
       ],
     ),
   );

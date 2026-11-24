@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -29,9 +31,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final query = _search.text.trim().toLowerCase();
     final items = finance.transactions.where((item) => (_category == 'All' || item.category == _category) && (query.isEmpty || item.merchant.toLowerCase().contains(query) || item.note.toLowerCase().contains(query))).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Transactions')),
+      appBar: AppBar(title: Text(context.l10n.transactions)),
       body: SafeArea(child: finance.isLoading ? const Center(child: CircularProgressIndicator(color: AppColors.firefly)) : ListView(padding: const EdgeInsets.fromLTRB(24, 8, 24, 92), children: [
-        TextField(controller: _search, onChanged: (_) => setState(() {}), decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search merchant or note', contentPadding: EdgeInsets.symmetric(vertical: 10))),
+        TextField(controller: _search, onChanged: (_) => setState(() {}), decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: context.l10n.searchTransactions, contentPadding: EdgeInsets.symmetric(vertical: 10))),
         const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -39,13 +41,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             children: ['All', ...transactionCategories]
                 .map((category) => Padding(
                       padding: const EdgeInsets.only(right: 6),
-                      child: Pill(label: category, selected: _category == category, onTap: () => setState(() => _category = category)),
+                      child: Pill(label: context.transactionCategory(category), selected: _category == category, onTap: () => setState(() => _category = category)),
                     ))
                 .toList(),
           ),
         ),
         const SizedBox(height: 14),
-        if (items.isEmpty) const _NoTransactions() else ..._groupTransactions(items).entries.map((group) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (items.isEmpty) const _NoTransactions() else ..._groupTransactions(context, items).entries.map((group) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(padding: const EdgeInsets.only(bottom: 7, top: 4), child: Text(group.key, style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600))),
           for (final item in group.value) Padding(padding: const EdgeInsets.only(bottom: 8), child: TransactionTile(item: item, onTap: () => _push(context, TransactionDetailsScreen(transaction: item)))),
         ])),
@@ -64,7 +66,7 @@ class TransactionTile extends StatelessWidget {
         const CircleAvatar(radius: 16, backgroundColor: AppColors.mintLight, child: Icon(Icons.receipt_long_outlined, size: 17, color: AppColors.muted)),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item.merchant, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), Text('${item.category} · ${_time(item.occurredAt)}', style: const TextStyle(fontSize: 11, color: AppColors.muted))])),
-        Text(formatSignedTenge(item.amount, income: item.isIncome), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: item.isIncome ? AppColors.success : AppColors.firefly)),
+        Text(context.formatSignedTenge(item.amount, income: item.isIncome), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: item.isIncome ? AppColors.success : AppColors.firefly)),
       ]));
 }
 
@@ -72,16 +74,16 @@ class TransactionDetailsScreen extends ConsumerWidget {
   const TransactionDetailsScreen({super.key, required this.transaction});
   final FinanceTransaction transaction;
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(appBar: AppBar(title: const Text('Transaction'), actions: [IconButton(tooltip: 'Delete transaction', onPressed: () async { await ref.read(financeControllerProvider).deleteTransaction(transaction.id!); if (context.mounted) Navigator.pop(context); }, icon: const Icon(Icons.delete_outline))]), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    Text(formatSignedTenge(transaction.amount, income: transaction.isIncome), textAlign: TextAlign.center, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700)),
+  Widget build(BuildContext context, WidgetRef ref) => Scaffold(appBar: AppBar(title: Text(context.l10n.transaction), actions: [IconButton(tooltip: context.l10n.deleteTransaction, onPressed: () async { await ref.read(financeControllerProvider).deleteTransaction(transaction.id!); if (context.mounted) Navigator.pop(context); }, icon: const Icon(Icons.delete_outline))]), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+    Text(context.formatSignedTenge(transaction.amount, income: transaction.isIncome), textAlign: TextAlign.center, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700)),
     const SizedBox(height: 4), Text(transaction.merchant, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
-    const SizedBox(height: 6), Text('${formatShortDate(transaction.occurredAt)} · ${_time(transaction.occurredAt)} · local demo', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+    const SizedBox(height: 6), Text('${context.formatShortDate(transaction.occurredAt)} · ${_time(transaction.occurredAt)} · local demo', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
     const SizedBox(height: 24),
-    SurfaceCard(child: Column(children: [LabeledValue(label: 'Category', value: transaction.category), const Divider(height: 1), LabeledValue(label: 'Date', value: formatShortDate(transaction.occurredAt)), const Divider(height: 1), LabeledValue(label: 'Source', value: transaction.source), const Divider(height: 1), LabeledValue(label: 'Note', value: transaction.note.isEmpty ? 'Add a note' : transaction.note)])),
+    SurfaceCard(child: Column(children: [LabeledValue(label: context.l10n.category, value: context.transactionCategory(transaction.category)), const Divider(height: 1), LabeledValue(label: context.l10n.date, value: context.formatShortDate(transaction.occurredAt)), const Divider(height: 1), LabeledValue(label: context.l10n.sourceLabel, value: transaction.source), const Divider(height: 1), LabeledValue(label: context.l10n.note, value: transaction.note.isEmpty ? 'Add a note' : transaction.note)])),
     const SizedBox(height: 14),
-    const SurfaceCard(color: AppColors.mintLight, child: Text('Changes to this local demo transaction update spending analytics and budgets automatically.', style: TextStyle(fontSize: 12))),
+    SurfaceCard(color: AppColors.mintLight, child: Text(context.l10n.transactionUpdatesNotice, style: TextStyle(fontSize: 12))),
     const SizedBox(height: 22),
-    PrimaryAction(label: 'Edit transaction', onPressed: () => _push(context, AddTransactionScreen(transaction: transaction))),
+    PrimaryAction(label: context.l10n.editTransaction, onPressed: () => _push(context, AddTransactionScreen(transaction: transaction))),
   ])));
 }
 
@@ -113,19 +115,19 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(widget.transaction == null ? 'Add transaction' : 'Edit transaction')), body: SafeArea(child: Form(key: _formKey, child: ListView(padding: const EdgeInsets.all(24), children: [
-    SegmentedButton<bool>(segments: const [ButtonSegment(value: false, label: Text('Expense')), ButtonSegment(value: true, label: Text('Income'))], selected: {_income}, onSelectionChanged: (value) => setState(() => _income = value.first)),
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(widget.transaction == null ? context.l10n.addTransaction : context.l10n.editTransaction)), body: SafeArea(child: Form(key: _formKey, child: ListView(padding: const EdgeInsets.all(24), children: [
+    SegmentedButton<bool>(segments: [ButtonSegment(value: false, label: Text(context.l10n.expense)), ButtonSegment(value: true, label: Text(context.l10n.income))], selected: {_income}, onSelectionChanged: (value) => setState(() => _income = value.first)),
     const SizedBox(height: 18),
-    TextFormField(controller: _amount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount', suffixText: '₸'), validator: (value) { final amount = int.tryParse(value?.replaceAll(RegExp(r'[^0-9]'), '') ?? ''); return amount == null || amount <= 0 ? 'Enter an amount greater than zero.' : null; }),
+    TextFormField(controller: _amount, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: context.l10n.amount, suffixText: '₸'), validator: (value) { final amount = int.tryParse(value?.replaceAll(RegExp(r'[^0-9]'), '') ?? ''); return amount == null || amount <= 0 ? 'Enter an amount greater than zero.' : null; }),
     const SizedBox(height: 14),
-    TextFormField(controller: _merchant, decoration: const InputDecoration(labelText: 'Merchant or description'), validator: (value) => value == null || value.trim().isEmpty ? 'Enter a description.' : null),
+    TextFormField(controller: _merchant, decoration: InputDecoration(labelText: context.l10n.merchantDescription), validator: (value) => value == null || value.trim().isEmpty ? 'Enter a description.' : null),
     const SizedBox(height: 14),
-    if (!_income) DropdownButtonFormField<String>(initialValue: _category, decoration: const InputDecoration(labelText: 'Category'), items: transactionCategories.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: (value) => setState(() => _category = value ?? 'Food')),
+    if (!_income) DropdownButtonFormField<String>(initialValue: _category, decoration: InputDecoration(labelText: context.l10n.category), items: transactionCategories.map((value) => DropdownMenuItem(value: value, child: Text(context.transactionCategory(value)))).toList(), onChanged: (value) => setState(() => _category = value ?? 'Food')),
     const SizedBox(height: 8),
-    ListTile(contentPadding: EdgeInsets.zero, title: const Text('Date'), subtitle: Text(formatShortDate(_date)), trailing: const Icon(Icons.calendar_today), onTap: () async { final date = await showDatePicker(context: context, initialDate: _date, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 1))); if (date != null) setState(() => _date = date); }),
-    TextFormField(controller: _note, decoration: const InputDecoration(labelText: 'Note (optional)')),
+    ListTile(contentPadding: EdgeInsets.zero, title: Text(context.l10n.date), subtitle: Text(context.formatShortDate(_date)), trailing: const Icon(Icons.calendar_today), onTap: () async { final date = await showDatePicker(context: context, initialDate: _date, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 1))); if (date != null) setState(() => _date = date); }),
+    TextFormField(controller: _note, decoration: InputDecoration(labelText: context.l10n.optionalNote)),
     const SizedBox(height: 22),
-    PrimaryAction(label: 'Save', onPressed: _save),
+    PrimaryAction(label: context.l10n.save, onPressed: _save),
   ]))));
 }
 
@@ -139,10 +141,10 @@ class SpendingAnalyticsScreen extends ConsumerWidget {
     final total = data.values.fold<int>(0, (sum, value) => sum + value);
     final colors = [AppColors.firefly, AppColors.gold, AppColors.mint, AppColors.prussianBlue, AppColors.lime];
     final sorted = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    return Scaffold(appBar: AppBar(title: const Text('Spending')), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [IconButton(onPressed: () => showMessage(context, 'Showing recorded transactions for the current month.'), icon: const Icon(Icons.chevron_left)), Text('${_monthName(DateTime.now().month)} ${DateTime.now().year}', style: Theme.of(context).textTheme.titleMedium), IconButton(onPressed: () => showMessage(context, 'No future transactions yet.'), icon: const Icon(Icons.chevron_right))]),
+    return Scaffold(appBar: AppBar(title: Text(context.l10n.spending)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [IconButton(onPressed: () => showMessage(context, context.l10n.recordedMonth), icon: const Icon(Icons.chevron_left)), Text('${_monthName(DateTime.now().month)} ${DateTime.now().year}', style: Theme.of(context).textTheme.titleMedium), IconButton(onPressed: () => showMessage(context, context.l10n.noFutureTransactions), icon: const Icon(Icons.chevron_right))]),
       const SizedBox(height: 10),
-      Center(child: SizedBox(width: 190, height: 190, child: CustomPaint(painter: _DonutPainter(values: sorted.map((e) => e.value).toList(), colors: colors), child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(formatTenge(total), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)), const Text('spent', style: TextStyle(fontSize: 11, color: AppColors.muted))]))))),
+      Center(child: SizedBox(width: 190, height: 190, child: CustomPaint(painter: _DonutPainter(values: sorted.map((e) => e.value).toList(), colors: colors), child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(context.formatTenge(total), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)), Text(context.l10n.spentLower, style: TextStyle(fontSize: 11, color: AppColors.muted))]))))),
       const SizedBox(height: 20),
       for (var i = 0; i < sorted.length; i++) _AnalyticsCategoryRow(entry: sorted[i], color: colors[i % colors.length], percent: total == 0 ? 0 : sorted[i].value * 100 ~/ total, onTap: () => _push(context, CategoryDetailsScreen(category: sorted[i].key))),
       const SizedBox(height: 18),
@@ -151,26 +153,26 @@ class SpendingAnalyticsScreen extends ConsumerWidget {
         future: ref.read(financeRepositoryProvider).spendingChangePercent(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Text('Could not load the spending comparison.');
+            return Text(context.l10n.comparisonFailed);
           }
           if (!snapshot.hasData) return const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator(color: AppColors.mint));
           return Column(children: [
             for (final category in ['Food', 'Shopping', 'Transport'])
               if (snapshot.data!.containsKey(category))
-                _ComparisonLine(label: category, value: '${snapshot.data![category]! > 0 ? '+' : snapshot.data![category]! < 0 ? '−' : ''}${snapshot.data![category]!.abs()}%', isUp: snapshot.data![category]! > 0)
+                _ComparisonLine(label: context.transactionCategory(category), value: '${snapshot.data![category]! > 0 ? '+' : snapshot.data![category]! < 0 ? '−' : ''}${snapshot.data![category]!.abs()}%', isUp: snapshot.data![category]! > 0)
               else
-                ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text(category), trailing: const Text('—', style: TextStyle(color: AppColors.muted))),
+                ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text(context.transactionCategory(category)), trailing: const Text('—', style: TextStyle(color: AppColors.muted))),
           ]);
         },
       ),
       const SizedBox(height: 14),
-      SurfaceCard(color: AppColors.paleRose, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Food budget', style: TextStyle(color: AppColors.wine, fontWeight: FontWeight.w600)), Text('${formatTenge(finance.spending['Food'] ?? 0)} spent of ${formatTenge(finance.budgetLimits['Food'] ?? 0)}', style: const TextStyle(fontSize: 12)), TextButton(onPressed: () => _editBudget(context, ref, finance.budgetLimits['Food'] ?? 95000), child: const Text('Edit monthly budget')), TextButton(onPressed: () => _push(context, const WhereToCutScreen()), child: const Text('Where to cut'))])),
+      SurfaceCard(color: AppColors.paleRose, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.foodBudget, style: TextStyle(color: AppColors.wine, fontWeight: FontWeight.w600)), Text(context.l10n.budgetSpent(context.formatTenge(finance.spending['Food'] ?? 0), context.formatTenge(finance.budgetLimits['Food'] ?? 0)), style: const TextStyle(fontSize: 12)), TextButton(onPressed: () => _editBudget(context, ref, finance.budgetLimits['Food'] ?? 95000), child: Text(context.l10n.editMonthlyBudget)), TextButton(onPressed: () => _push(context, const WhereToCutScreen()), child: Text(context.l10n.whereToCut))])),
     ])));
   }
 
   Future<void> _editBudget(BuildContext context, WidgetRef ref, int current) async {
     final controller = TextEditingController(text: current.toString());
-    final value = await showDialog<int>(context: context, builder: (dialogContext) => AlertDialog(title: const Text('Food monthly budget'), content: TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(suffixText: '₸')), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')), FilledButton(onPressed: () { final amount = int.tryParse(controller.text.replaceAll(RegExp(r'[^0-9]'), '')); if (amount == null) return; Navigator.pop(dialogContext, amount); }, child: const Text('Save'))]));
+    final value = await showDialog<int>(context: context, builder: (dialogContext) => AlertDialog(title: Text(context.l10n.foodMonthlyBudget), content: TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(suffixText: '₸')), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(context.l10n.cancel)), FilledButton(onPressed: () { final amount = int.tryParse(controller.text.replaceAll(RegExp(r'[^0-9]'), '')); if (amount == null) return; Navigator.pop(dialogContext, amount); }, child: Text(context.l10n.save))]));
     controller.dispose();
     if (value != null) await ref.read(financeControllerProvider).saveBudget('Food', value);
   }
@@ -183,7 +185,7 @@ class _AnalyticsCategoryRow extends StatelessWidget {
   final int percent;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => InkWell(onTap: onTap, child: Padding(padding: const EdgeInsets.symmetric(vertical: 5), child: Row(children: [Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))), const SizedBox(width: 10), Expanded(child: Text(entry.key, style: const TextStyle(fontSize: 13))), Text(formatTenge(entry.value), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const SizedBox(width: 12), SizedBox(width: 42, child: Text('$percent%', textAlign: TextAlign.right, style: const TextStyle(color: AppColors.muted, fontSize: 12)))])));
+  Widget build(BuildContext context) => InkWell(onTap: onTap, child: Padding(padding: const EdgeInsets.symmetric(vertical: 5), child: Row(children: [Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))), const SizedBox(width: 10), Expanded(child: Text(context.transactionCategory(entry.key), style: const TextStyle(fontSize: 13))), Text(context.formatTenge(entry.value), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const SizedBox(width: 12), SizedBox(width: 42, child: Text(context.formatPercent(percent), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.muted, fontSize: 12)))])));
 }
 
 class CategoryDetailsScreen extends ConsumerWidget {
@@ -195,19 +197,19 @@ class CategoryDetailsScreen extends ConsumerWidget {
     final amount = finance.spending[category] ?? 0;
     final budget = finance.budgetLimits[category] ?? 0;
     final transactions = finance.transactions.where((t) => t.category == category && !t.isIncome).take(3).toList();
-    return Scaffold(appBar: AppBar(title: Text(category)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-      const Text('This month', style: TextStyle(color: AppColors.muted)), const SizedBox(height: 5), Text(formatTenge(amount), style: Theme.of(context).textTheme.headlineLarge),
+    return Scaffold(appBar: AppBar(title: Text(context.transactionCategory(category))), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+      Text(context.l10n.thisMonth, style: TextStyle(color: AppColors.muted)), const SizedBox(height: 5), Text(context.formatTenge(amount), style: Theme.of(context).textTheme.headlineLarge),
       const SizedBox(height: 15),
-      SurfaceCard(color: amount > budget ? AppColors.paleRose : AppColors.mintLight, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Monthly budget ${formatTenge(budget)}', style: const TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 8), ProgressTrack(value: budget == 0 ? 0 : amount / budget, color: amount > budget ? AppColors.wine : AppColors.mint), const SizedBox(height: 8), Text(amount > budget ? '${formatTenge(amount - budget)} over' : '${formatTenge(budget - amount)} left'), TextButton(onPressed: () => _editBudget(context, ref, budget), child: const Text('Edit budget'))])),
-      const SizedBox(height: 20), const SectionHeading('Top spends'),
-      for (final item in transactions) ListTile(contentPadding: EdgeInsets.zero, title: Text(item.merchant), trailing: Text(formatTenge(item.amount))),
-      const SurfaceCard(color: AppColors.paleGold, child: Text('Recurring-spend examples are sample insights, not a bank-import analysis.', style: TextStyle(fontSize: 12))),
-      TextButton.icon(onPressed: () => _push(context, const WhereToCutScreen()), icon: const Icon(Icons.lightbulb_outline), label: const Text('Where to cut')),
+      SurfaceCard(color: amount > budget ? AppColors.paleRose : AppColors.mintLight, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Monthly budget ${context.formatTenge(budget)}', style: const TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 8), ProgressTrack(value: budget == 0 ? 0 : amount / budget, color: amount > budget ? AppColors.wine : AppColors.mint), const SizedBox(height: 8), Text(amount > budget ? '${context.formatTenge(amount - budget)} over' : '${context.formatTenge(budget - amount)} left'), TextButton(onPressed: () => _editBudget(context, ref, budget), child: Text(context.l10n.editBudget))])),
+      const SizedBox(height: 20), SectionHeading(context.l10n.topSpends),
+      for (final item in transactions) ListTile(contentPadding: EdgeInsets.zero, title: Text(item.merchant), trailing: Text(context.formatTenge(item.amount))),
+      SurfaceCard(color: AppColors.paleGold, child: Text(context.l10n.recurringSampleNotice, style: TextStyle(fontSize: 12))),
+      TextButton.icon(onPressed: () => _push(context, const WhereToCutScreen()), icon: const Icon(Icons.lightbulb_outline), label: Text(context.l10n.whereToCut)),
     ])));
   }
   Future<void> _editBudget(BuildContext context, WidgetRef ref, int current) async {
     final controller = TextEditingController(text: current.toString());
-    final value = await showDialog<int>(context: context, builder: (dialogContext) => AlertDialog(title: Text('$category monthly budget'), content: TextField(controller: controller, keyboardType: TextInputType.number), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')), FilledButton(onPressed: () { final number = int.tryParse(controller.text.replaceAll(RegExp(r'[^0-9]'), '')); if (number != null) Navigator.pop(dialogContext, number); }, child: const Text('Save'))]));
+    final value = await showDialog<int>(context: context, builder: (dialogContext) => AlertDialog(title: Text('$category monthly budget'), content: TextField(controller: controller, keyboardType: TextInputType.number), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(context.l10n.cancel)), FilledButton(onPressed: () { final number = int.tryParse(controller.text.replaceAll(RegExp(r'[^0-9]'), '')); if (number != null) Navigator.pop(dialogContext, number); }, child: Text(context.l10n.save))]));
     controller.dispose();
     if (value != null) await ref.read(financeControllerProvider).saveBudget(category, value);
   }
@@ -243,15 +245,15 @@ class _ComparisonLine extends StatelessWidget {
 class _NoTransactions extends StatelessWidget {
   const _NoTransactions();
   @override
-  Widget build(BuildContext context) => const Padding(padding: EdgeInsets.symmetric(vertical: 70), child: Column(children: [Icon(Icons.receipt_long_outlined, size: 44, color: AppColors.muted), SizedBox(height: 12), Text('No transactions found'), Text('Try another search or add a transaction.', style: TextStyle(color: AppColors.muted))]));
+  Widget build(BuildContext context) => Padding(padding: EdgeInsets.symmetric(vertical: 70), child: Column(children: [Icon(Icons.receipt_long_outlined, size: 44, color: AppColors.muted), SizedBox(height: 12), Text(context.l10n.noTransactions), Text(context.l10n.noTransactionsDetails, style: TextStyle(color: AppColors.muted))]));
 }
 
-Map<String, List<FinanceTransaction>> _groupTransactions(List<FinanceTransaction> items) {
+Map<String, List<FinanceTransaction>> _groupTransactions(BuildContext context, List<FinanceTransaction> items) {
   final groups = <String, List<FinanceTransaction>>{};
   final now = DateTime.now();
   for (final item in items) {
     final date = item.occurredAt;
-    final label = date.year == now.year && date.month == now.month && date.day == now.day ? 'Today' : date.year == now.year && date.month == now.month && date.day == now.day - 1 ? 'Yesterday' : formatShortDate(date);
+    final label = date.year == now.year && date.month == now.month && date.day == now.day ? context.l10n.today : date.year == now.year && date.month == now.month && date.day == now.day - 1 ? context.l10n.yesterday : context.formatShortDate(date);
     groups.putIfAbsent(label, () => []).add(item);
   }
   return groups;

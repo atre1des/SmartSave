@@ -150,3 +150,6 @@ backend/node_modules/
 *.seed
 *.pid.lock
 "smartsave_v5.zip" 
+
+# Flutter localizations generated from the checked-in ARB catalogs
+/lib/l10n/generated/

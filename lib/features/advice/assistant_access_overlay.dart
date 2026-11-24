@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../shared/theme.dart';
@@ -26,7 +28,7 @@ class AssistantAccessOverlay extends StatelessWidget {
               bottom: 96 + media.padding.bottom,
               child: SafeArea(
                 child: Semantics(
-                  label: 'Open SmartSave financial assistant',
+                  label: context.l10n.openFinanceAssistant,
                   button: true,
                   child: FloatingActionButton.extended(
                     key: const ValueKey('assistantBubble'),
@@ -48,7 +50,7 @@ class AssistantAccessOverlay extends StatelessWidget {
                     backgroundColor: AppColors.firefly,
                     foregroundColor: Colors.white,
                     icon: const Icon(Icons.chat_bubble_outline_rounded),
-                    label: const Text('Ask SmartSave'),
+                    label: Text(context.l10n.askSmartSaveShort),
                   ),
                 ),
               ),

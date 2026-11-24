@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,14 +15,14 @@ import '../transactions/transactions_screen.dart';
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
-  String _getGreeting() {
+  String _getGreeting(BuildContext context) {
     final hour = DateTime.now().hour;
     if (hour < 12) {
-      return 'Good morning';
+      return context.l10n.morning;
     } else if (hour < 17) {
-      return 'Good afternoon';
+      return context.l10n.afternoon;
     } else {
-      return 'Good evening';
+      return context.l10n.evening;
     }
   }
 
@@ -46,8 +48,8 @@ class DashboardScreen extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(loadError, textAlign: TextAlign.center),
-                      TextButton(onPressed: finance.refresh, child: const Text('Retry')),
+                      Text(context.l10n.localRecordsLoadError, textAlign: TextAlign.center),
+                      TextButton(onPressed: finance.refresh, child: Text(context.l10n.retry)),
                     ],
                   ),
                 ),
@@ -66,14 +68,14 @@ class DashboardScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(_getGreeting(), style: Theme.of(context).textTheme.bodySmall),
+                              Text(_getGreeting(context), style: Theme.of(context).textTheme.bodySmall),
                               const SizedBox(height: 2),
-                              Text('Your finances', style: Theme.of(context).textTheme.headlineMedium),
+                              Text(context.l10n.yourFinances, style: Theme.of(context).textTheme.headlineMedium),
                             ],
                           ),
                         ),
                         IconButton(
-                          tooltip: 'Open My Account',
+                          tooltip: context.l10n.openAccount,
                           onPressed: () => ref.read(selectedTabIndexProvider.notifier).state = 4,
                           icon: const CircleAvatar(
                             backgroundColor: AppColors.mintLight,
@@ -98,19 +100,19 @@ class DashboardScreen extends ConsumerWidget {
                         child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Total balance', style: TextStyle(color: AppColors.mint, fontSize: 12)),
+                          Text(context.l10n.totalBalance, style: TextStyle(color: AppColors.mint, fontSize: 12)),
                           const SizedBox(height: 3),
                           FittedBox(
                             alignment: Alignment.centerLeft,
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              formatTenge(finance.balance),
+                              context.formatTenge(finance.balance),
                               style: const TextStyle(fontSize: 30, height: 1.35, fontWeight: FontWeight.w700, color: Colors.white),
                             ),
                           ),
                           const SizedBox(height: 7),
-                          const Text('Spent this month', style: TextStyle(color: AppColors.mint, fontSize: 11)),
-                          Text(formatTenge(finance.monthlySpend), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+                          Text(context.l10n.spentMonth, style: TextStyle(color: AppColors.mint, fontSize: 11)),
+                          Text(context.formatTenge(finance.monthlySpend), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
                         ],
                         ),
                         ),
@@ -123,11 +125,11 @@ class DashboardScreen extends ConsumerWidget {
 
                     // Goal Progress Section (preserved from original)
                     if (goals.isNotEmpty) ...[
-                      SectionHeading('Goal Progress', trailing: 'My Goals', onTrailing: () => _push(context, const GoalsScreen())),
+                      SectionHeading(context.l10n.goalProgress, trailing: context.l10n.myGoals, onTrailing: () => _push(context, const GoalsScreen())),
                       const SizedBox(height: 12),
                       _GoalProgressCard(goals: goals.take(2).toList()),
                     ] else ...[
-                      const SectionHeading('Goals'),
+                      SectionHeading(context.l10n.goals),
                       const SizedBox(height: 12),
                         SurfaceCard(
                           color: AppColors.mintLight,
@@ -135,12 +137,12 @@ class DashboardScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('No goals yet', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                              Text(context.l10n.noGoals, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                               const SizedBox(height: 6),
-                              const Text('Create a goal to start tracking progress toward your savings targets.', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                              Text(context.l10n.createGoalHint, style: TextStyle(fontSize: 12, color: AppColors.muted)),
                               const SizedBox(height: 12),
                               PrimaryAction(
-                                label: 'Create your first goal',
+                                label: context.l10n.createFirstGoal,
                                 onPressed: () => _push(context, const GoalsScreen()),
                               ),
                             ],
@@ -150,9 +152,9 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 20),
 
                     // Top spending this month
-                    SectionHeading('Top spending this month', trailing: 'See all', onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
+                    SectionHeading(context.l10n.topSpending, trailing: context.l10n.seeAll, onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
                     if (topSpending.isEmpty)
-                      const Text('Add transactions to see your spending categories.', style: TextStyle(color: AppColors.muted))
+                      Text(context.l10n.addTransactionsHint, style: TextStyle(color: AppColors.muted))
                     else
                       for (final entry in topSpending.take(3))
                         _SpendingBar(label: entry.key, amount: entry.value, max: topSpending.first.value),
@@ -160,7 +162,7 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
 
                     // Recent transactions
-                    SectionHeading('Recent', trailing: 'See all', onTrailing: () => _push(context, const TransactionsScreen())),
+                    SectionHeading(context.l10n.recent, trailing: context.l10n.seeAll, onTrailing: () => _push(context, const TransactionsScreen())),
                     for (final transaction in finance.transactions.take(2))
                       Padding(
                         padding: const EdgeInsets.only(bottom: 7),
@@ -199,38 +201,38 @@ class _QuickActionsGrid extends ConsumerWidget {
     final actions = [
       _QuickActionItem(
         icon: Icons.auto_awesome,
-        label: 'Begin Investing',
-        description: 'AI-guided beginner workflow',
+        label: context.l10n.beginInvesting,
+        description: context.l10n.aiGuidedWorkflow,
         onTap: () => ref.read(selectedTabIndexProvider.notifier).state = 2,
       ),
       _QuickActionItem(
         icon: Icons.savings_outlined,
-        label: 'Deposit',
-        description: 'Open or add a deposit',
+        label: context.l10n.deposit,
+        description: context.l10n.openOrAddDeposit,
         onTap: () => ref.read(selectedTabIndexProvider.notifier).state = 1,
       ),
       _QuickActionItem(
         icon: Icons.trending_up,
-        label: 'Investment Opportunities',
-        description: 'Stocks, bonds & opportunities',
+        label: context.l10n.opportunities,
+        description: context.l10n.stocksBondsOpportunities,
         onTap: () => ref.read(selectedTabIndexProvider.notifier).state = 3,
       ),
       _QuickActionItem(
         icon: Icons.description_outlined,
-        label: 'Thesis Autopsy',
-        description: 'Review your investment decisions and test your assumptions.',
+        label: context.l10n.thesisReview,
+        description: context.l10n.reviewInvestDecisions,
         onTap: () => _openThesisAutopsy(context),
       ),
       _QuickActionItem(
         icon: Icons.swap_vert,
-        label: 'Liquidity Analysis',
-        description: 'Understand how easily investments can be converted into cash.',
+        label: context.l10n.liquidityAnalysis,
+        description: context.l10n.cashConversion,
         onTap: () => _openLiquidityAnalysis(context),
       ),
       _QuickActionItem(
         icon: Icons.timeline_outlined,
-        label: 'Economic Ripple',
-        description: 'Explore how economic changes affect your investments.',
+        label: context.l10n.economicRipple,
+        description: context.l10n.economicChanges,
         onTap: () => _openEconomicRipple(context),
       ),
     ];
@@ -238,7 +240,7 @@ class _QuickActionsGrid extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Quick actions', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
+        Text(context.l10n.quickActions, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -351,7 +353,7 @@ class _SingleGoalCard extends StatelessWidget {
                     Text(goal.name, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 4),
                     Text(
-                      '${formatTenge(goal.saved)} of ${formatTenge(goal.target)}',
+                      context.l10n.amountOf(context.formatTenge(goal.saved), context.formatTenge(goal.target)),
                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                   ],
@@ -370,8 +372,8 @@ class _SingleGoalCard extends StatelessWidget {
             spacing: 12,
             runSpacing: 4,
             children: [
-              Text('${_monthsLeft(goal.deadline)} months left', style: Theme.of(context).textTheme.bodySmall),
-              Text('≈ ${formatTenge(monthly)}/month', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+              Text(context.l10n.monthsLeft(_monthsLeft(goal.deadline)), style: Theme.of(context).textTheme.bodySmall),
+              Text(context.l10n.monthEstimate(context.formatTenge(monthly)), style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
             ],
           ),
         ],
@@ -393,7 +395,7 @@ class _SpendingBar extends StatelessWidget {
       children: [
         SizedBox(width: 80, child: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.firefly))),
         Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: ProgressTrack(value: max == 0 ? 0 : amount / max, height: 8, color: label == 'Shopping' ? AppColors.gold : label == 'Transport' ? AppColors.mint : AppColors.firefly))),
-        SizedBox(width: 92, child: Text(formatTenge(amount), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.firefly, fontWeight: FontWeight.w600, fontSize: 13))),
+        SizedBox(width: 92, child: Text(context.formatTenge(amount), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.firefly, fontWeight: FontWeight.w600, fontSize: 13))),
       ],
     ),
   );
@@ -416,7 +418,7 @@ class _RecentTransaction extends StatelessWidget {
           Text(transaction.merchant, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           Text('${transaction.category} · ${_time(transaction.occurredAt)}', style: const TextStyle(fontSize: 11, color: AppColors.muted)),
         ])),
-        Text(formatSignedTenge(transaction.amount, income: transaction.isIncome), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.firefly)),
+        Text(context.formatSignedTenge(transaction.amount, income: transaction.isIncome), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.firefly)),
       ],
     ),
   );
@@ -432,7 +434,7 @@ class TotalBalanceDetailScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           leading: BackButton(),
-          title: const Text('Total Balance'),
+          title: Text(context.l10n.totalBalanceTitle),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Spending'),
@@ -468,13 +470,13 @@ class _SpendingTabContent extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         children: [
-          SectionHeading('Top spending this month', trailing: 'See all', onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
+          SectionHeading(context.l10n.topSpending, trailing: context.l10n.seeAll, onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
           if (topSpending.isEmpty)
-            const Text('Add transactions to see your spending categories.', style: TextStyle(color: AppColors.muted))
+            Text(context.l10n.addTransactionsHint, style: TextStyle(color: AppColors.muted))
           else
             ...[for (final entry in topSpending.take(3)) _SpendingBar(label: entry.key, amount: entry.value, max: topSpending.first.value)],
           const SizedBox(height: 12),
-          SectionHeading('Spending by category', trailing: 'Analytics', onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
+          SectionHeading(context.l10n.spendingByCategory, trailing: context.l10n.analytics, onTrailing: () => _push(context, const SpendingAnalyticsScreen())),
           for (final entry in topSpending)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 7),
@@ -482,7 +484,7 @@ class _SpendingTabContent extends ConsumerWidget {
                 children: [
                   SizedBox(width: 80, child: Text(entry.key, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.firefly))),
                   Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: ProgressTrack(value: topSpending.first.value == 0 ? 0 : entry.value / topSpending.first.value, height: 8, color: entry.key == 'Shopping' ? AppColors.gold : entry.key == 'Transport' ? AppColors.mint : AppColors.firefly))),
-                  SizedBox(width: 92, child: Text(formatTenge(entry.value), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.firefly, fontWeight: FontWeight.w600, fontSize: 13))),
+                  SizedBox(width: 92, child: Text(context.formatTenge(entry.value), textAlign: TextAlign.right, style: const TextStyle(color: AppColors.firefly, fontWeight: FontWeight.w600, fontSize: 13))),
                 ],
               ),
             ),
@@ -503,7 +505,7 @@ class _TransactionsTabContent extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         children: [
-          SectionHeading('Recent', trailing: 'See all', onTrailing: () => _push(context, const TransactionsScreen())),
+          SectionHeading(context.l10n.recent, trailing: context.l10n.seeAll, onTrailing: () => _push(context, const TransactionsScreen())),
           for (final transaction in finance.transactions.take(10))
             Padding(
               padding: const EdgeInsets.only(bottom: 7),

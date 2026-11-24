@@ -90,7 +90,7 @@ class _SyncSessionState extends ConsumerState<_SyncSession>
     if (!mounted || !_foreground || _running) return;
     _requested = false;
     _running = true;
-    ref.read(syncStatusMessageProvider.notifier).state = 'Synchronizing…';
+    ref.read(syncStatusMessageProvider.notifier).state = SyncNotice.syncing;
     try {
       final result = await ref.read(syncServiceProvider).performFullSync();
       if (!mounted || result.isNoAuth) return;
@@ -104,10 +104,10 @@ class _SyncSessionState extends ConsumerState<_SyncSession>
           result.isOffline ||
           result.status == SyncResultStatus.initializationFailed;
       ref.read(syncStatusMessageProvider.notifier).state = result.conflicts > 0
-          ? 'Some records need review. Pending changes were kept.'
+          ? SyncNotice.conflicts
           : retryable || result.status == SyncResultStatus.initializationFailed
-          ? 'Sync is unavailable. Local records were kept.'
-          : 'Financial records synchronized.';
+          ? SyncNotice.unavailable
+          : SyncNotice.complete;
       if (retryable &&
           _foreground &&
           !_requested &&

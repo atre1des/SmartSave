@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,7 +23,7 @@ class MyAccountScreen extends ConsumerWidget {
     final finance = ref.watch(financeControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Account')),
+      appBar: AppBar(title: Text(context.l10n.myAccount)),
       body: SafeArea(
         child: finance.isLoading
             ? const Center(child: CircularProgressIndicator(color: AppColors.firefly))
@@ -42,8 +44,8 @@ class MyAccountScreen extends ConsumerWidget {
 
                   // Connected Accounts
                   _SettingRow(
-                    title: 'Connected accounts',
-                    subtitle: 'Cards and banks · demo only',
+                    title: context.l10n.connectedAccounts,
+                    subtitle: context.l10n.demoCards,
                     icon: Icons.credit_card_outlined,
                     onTap: () => _push(context, const ConnectedAccountsScreen()),
                   ),
@@ -51,43 +53,43 @@ class MyAccountScreen extends ConsumerWidget {
 
                   // Advice History
                   _SettingRow(
-                    title: 'Advice history',
-                    subtitle: 'Past recommendations',
+                    title: context.l10n.adviceHistory,
+                    subtitle: context.l10n.pastAdvice,
                     icon: Icons.history,
                     onTap: () => _push(context, const AdviceHistoryScreen()),
                   ),
                   const SizedBox(height: 12),
 
                   // Settings section
-                  const Text('Settings', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
+                  Text(context.l10n.settings, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
                   const SizedBox(height: 12),
                   _SettingRow(
-                    title: 'Profile',
-                    subtitle: 'Name, country, currency',
+                    title: context.l10n.profile,
+                    subtitle: context.l10n.nameCountryCurrency,
                     icon: Icons.person_outline,
                     onTap: () => _push(context, const ProfileDetailsScreen()),
                   ),
                   _SettingRow(
-                    title: 'Notifications',
-                    subtitle: 'Reminders and alerts',
+                    title: context.l10n.notifications,
+                    subtitle: context.l10n.alerts,
                     icon: Icons.notifications_none,
                     onTap: () => _push(context, const NotificationsScreen()),
                   ),
                   _SettingRow(
-                    title: 'Privacy & data',
-                    subtitle: 'Consent, export, delete account',
+                    title: context.l10n.privacyData,
+                    subtitle: context.l10n.consentExportDelete,
                     icon: Icons.lock_outline,
                     onTap: () => _push(context, const PrivacyDataScreen()),
                   ),
                   _SettingRow(
-                    title: 'Subscription',
-                    subtitle: 'Free plan · demo',
+                    title: context.l10n.subscription,
+                    subtitle: context.l10n.freeDemoPlan,
                     icon: Icons.workspace_premium_outlined,
                     onTap: () => _push(context, const SubscriptionScreen()),
                   ),
                   _SettingRow(
-                    title: 'Help & support',
-                    subtitle: 'FAQ, contact',
+                    title: context.l10n.helpSupport,
+                    subtitle: context.l10n.supportFaq,
                     icon: Icons.help_outline,
                     onTap: () => _push(context, const HelpScreen()),
                   ),
@@ -101,7 +103,7 @@ class MyAccountScreen extends ConsumerWidget {
                         showMessage(context, result.errorMessage ?? 'Sign out failed.');
                       }
                     },
-                    child: const Text('Log out'),
+                    child: Text(context.l10n.logOut),
                   ),
                 ],
               ),
@@ -136,7 +138,7 @@ class _UserIdentitySection extends ConsumerWidget {
               Text(name, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 4),
               Text(
-                'Kazakhstan',
+                context.l10n.kazakhstan,
                 style: TextStyle(color: AppColors.muted, fontSize: 12),
               ),
             ],
@@ -174,8 +176,8 @@ class _RiskProfileCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Risk Profile / Investor Level',
+                Text(
+                  context.l10n.investorLevel,
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                 ),
                 const SizedBox(height: 4),
@@ -205,10 +207,10 @@ class _GoalsSection extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('My Goals', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
+            Text(context.l10n.myGoals, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
             TextButton(
               onPressed: () => _push(context, const GoalsScreen()),
-              child: const Text('View all', style: TextStyle(color: AppColors.prussianBlue, fontWeight: FontWeight.w600)),
+              child: Text(context.l10n.viewAll, style: TextStyle(color: AppColors.prussianBlue, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -219,12 +221,12 @@ class _GoalsSection extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('No goals yet', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text(context.l10n.noGoals, style: TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
-                const Text('Create a goal to start tracking progress toward your savings targets.', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                Text(context.l10n.createGoalHint, style: TextStyle(fontSize: 12, color: AppColors.muted)),
                 const SizedBox(height: 12),
                 PrimaryAction(
-                  label: 'Create your first goal',
+                  label: context.l10n.createFirstGoal,
                   onPressed: () => _push(context, const GoalsScreen()),
                 ),
               ],
@@ -240,7 +242,7 @@ class _GoalsSection extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 8),
               child: TextButton(
                 onPressed: () => _push(context, const GoalsScreen()),
-                child: Text('View ${finance.goals.length - 2} more goal${finance.goals.length > 3 ? 's' : ''}'),
+                child: Text(context.l10n.monthsMoreGoals(finance.goals.length - 2)),
               ),
             ),
           const SizedBox(height: 16),
@@ -273,15 +275,15 @@ class _GoalCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            Text('${goal.progressPercent}%', style: Theme.of(context).textTheme.titleMedium),
+            Text(context.formatPercent(goal.progressPercent), style: Theme.of(context).textTheme.titleMedium),
           ],
         ),
         const SizedBox(height: 9),
         ProgressTrack(value: goal.target == 0 ? 0 : goal.saved / goal.target),
         const SizedBox(height: 8),
-        Text('${formatTenge(goal.saved)} / ${formatTenge(goal.target)} · ${_monthsLeft(goal.deadline)} months left', style: Theme.of(context).textTheme.bodySmall),
+        Text('${context.formatTenge(goal.saved)} / ${context.formatTenge(goal.target)} · ${context.l10n.monthsLeft(_monthsLeft(goal.deadline))}', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 2),
-        const Text('On track', style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(context.l10n.onTrack, style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
       ],
     ),
   );
@@ -307,16 +309,16 @@ class _AISuggestionCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 20),
               SizedBox(width: 8),
-              Text('SmartSave suggestion', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(context.l10n.recommendationSmartSave, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            'Want to reach "${goal.name}" faster? You need ${formatTenge(monthly)}/month. Explore adding money to a deposit or an investment scenario.',
+            'Want to reach "${goal.name}" faster? You need ${context.formatTenge(monthly)}/month. Explore adding money to a deposit or an investment scenario.',
             style: TextStyle(fontSize: 12, color: AppColors.firefly),
           ),
           const SizedBox(height: 12),
@@ -326,17 +328,17 @@ class _AISuggestionCard extends ConsumerWidget {
             children: [
               OutlinedButton(
                 onPressed: () => _push(context, const DepositRatesScreen()),
-                child: const Text('Explore deposits'),
+                child: Text(context.l10n.exploreDeposits),
               ),
               OutlinedButton(
                 onPressed: () => _push(context, const InvestmentIntelligenceScreen()),
-                child: const Text('Investment scenarios'),
+                child: Text(context.l10n.investScenarios),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Investments can lose value. This is educational information, not a guaranteed outcome.',
+          Text(
+            context.l10n.accountInvestmentDisclaimer,
             style: TextStyle(color: AppColors.muted, fontSize: 10),
           ),
         ],

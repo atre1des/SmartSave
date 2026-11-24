@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../l10n/app_locale.dart';
+
 import '../../shared/theme.dart';
 import '../../data/providers.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -54,10 +56,10 @@ class AppEntry extends ConsumerWidget {
             children: [
               const Icon(Icons.error_outline, color: AppColors.wine, size: 48),
               const SizedBox(height: 16),
-              const Text('Authentication error'),
+              Text(context.l10n.authError),
               const SizedBox(height: 8),
               Text(
-                'Please restart the app.',
+                context.l10n.restartApp,
                 style: TextStyle(color: AppColors.muted),
               ),
             ],
@@ -87,36 +89,35 @@ class EmailVerificationScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'Verify your email',
+                context.l10n.verifyEmail,
                 style: Theme.of(context).textTheme.headlineLarge,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'We\'ve sent a verification link to your email address. '
-                'Please check your inbox and click the link to verify your account.',
+              Text(
+                context.l10n.emailVerificationNotice,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.muted, fontSize: 16),
               ),
               const SizedBox(height: 24),
               PrimaryAction(
-                label: 'I\'ve verified my email',
+                label: context.l10n.verifiedEmail,
                 onPressed: () async {
                   final authService = ref.read(authServiceProvider);
                   await authService.auth.currentUser?.reload();
                   if (context.mounted && !authService.isEmailVerified) {
-                    showMessage(context, 'Your email is not verified yet.');
+                    showMessage(context, context.l10n.emailUnverified);
                   }
                 },
               ),
               const SizedBox(height: 12),
               SecondaryAction(
-                label: 'Resend verification email',
+                label: context.l10n.resendEmail,
                 onPressed: () async {
                   final authService = ref.read(authServiceProvider);
                   await authService.sendEmailVerification();
                   if (context.mounted) {
-                    showMessage(context, 'Verification email resent.');
+                    showMessage(context, context.l10n.verificationResent);
                   }
                 },
               ),
@@ -126,7 +127,7 @@ class EmailVerificationScreen extends ConsumerWidget {
                   final authService = ref.read(authServiceProvider);
                   await authService.signOut();
                 },
-                child: const Text('Sign out'),
+                child: Text(context.l10n.signOut),
               ),
               const Spacer(flex: 3),
             ],
@@ -221,7 +222,7 @@ class WelcomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Know where your money goes. Know what to do next.',
+              context.l10n.welcomeSubtitle,
               textAlign: TextAlign.center,
               style: Theme.of(
                 context,
@@ -229,12 +230,12 @@ class WelcomeScreen extends StatelessWidget {
             ),
             const Spacer(flex: 3),
             PrimaryAction(
-              label: 'Get started',
+              label: context.l10n.getStarted,
               onPressed: () => _open(context, const AuthScreen(signUp: true)),
             ),
             const SizedBox(height: 12),
             SecondaryAction(
-              label: 'I already have an account',
+              label: context.l10n.haveAccount,
               onPressed: () => _open(context, const AuthScreen(signUp: false)),
             ),
             const SizedBox(height: 64),
@@ -272,7 +273,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Future<void> _continue() async {
     if (!_formKey.currentState!.validate()) return;
     if (widget.signUp && !_acceptedTerms) {
-      showMessage(context, 'Accept the terms to continue.');
+      showMessage(context, context.l10n.termsRequired);
       return;
     }
     setState(() => _busy = true);
@@ -300,15 +301,34 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (!result.success) {
       showMessage(
         context,
-        result.errorMessage ?? 'Authentication failed. Please try again.',
+        _authError(result.errorCode),
       );
     }
+  }
+
+  String _authError(AuthExceptionCode? code) {
+    final strings = context.l10n;
+    return switch (code) {
+      AuthExceptionCode.emailAlreadyInUse => strings.emailTaken,
+      AuthExceptionCode.invalidEmail => strings.invalidEmail,
+      AuthExceptionCode.weakPassword => strings.passwordMin,
+      AuthExceptionCode.userNotFound ||
+      AuthExceptionCode.wrongPassword ||
+      AuthExceptionCode.invalidCredential => strings.invalidCredentials,
+      AuthExceptionCode.tooManyRequests => strings.authRateLimit,
+      AuthExceptionCode.networkError => strings.authNetwork,
+      AuthExceptionCode.emailNotVerified => strings.emailUnverified,
+      AuthExceptionCode.requiresRecentLogin => strings.signInAgain,
+      AuthExceptionCode.userDisabled => strings.disabledAccount,
+      AuthExceptionCode.operationNotAllowed => strings.authUnavailable,
+      _ => strings.authFailed,
+    };
   }
 
   Future<void> _forgotPassword() async {
     final email = _contact.text.trim();
     if (email.isEmpty) {
-      showMessage(context, 'Please enter your email address first.');
+      showMessage(context, context.l10n.enterEmailFirst);
       return;
     }
 
@@ -319,11 +339,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     setState(() => _busy = false);
 
     if (result.success) {
-      showMessage(context, 'Password reset email sent. Check your inbox.');
+      showMessage(context, context.l10n.passwordResetSent);
     } else {
       showMessage(
         context,
-        result.errorMessage ?? 'Failed to send reset email.',
+        result.errorCode == null ? context.l10n.passwordResetFailed : _authError(result.errorCode),
       );
     }
   }
@@ -335,7 +355,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         onPressed: () => Navigator.maybePop(context),
         icon: const Icon(Icons.arrow_back),
       ),
-      title: const Text('Welcome'),
+      title: Text(context.l10n.welcome),
     ),
     body: SafeArea(
       child: Form(
@@ -344,9 +364,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
           children: [
             SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: true, label: Text('Sign up')),
-                ButtonSegment(value: false, label: Text('Log in')),
+              segments: [
+                ButtonSegment(value: true, label: Text(context.l10n.signUp)),
+                ButtonSegment(value: false, label: Text(context.l10n.signIn)),
               ],
               selected: {widget.signUp},
               onSelectionChanged: (value) => Navigator.pushReplacement(
@@ -360,16 +380,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             TextFormField(
               controller: _contact,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email',
+              decoration: InputDecoration(
+                labelText: context.l10n.email,
                 hintText: 'name@example.com',
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Enter your email address.';
+                  return context.l10n.enterEmail;
                 }
                 if (!value.contains('@') || !value.contains('.')) {
-                  return 'Enter a valid email address.';
+                  return context.l10n.invalidEmail;
                 }
                 return null;
               },
@@ -378,12 +398,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             TextFormField(
               controller: _password,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                hintText: 'At least 8 characters',
+              decoration: InputDecoration(
+                labelText: context.l10n.password,
+                hintText: context.l10n.passwordLength,
               ),
               validator: (value) => value == null || value.length < 8
-                  ? 'Use at least 8 characters.'
+                  ? context.l10n.passwordMin
                   : null,
             ),
             if (widget.signUp) ...[
@@ -391,11 +411,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               TextFormField(
                 controller: _confirm,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm password',
+                decoration: InputDecoration(
+                  labelText: context.l10n.confirmPassword,
                 ),
                 validator: (value) =>
-                    value != _password.text ? 'Passwords do not match.' : null,
+                    value != _password.text ? context.l10n.passwordMismatch : null,
               ),
               const SizedBox(height: 8),
               CheckboxListTile(
@@ -404,8 +424,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 value: _acceptedTerms,
                 onChanged: (value) =>
                     setState(() => _acceptedTerms = value ?? false),
-                title: const Text(
-                  'I accept the Terms and Privacy policy',
+                title: Text(
+                  context.l10n.acceptTerms,
                   style: TextStyle(fontSize: 13),
                 ),
               ),
@@ -414,18 +434,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: _forgotPassword,
-                  child: const Text('Forgot password?'),
+                  child: Text(context.l10n.forgotPassword),
                 ),
               ),
             const SizedBox(height: 22),
             PrimaryAction(
-              label: widget.signUp ? 'Create account' : 'Sign in',
+              label: widget.signUp ? context.l10n.createAccount : context.l10n.signIn,
               busy: _busy,
               onPressed: _continue,
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Your credentials are securely managed by Firebase Authentication.',
+            Text(
+              context.l10n.firebaseCredentials,
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted, fontSize: 11),
             ),
@@ -444,16 +464,14 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _step = 0;
-  static const _titles = [
-    'Track every tenge',
-    'Turn spending into a plan',
-    'Grow savings at your pace',
-  ];
-  static const _descriptions = [
-    'See your spending by category and spot what you can change.',
-    'Set practical category limits and understand your monthly patterns.',
-    'Create a goal, choose a deadline and track your progress over time.',
-  ];
+  (String, String) _copy(BuildContext context) {
+    final strings = context.l10n;
+    return switch (_step) {
+      0 => (strings.trackTenge, strings.trackTengeDetails),
+      1 => (strings.spendingPlan, strings.spendingPlanDetails),
+      _ => (strings.growSavings, strings.growSavingsDetails),
+    };
+  }
 
   Future<void> _finish() async {
     final authService = ref.read(authServiceProvider);
@@ -475,7 +493,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           children: [
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton(onPressed: _finish, child: const Text('Skip')),
+              child: TextButton(onPressed: _finish, child: Text(context.l10n.skip)),
             ),
             const SizedBox(height: 48),
             Container(
@@ -494,12 +512,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
             const Spacer(),
             Text(
-              _titles[_step],
+              _copy(context).$1,
               style: Theme.of(context).textTheme.headlineLarge,
             ),
             const SizedBox(height: 10),
             Text(
-              _descriptions[_step],
+              _copy(context).$2,
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
@@ -507,7 +525,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             const SizedBox(height: 24),
             Center(
               child: Text(
-                'Track · Save · Grow',
+                context.l10n.trackSaveGrow,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -529,7 +547,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
             const SizedBox(height: 24),
             PrimaryAction(
-              label: _step == 2 ? 'Continue' : 'Next',
+              label: _step == 2 ? context.l10n.continueLabel : context.l10n.next,
               onPressed: () => _step == 2 ? _finish() : setState(() => _step++),
             ),
           ],
@@ -600,16 +618,16 @@ class _AppShellState extends ConsumerState<AppShell> {
     ),
   );
 
-  static const _tabs = [
-    (label: 'Home', asset: 'assets/figma/tab-home.svg'),
-    (label: 'Deposits', asset: 'assets/figma/tab-deposits.svg'),
-    (label: 'AI', asset: 'assets/figma/tab-ai.svg'),
-    (label: 'Invest', asset: 'assets/figma/tab-invest.svg'),
-    (label: 'My Account', asset: 'assets/figma/tab-profile.svg'),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final strings = context.l10n;
+    final tabs = [
+      (label: strings.home, asset: 'assets/figma/tab-home.svg'),
+      (label: strings.deposits, asset: 'assets/figma/tab-deposits.svg'),
+      (label: strings.ai, asset: 'assets/figma/tab-ai.svg'),
+      (label: strings.invest, asset: 'assets/figma/tab-invest.svg'),
+      (label: strings.myAccount, asset: 'assets/figma/tab-profile.svg'),
+    ];
     final selected = ref.watch(selectedTabIndexProvider);
     final navigationTheme = NavigationBarTheme.of(context);
     return PopScope(
@@ -643,10 +661,10 @@ class _AppShellState extends ConsumerState<AppShell> {
             indicatorColor: Colors.transparent,
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             destinations: [
-              for (var i = 0; i < _tabs.length; i++)
+              for (var i = 0; i < tabs.length; i++)
                 NavigationDestination(
-                  icon: _buildTabIcon(_tabs[i].asset, i == selected),
-                  label: _tabs[i].label,
+                  icon: _buildTabIcon(tabs[i].asset, i == selected),
+                  label: tabs[i].label,
                 ),
             ],
           ),

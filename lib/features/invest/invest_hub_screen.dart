@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -48,7 +50,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'SmartSave can help you explore investment options and see how they fit your goals.',
+                                context.l10n.investExploreIntro,
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -64,7 +66,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                       ],
                     ),
                     // Investment Intelligence
-                    SectionHeading('Investment Intelligence', trailing: 'Explore', onTrailing: () => _openFeature(const InvestmentIntelligenceScreen())),
+                    SectionHeading(context.l10n.investmentIntelligence, trailing: context.l10n.explore, onTrailing: () => _openFeature(const InvestmentIntelligenceScreen())),
                     const SizedBox(height: 12),
                     SurfaceCard(
                       onTap: () => _openFeature(const InvestmentIntelligenceScreen()),
@@ -87,13 +89,13 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'AI Investing for Beginners',
+                                    Text(
+                                      context.l10n.aiBeginners,
                                       style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Learn the basics, ask questions, and build confidence step by step.',
+                                      context.l10n.investBasicsIntro,
                                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                                     ),
                                   ],
@@ -120,13 +122,13 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Thesis Autopsy',
+                                    Text(
+                                      context.l10n.thesisReview,
                                       style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Record your investment reasoning, test assumptions against evidence, and track validity over time.',
+                                      context.l10n.thesisTrackingIntro,
                                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                                     ),
                                   ],
@@ -153,13 +155,13 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Liquidity Analysis',
+                                    Text(
+                                      context.l10n.liquidityAnalysis,
                                       style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Understand how easily an investment can be sold and what order size means for execution.',
+                                      context.l10n.liquidityExecutionIntro,
                                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                                     ),
                                   ],
@@ -186,13 +188,13 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Economic Ripple',
+                                    Text(
+                                      context.l10n.economicRipple,
                                       style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Simulate how macro shocks like tenge depreciation or oil price changes affect your portfolio.',
+                                      context.l10n.macroImpactIntro,
                                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                                     ),
                                   ],
@@ -207,13 +209,13 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                     const SizedBox(height: 24),
 
                     // Stocks for You
-                    SectionHeading('Stocks for You', trailing: 'View all', onTrailing: () => _openFeature(const StocksScreen())),
+                    SectionHeading(context.l10n.stocksForYou, trailing: context.l10n.viewAll, onTrailing: () => _openFeature(const StocksScreen())),
                     const SizedBox(height: 12),
                     _StocksPreview(onTap: () => _openFeature(const StocksScreen())),
                     const SizedBox(height: 24),
 
                     // Bonds
-                    SectionHeading('Bonds', trailing: 'Coming soon', onTrailing: () => _openFeature(const BondsScreen())),
+                    SectionHeading(context.l10n.bonds, trailing: context.l10n.comingSoon, onTrailing: () => _openFeature(const BondsScreen())),
                     const SizedBox(height: 12),
                     SurfaceCard(
                       color: AppColors.mintLight,
@@ -234,13 +236,13 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Bond Opportunities',
+                                Text(
+                                  context.l10n.bondOpportunities,
                                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Explore government and corporate bonds with verified terms and risk profiles.',
+                                  context.l10n.bondIntro,
                                   style: TextStyle(color: AppColors.muted, fontSize: 12),
                                 ),
                               ],
@@ -253,7 +255,7 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                     const SizedBox(height: 24),
 
                     // Auto Invest
-                    SectionHeading('Auto Invest', trailing: 'Set up', onTrailing: () => _openFeature(const AutoInvestScreen())),
+                    SectionHeading(context.l10n.autoInvest, trailing: context.l10n.setUp, onTrailing: () => _openFeature(const AutoInvestScreen())),
                     const SizedBox(height: 12),
                     SurfaceCard(
                       color: AppColors.paleGold,
@@ -274,13 +276,13 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Recurring Investment Plan',
+                                Text(
+                                  context.l10n.recurringInvestment,
                                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Set an amount, frequency, and goal. SmartSave will create an illustrative allocation plan.',
+                                  context.l10n.createAllocation,
                                   style: TextStyle(color: AppColors.muted, fontSize: 12),
                                 ),
                               ],
@@ -291,8 +293,8 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Educational demo only. No automatic purchases or bank transfers are performed.',
+                    Text(
+                      context.l10n.demoTransfersNotice,
                       style: TextStyle(color: AppColors.muted, fontSize: 11),
                     ),
                   ],
@@ -328,7 +330,7 @@ class _StocksPreview extends ConsumerWidget {
         ),
         TextButton(
           onPressed: onTap,
-          child: const Text('View all stocks →', style: TextStyle(color: AppColors.prussianBlue, fontWeight: FontWeight.w600)),
+          child: Text(context.l10n.viewAllStocks, style: TextStyle(color: AppColors.prussianBlue, fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -361,7 +363,7 @@ class _StockTile extends StatelessWidget {
               Text(stock.$1, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               Text('${stock.$2} · ${stock.$3} risk', style: const TextStyle(color: AppColors.muted, fontSize: 11)),
               Text(
-                stock.$6 ? '✓ Fits your profile' : '! Above your profile',
+                stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile,
                 style: TextStyle(fontSize: 10, color: stock.$6 ? AppColors.success : AppColors.wine),
               ),
             ],
@@ -384,40 +386,40 @@ class BondsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Bonds')),
+    appBar: AppBar(title: Text(context.l10n.bonds)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const SurfaceCard(
+          SurfaceCard(
             color: AppColors.mintLight,
-            child: Text('Bond opportunities are not yet connected to live data.', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(context.l10n.noLiveBonds, style: TextStyle(fontWeight: FontWeight.w700)),
           ),
           const SizedBox(height: 16),
-          const SectionHeading('What is planned'),
-          const SurfaceCard(
+          SectionHeading(context.l10n.whatPlanned),
+          SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('1. Government bonds (Kazakhstan Ministry of Finance)'),
+                Text(context.l10n.governmentBonds),
                 SizedBox(height: 12),
-                Text('2. Corporate bonds from major issuers'),
+                Text(context.l10n.corporateBonds),
                 SizedBox(height: 12),
-                Text('3. Filter by maturity, yield, and credit quality'),
+                Text(context.l10n.bondFilters),
                 SizedBox(height: 12),
-                Text('4. Beginner-friendly explanations of bond mechanics'),
+                Text(context.l10n.bondExplanations),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Real bond data requires verified sources. No purchase or transfer is performed in this demo.',
+          Text(
+            context.l10n.bondDataNotice,
             style: TextStyle(color: AppColors.muted, fontSize: 12),
           ),
           const SizedBox(height: 20),
           PrimaryAction(
-            label: 'Notify me when available',
-            onPressed: () => showMessage(context, 'Notification preference saved for this demo session.'),
+            label: context.l10n.notifyAvailable,
+            onPressed: () => showMessage(context, context.l10n.notificationSaved),
           ),
         ],
       ),
@@ -449,18 +451,18 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
     final goals = finance.goals;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Auto Invest')),
+      appBar: AppBar(title: Text(context.l10n.autoInvest)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const Text(
-              'Create a recurring investment plan',
+            Text(
+              context.l10n.createRecurringPlan,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'This is an illustrative plan only. No automatic purchases or bank transfers will be performed.',
+            Text(
+              context.l10n.illustrativePlan,
               style: TextStyle(color: AppColors.muted, fontSize: 12),
             ),
             const SizedBox(height: 24),
@@ -469,18 +471,18 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
             TextField(
               controller: _amount,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Amount per period', suffixText: '₸'),
+              decoration: InputDecoration(labelText: context.l10n.amountPerPeriod, suffixText: '₸'),
             ),
             const SizedBox(height: 16),
 
             // Frequency
-            const Text('Frequency', style: TextStyle(fontWeight: FontWeight.w600)),
+            Text(context.l10n.frequency, style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: Pill(
-                    label: 'Monthly',
+                    label: context.l10n.monthly,
                     selected: _frequency == 1,
                     onTap: () => setState(() => _frequency = 1),
                   ),
@@ -488,7 +490,7 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Pill(
-                    label: 'Quarterly',
+                    label: context.l10n.quarterly,
                     selected: _frequency == 2,
                     onTap: () => setState(() => _frequency = 2),
                   ),
@@ -499,13 +501,13 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
 
             // Goal selection
             if (goals.isNotEmpty) ...[
-              const Text('Link to goal (optional)', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text(context.l10n.optionalGoal, style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               DropdownButtonFormField<int?>(
                 initialValue: _selectedGoalId,
-                decoration: const InputDecoration(labelText: 'Select a goal'),
+                decoration: InputDecoration(labelText: context.l10n.selectGoal),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('No goal linked')),
+                  DropdownMenuItem(value: null, child: Text(context.l10n.noGoalLinked)),
                   for (final goal in goals)
                     DropdownMenuItem(value: goal.id, child: Text(goal.name)),
                 ],
@@ -515,35 +517,35 @@ class _AutoInvestScreenState extends ConsumerState<AutoInvestScreen> {
             ],
 
             // Illustrative allocation
-            const SectionHeading('Illustrative Allocation'),
+            SectionHeading(context.l10n.sampleAllocation),
             SurfaceCard(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Based on a Moderate risk profile, your recurring amount would be split as:',
+                  Text(
+                    context.l10n.moderateAllocation,
                     style: TextStyle(fontSize: 12),
                   ),
                   const SizedBox(height: 16),
-                  _AllocationRow(label: 'Deposits (conservative)', percent: 40, color: AppColors.mint),
-                  _AllocationRow(label: 'Bank shares (Kazakhstan)', percent: 35, color: AppColors.firefly),
-                  _AllocationRow(label: 'Bonds', percent: 15, color: AppColors.gold),
-                  _AllocationRow(label: 'Cash reserve', percent: 10, color: AppColors.lime),
+                  _AllocationRow(label: context.l10n.conservativeDeposits, percent: 40, color: AppColors.mint),
+                  _AllocationRow(label: context.l10n.kazakhBankShares, percent: 35, color: AppColors.firefly),
+                  _AllocationRow(label: context.l10n.bonds, percent: 15, color: AppColors.gold),
+                  _AllocationRow(label: context.l10n.cashReserve, percent: 10, color: AppColors.lime),
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
             PrimaryAction(
-              label: 'Save plan',
+              label: context.l10n.savePlan,
               onPressed: () {
-                showMessage(context, 'Illustrative recurring investment plan saved. No real transactions performed.');
+                showMessage(context, context.l10n.planSaved);
               },
             ),
             const SizedBox(height: 12),
-            const Text(
-              'This plan is saved locally for your reference only. Automatic execution requires a licensed broker integration.',
+            Text(
+              context.l10n.planLocalOnly,
               style: TextStyle(color: AppColors.muted, fontSize: 11),
             ),
           ],

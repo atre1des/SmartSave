@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,11 +35,11 @@ class _FinancialAssistantScreenState
         });
   }
 
-  static const _suggestions = [
-    'How is my spending?',
-    'Am I within budget?',
-    'How are my goals progressing?',
-    'What can I review about investments?',
+  List<String> get _suggestions => [
+    context.l10n.localSpendingPrompt,
+    context.l10n.localBudgetPrompt,
+    context.l10n.localGoalsPrompt,
+    context.l10n.localInvestPrompt,
   ];
 
   @override
@@ -65,7 +67,7 @@ class _FinancialAssistantScreenState
       final repository = ref.read(financeRepositoryProvider);
       final response = await FinancialAssistantService(
         repository,
-      ).answer(prompt);
+      ).answer(prompt, languageCode: context.l10n.localeName);
       if (!mounted) return;
       conversation.state = [
         ...conversation.state,
@@ -75,9 +77,8 @@ class _FinancialAssistantScreenState
       if (!mounted) return;
       conversation.state = [
         ...conversation.state,
-        const AssistantMessage(
-          text:
-              'I could not read the local finance records. Reopen SmartSave and try again.',
+        AssistantMessage(
+          text: context.l10n.localReadError,
           isUser: false,
         ),
       ];
@@ -106,22 +107,22 @@ class _FinancialAssistantScreenState
     final messages = ref.watch(assistantConversationProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SmartSave Assistant'),
+        title: Text(context.l10n.assistant),
         actions: [
           PopupMenuButton<String>(
-            tooltip: 'Open a SmartSave feature',
+            tooltip: context.l10n.assistantFeature,
             onSelected: (value) {
               final page = value == 'investment'
                   ? const InvestmentIntelligenceScreen()
                   : const RecommendationsScreen();
               _openFeature(page);
             },
-            itemBuilder: (context) => const [
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'investment',
-                child: Text('Investment Intelligence'),
+                child: Text(context.l10n.investmentIntelligence),
               ),
-              PopupMenuItem(value: 'advice', child: Text('Recommendations')),
+              PopupMenuItem(value: 'advice', child: Text(context.l10n.recommendations)),
             ],
           ),
         ],
@@ -162,14 +163,14 @@ class _AssistantDisclosure extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
     color: AppColors.mintLight,
-    child: const Row(
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(Icons.info_outline, color: AppColors.firefly, size: 18),
         SizedBox(width: 8),
         Expanded(
           child: Text(
-            'Local demo helper · Uses saved SQLite data and fixed rules. No generative AI, bank connection, or live market feed is connected.',
+            context.l10n.localDisclosure,
             style: TextStyle(
               color: AppColors.firefly,
               fontSize: 10,
@@ -226,12 +227,12 @@ class _Welcome extends StatelessWidget {
       ),
       const SizedBox(height: 12),
       Text(
-        'What would you like to understand?',
+        context.l10n.localWelcome,
         style: Theme.of(context).textTheme.titleLarge,
       ),
       const SizedBox(height: 6),
-      const Text(
-        'Ask about saved spending, budgets, goals, or your investment-research workflow.',
+      Text(
+        context.l10n.localAssistantHint,
         style: TextStyle(color: AppColors.muted, fontSize: 12),
       ),
     ],
@@ -312,8 +313,8 @@ class _Composer extends StatelessWidget {
             maxLines: 4,
             textInputAction: TextInputAction.send,
             onSubmitted: onSend,
-            decoration: const InputDecoration(
-              hintText: 'Ask about your SmartSave data',
+            decoration: InputDecoration(
+              hintText: context.l10n.askSmartSave,
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 15,
                 vertical: 12,
@@ -326,7 +327,7 @@ class _Composer extends StatelessWidget {
           height: 48,
           width: 48,
           child: IconButton.filled(
-            tooltip: 'Send question',
+            tooltip: context.l10n.sendQuestion,
             onPressed: busy ? null : () => onSend(controller.text),
             style: IconButton.styleFrom(
               backgroundColor: AppColors.firefly,

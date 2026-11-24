@@ -10,6 +10,8 @@ import 'data/finance_repository.dart';
 import 'features/app/app.dart';
 import 'features/app/account_sync_scope.dart';
 import 'features/advice/assistant_session.dart';
+import 'l10n/app_locale.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'services/auth_service.dart';
 import 'services/firebase_service.dart';
 import 'shared/theme.dart';
@@ -18,9 +20,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (!await firebaseService.initialize()) {
-    runApp(
-      const MaterialApp(home: _SessionStatus('Authentication is unavailable.')),
-    );
+    runApp(const _SessionApp(_SessionProblem.authentication));
     return;
   }
 
@@ -55,9 +55,7 @@ class _AccountSessionsState extends State<_AccountSessions> {
     initialData: widget.auth.currentUserId,
     builder: (context, snapshot) {
       if (snapshot.hasError) {
-        return const MaterialApp(
-          home: _SessionStatus('Authentication is unavailable.'),
-        );
+        return const _SessionApp(_SessionProblem.authentication);
       }
       return _AccountSession(
         key: ValueKey(snapshot.data),
@@ -114,13 +112,11 @@ class _AccountSessionState extends State<_AccountSession> {
     future: _opening,
     builder: (context, snapshot) {
       if (snapshot.hasError) {
-        return const MaterialApp(
-          home: _SessionStatus('Could not open local financial records.'),
-        );
+        return const _SessionApp(_SessionProblem.storage);
       }
       if (snapshot.connectionState != ConnectionState.done ||
           (widget.uid != null && !snapshot.hasData)) {
-        return const MaterialApp(home: _SessionStatus());
+        return const _SessionApp();
       }
       final repository = snapshot.data;
       return ProviderScope(
@@ -128,6 +124,10 @@ class _AccountSessionState extends State<_AccountSession> {
           if (repository != null)
             financeRepositoryProvider.overrideWithValue(repository),
           sharedPreferencesProvider.overrideWithValue(widget.prefs),
+          appLocaleProvider.overrideWith(
+            (_) =>
+                AppLocaleController(preferences: widget.prefs, uid: widget.uid),
+          ),
           authServiceProvider.overrideWithValue(widget.auth),
         ],
         child: AccountSyncScope(uid: widget.uid, child: const SmartSaveApp()),
@@ -136,26 +136,43 @@ class _AccountSessionState extends State<_AccountSession> {
   );
 }
 
-class _SessionStatus extends StatelessWidget {
-  const _SessionStatus([this.message]);
+enum _SessionProblem { authentication, storage }
 
-  final String? message;
+class _SessionApp extends StatelessWidget {
+  const _SessionApp([this.problem]);
+
+  final _SessionProblem? problem;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Center(
-      child: message == null
-          ? const CircularProgressIndicator()
-          : Text(message!),
+  Widget build(BuildContext context) => MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    localeResolutionCallback: AppLocaleController.resolve,
+    home: Builder(
+      builder: (context) => Scaffold(
+        body: Center(
+          child: switch (problem) {
+            _SessionProblem.authentication => Text(
+              context.l10n.authUnavailable,
+            ),
+            _SessionProblem.storage => Text(context.l10n.localRecordsError),
+            null => const CircularProgressIndicator(),
+          },
+        ),
+      ),
     ),
   );
 }
 
-class SmartSaveApp extends StatelessWidget {
+class SmartSaveApp extends ConsumerWidget {
   const SmartSaveApp({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) => MaterialApp(
+    locale: ref.watch(appLocaleProvider).locale,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    localeResolutionCallback: AppLocaleController.resolve,
     navigatorKey: appNavigatorKey,
     title: 'SmartSave',
     debugShowCheckedModeBanner: false,
