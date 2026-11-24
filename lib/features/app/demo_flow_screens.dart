@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,24 +27,24 @@ class _ConnectCardScreenState extends State<ConnectCardScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Connect card')),
+        appBar: AppBar(title: Text(context.l10n.connectCard)),
         body: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(24, 8, 24, 24), children: [
-          Text('Explore sample card setup', style: Theme.of(context).textTheme.headlineMedium),
+          Text(context.l10n.sampleCard, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
-          const Text('The sample setup uses fictional data. You can skip it and enter your own transactions.', style: TextStyle(color: AppColors.muted)),
+          Text(context.l10n.sampleCardDetails, style: TextStyle(color: AppColors.muted)),
           const SizedBox(height: 20),
           const SurfaceCard(child: Row(children: [Icon(Icons.credit_card, color: AppColors.muted), SizedBox(width: 12), Flexible(child: Text('••••  ••••  ••••  ••••', style: TextStyle(letterSpacing: 1.2)))])),
           const SizedBox(height: 20),
-          const Text('Choose your bank', style: TextStyle(fontWeight: FontWeight.w600)),
+          Text(context.l10n.chooseBank, style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, children: [for (final bank in ['Kaspi', 'Halyk', 'Freedom', 'Other']) ChoiceChip(label: Text(bank), selected: _bank == bank, onSelected: (_) => setState(() => _bank = bank), selectedColor: AppColors.mintLight)]),
           const SizedBox(height: 18),
-          CheckboxListTile(contentPadding: EdgeInsets.zero, value: _consent, onChanged: (value) => setState(() => _consent = value ?? false), title: const Text('I agree to the processing of demo financial data. Privacy policy', style: TextStyle(fontSize: 12))),
-          PrimaryAction(label: 'Connect card', onPressed: _continue),
+          CheckboxListTile(contentPadding: EdgeInsets.zero, value: _consent, onChanged: (value) => setState(() => _consent = value ?? false), title: Text(context.l10n.demoConsent, style: TextStyle(fontSize: 12))),
+          PrimaryAction(label: context.l10n.connectCard, onPressed: _continue),
           const SizedBox(height: 8),
-          TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RiskQuizScreen())), child: const Text('Skip, add transactions manually')),
+          TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RiskQuizScreen())), child: Text(context.l10n.skipCard)),
           const SizedBox(height: 12),
-          const Text('This prototype does not connect to any bank. Sample transactions are fictional.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.muted)),
+          Text(context.l10n.sampleBankDisclaimer, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.muted)),
         ])),
       );
 }
@@ -51,20 +53,20 @@ class ConnectionFailedScreen extends StatelessWidget {
   const ConnectionFailedScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Connect card')),
+        appBar: AppBar(title: Text(context.l10n.connectCard)),
         body: SafeArea(child: Padding(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const Spacer(),
           const Icon(Icons.error_outline_rounded, size: 56, color: AppColors.wine),
           const SizedBox(height: 18),
-          Text('We could not connect your card', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
+          Text(context.l10n.cardConnectionFailed, textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 10),
-          const Text('The bank connection is not available in this demo. Nothing was changed on your account.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted)),
+          Text(context.l10n.cardConnectionUnavailable, textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted)),
           const SizedBox(height: 28),
-          const SurfaceCard(color: AppColors.paleRose, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Common reasons', style: TextStyle(fontWeight: FontWeight.w600)), SizedBox(height: 8), Text('• Bank connection provider is not configured'), Text('• This is a local-only demonstration'), Text('• No account credentials are requested')])),
+          SurfaceCard(color: AppColors.paleRose, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.commonReasons, style: TextStyle(fontWeight: FontWeight.w600)), SizedBox(height: 8), Text(context.l10n.noBankProvider), Text(context.l10n.localDemoOnly), Text(context.l10n.noCredentialsRequested)])),
           const Spacer(),
-          PrimaryAction(label: 'Try again', onPressed: () => Navigator.pop(context)),
+          PrimaryAction(label: context.l10n.tryAgain, onPressed: () => Navigator.pop(context)),
           const SizedBox(height: 10),
-          SecondaryAction(label: 'Skip for now', onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RiskQuizScreen()))),
+          SecondaryAction(label: context.l10n.skipForNow, onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RiskQuizScreen()))),
         ]))),
       );
 }
@@ -78,27 +80,27 @@ class RiskQuizScreen extends StatefulWidget {
 class _RiskQuizScreenState extends State<RiskQuizScreen> {
   int _question = 0;
   String? _answer;
-  static const _questions = [
-    'If your investment fell 10% in one month, what would you do?',
-    'When might you need the money you are setting aside?',
-    'How would you describe your investing experience?',
-    'How much short-term change in value feels manageable?',
-    'Which statement best describes your preference?',
+  List<String> _questions(BuildContext context) => [
+    context.l10n.quizQuestionOne,
+    context.l10n.quizQuestionTwo,
+    context.l10n.quizQuestionThree,
+    context.l10n.quizQuestionFour,
+    context.l10n.quizQuestionFive,
   ];
-  static const _options = [
-    ['Sell everything to avoid more losses', 'Wait and see before deciding', 'Buy more while prices are lower', 'I do not know'],
-    ['Within a year', 'In 1 to 3 years', 'In more than 3 years', 'I am not sure'],
-    ['None yet', 'A little', 'Some experience', 'Experienced'],
-    ['Very little', 'Some', 'A lot', 'I do not know'],
-    ['Protect what I have', 'Balance safety and growth', 'Focus on long-term growth', 'I am not sure'],
+  List<List<String>> _options(BuildContext context) => [
+    [context.l10n.quizSell, context.l10n.quizWait, context.l10n.quizBuy, context.l10n.quizUnknown],
+    [context.l10n.quizYear, context.l10n.quizOneToThree, context.l10n.quizMoreThanThree, context.l10n.quizUnsure],
+    [context.l10n.quizNone, context.l10n.quizLittle, context.l10n.quizSomeExperience, context.l10n.quizExperienced],
+    [context.l10n.quizVeryLittle, context.l10n.quizSome, context.l10n.quizLots, context.l10n.quizUnknown],
+    [context.l10n.quizProtect, context.l10n.quizBalance, context.l10n.quizLongTerm, context.l10n.quizUnsure],
   ];
 
   void _next() {
     if (_answer == null) {
-      showMessage(context, 'Choose an answer to continue.');
+      showMessage(context, context.l10n.quizRequired);
       return;
     }
-    if (_question == _questions.length - 1) {
+    if (_question == _questions(context).length - 1) {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RiskProfileScreen()));
     } else {
       setState(() { _question++; _answer = null; });
@@ -107,22 +109,22 @@ class _RiskQuizScreenState extends State<RiskQuizScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Risk quiz')),
+        appBar: AppBar(title: Text(context.l10n.riskQuiz)),
         body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
           Text('Question ${_question + 1} of 5', style: const TextStyle(color: AppColors.muted)),
           const SizedBox(height: 16),
-          LinearProgressIndicator(value: (_question + 1) / _questions.length, color: AppColors.mint, backgroundColor: AppColors.mintLight, minHeight: 8, borderRadius: BorderRadius.circular(8)),
+          LinearProgressIndicator(value: (_question + 1) / _questions(context).length, color: AppColors.mint, backgroundColor: AppColors.mintLight, minHeight: 8, borderRadius: BorderRadius.circular(8)),
           const SizedBox(height: 28),
-          Text(_questions[_question], style: Theme.of(context).textTheme.headlineMedium),
+          Text(_questions(context)[_question], style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 20),
-          for (final option in _options[_question]) ...[
+          for (final option in _options(context)[_question]) ...[
             InkWell(onTap: () => setState(() => _answer = option), borderRadius: BorderRadius.circular(14), child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15), decoration: BoxDecoration(color: _answer == option ? AppColors.mintLight : Colors.white, border: Border.all(color: _answer == option ? AppColors.firefly : AppColors.border), borderRadius: BorderRadius.circular(14)), child: Row(children: [Icon(_answer == option ? Icons.radio_button_checked : Icons.radio_button_off, color: AppColors.firefly), const SizedBox(width: 10), Expanded(child: Text(option))]))),
             const SizedBox(height: 8),
           ],
           const SizedBox(height: 14),
-          const SurfaceCard(color: AppColors.mintLight, child: Text('Your answers set an illustrative demo risk profile. This is not investment advice.', style: TextStyle(fontSize: 12))),
+          SurfaceCard(color: AppColors.mintLight, child: Text(context.l10n.quizNotice, style: TextStyle(fontSize: 12))),
           const SizedBox(height: 20),
-          PrimaryAction(label: _question == 4 ? 'See risk profile' : 'Next', onPressed: _next),
+          PrimaryAction(label: _question == 4 ? context.l10n.seeRiskProfile : context.l10n.next, onPressed: _next),
         ])),
       );
 }
@@ -131,22 +133,22 @@ class RiskProfileScreen extends StatelessWidget {
   const RiskProfileScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Risk profile')),
+        appBar: AppBar(title: Text(context.l10n.riskProfile)),
         body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-          const SurfaceCard(color: AppColors.mintLight, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Your profile'), SizedBox(height: 4), Text('Moderate', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)), SizedBox(height: 8), Text('You accept small short-term losses in exchange for steadier growth.') ])),
+          SurfaceCard(color: AppColors.mintLight, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.yourProfile), SizedBox(height: 4), Text(context.l10n.moderate, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)), SizedBox(height: 8), Text(context.l10n.moderateExplanation) ])),
           const SizedBox(height: 20),
-          const Text('Why this result', style: TextStyle(fontWeight: FontWeight.w600)),
+          Text(context.l10n.whyResult, style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          const SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('✓  You would wait if prices fall 10%'), SizedBox(height: 9), Text('✓  Your goal horizon is 1 to 3 years'), SizedBox(height: 9), Text('✓  You prefer a mix of deposits and bonds')])),
+          SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(context.l10n.profileWouldWait), SizedBox(height: 9), Text(context.l10n.profileHorizon), SizedBox(height: 9), Text(context.l10n.profileMix)])),
           const SizedBox(height: 20),
-          const Text('Suggested mix (illustrative)', style: TextStyle(fontWeight: FontWeight.w600)),
+          Text(context.l10n.suggestedMix, style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
-          const SurfaceCard(child: Column(children: [LabeledValue(label: 'Deposits', value: '60%'), Divider(), LabeledValue(label: 'Bonds', value: '25%'), Divider(), LabeledValue(label: 'Stocks', value: '15%')])),
+          SurfaceCard(child: Column(children: [LabeledValue(label: context.l10n.deposits, value: '60%'), Divider(), LabeledValue(label: context.l10n.bonds, value: '25%'), Divider(), LabeledValue(label: context.l10n.stocks, value: '15%')])),
           const SizedBox(height: 12),
-          const Text('Sample profile only. Not investment advice.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted, fontSize: 11)),
+          Text(context.l10n.sampleProfileDisclaimer, textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted, fontSize: 11)),
           const SizedBox(height: 20),
-          PrimaryAction(label: 'Continue to SmartSave', onPressed: () async { final prefs = await SharedPreferences.getInstance(); await prefs.setBool('demo_session', true); await prefs.setBool('risk_profile_complete', true); if (context.mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const AppShell()), (_) => false); }),
-          TextButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RiskQuizScreen())), child: const Text('Retake quiz')),
+          PrimaryAction(label: context.l10n.continueSmartSave, onPressed: () async { final prefs = await SharedPreferences.getInstance(); await prefs.setBool('demo_session', true); await prefs.setBool('risk_profile_complete', true); if (context.mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const AppShell()), (_) => false); }),
+          TextButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RiskQuizScreen())), child: Text(context.l10n.retakeQuiz)),
         ])),
       );
 }

@@ -12,6 +12,8 @@ import 'package:smart_save/features/app/app.dart';
 import 'package:smart_save/services/auth_service.dart';
 import 'package:smart_save/features/dashboard/dashboard_screen.dart';
 import 'package:smart_save/shared/theme.dart';
+import 'package:smart_save/l10n/app_locale.dart';
+import 'package:smart_save/l10n/generated/app_localizations.dart';
 
 void main() {
   setUpAll(() {
@@ -56,10 +58,21 @@ void main() {
           overrides: [
             authServiceProvider.overrideWithValue(auth),
             sharedPreferencesProvider.overrideWithValue(prefs),
+            appLocaleProvider.overrideWith(
+              (_) => AppLocaleController(preferences: prefs, uid: uid),
+            ),
             if (uid != null)
               financeRepositoryProvider.overrideWithValue(repository),
           ],
-          child: MaterialApp(theme: buildAppTheme(), home: const AppEntry()),
+          child: Consumer(
+            builder: (context, ref, _) => MaterialApp(
+              theme: buildAppTheme(),
+              locale: ref.watch(appLocaleProvider).locale,
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              home: const AppEntry(),
+            ),
+          ),
         ),
       ),
     );
@@ -271,6 +284,23 @@ void main() {
       scrollable: dashboardScroll,
     );
     expect(find.text('Test lunch'), findsOneWidget);
+    await tester.tap(find.text('My Account'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Profile'), 180);
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    final languageMenu = find.byType(DropdownButtonFormField<Locale>);
+    await tester.ensureVisible(languageMenu);
+    await tester.tap(languageMenu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Қазақша').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Тіл'), findsOneWidget);
+    expect(find.text('Профиль'), findsOneWidget);
+    expect(prefs.getString('profile_language_widget-test-account'), 'kk');
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Басты бет'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }
@@ -313,6 +343,12 @@ class _TestAuthService implements AuthService {
   }
 
   _TestUser? _registered;
+
+  @override
+  String? get currentUserEmail => _user == null ? null : 'student@example.edu';
+
+  @override
+  String? getProfilePreference(String key) => null;
 
   @override
   String? get currentUserId => _user?.uid;

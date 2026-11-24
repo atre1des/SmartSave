@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/providers.dart';
@@ -96,11 +98,11 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Risk Assessment'),
+        title: Text(context.l10n.riskAssessment),
         actions: [
           TextButton(
             onPressed: _finish,
-            child: const Text('Finish', style: TextStyle(color: AppColors.firefly)),
+            child: Text(context.l10n.finish, style: TextStyle(color: AppColors.firefly)),
           ),
         ],
       ),
@@ -166,7 +168,7 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => setState(() => _step--),
-                        child: const Text('Back'),
+                        child: Text(context.l10n.back),
                       ),
                     )
                   else
@@ -174,7 +176,7 @@ class _RiskQuizScreenState extends ConsumerState<RiskQuizScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: PrimaryAction(
-                      label: _step == _questions.length - 1 ? 'Finish' : 'Next',
+                      label: _step == _questions.length - 1 ? context.l10n.finish : context.l10n.next,
                       onPressed: _answers[_step] != null
                           ? (_step == _questions.length - 1 ? _finish : () => setState(() => _step++))
                           : null,

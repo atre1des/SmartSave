@@ -5,8 +5,10 @@ import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_save/ai/ai_assistant_service.dart';
 import 'package:smart_save/ai/models.dart';
 import 'package:smart_save/ai/openrouter_provider.dart';
 import 'package:smart_save/data/finance_repository.dart';
@@ -202,6 +204,81 @@ void main() {
     expect(chunks.last.error, contains('before completion'));
   });
 
+  test(
+    'mocked English, Kazakh and Russian streams preserve prompts and replies',
+    () async {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfiNoIsolate;
+      final repo = await FinanceRepository.open(
+        databasePath: inMemoryDatabasePath,
+        seed: false,
+      );
+      addTearDown(repo.close);
+      final user = _User('fixture-user', 'test-token');
+      for (final (language, prompt, reply) in [
+        ('en', 'How can I set a budget?', '**Monthly budget**'),
+        (
+          'kk',
+          'Әр шығынды қалай бақылаймын?',
+          '**Жинақ мақсаты**: Ғ, Қ, Ң, Ө, Ұ, Ү, Һ, І',
+        ),
+        ('ru', 'Как составить бюджет на месяц?', '**Расходы**: 50 000 ₸'),
+      ]) {
+        final provider = _provider((request) {
+          if (request.path == '/health') return _json({'status': 'ok'}, 200);
+          final messages = (request.data as Map)['messages'] as List;
+          expect(messages.last['content'], prompt);
+          expect(messages.first['content'], contains('latest user message'));
+          expect(
+            messages.first['content'],
+            contains('app language code: $language'),
+          );
+          final event = jsonEncode({
+            'choices': [
+              {
+                'delta': {'content': reply},
+              },
+            ],
+          });
+          return ResponseBody.fromString(
+            'data: $event\n\ndata: [DONE]\n\n',
+            200,
+            headers: {
+              'content-type': ['text/event-stream'],
+            },
+          );
+        }, () => user);
+        final service = SmartSaveAIAssistantService(repo, provider: provider);
+        addTearDown(service.dispose);
+        final chunks = await service
+            .sendMessageStream(prompt, languageCode: language)
+            .toList();
+        expect(chunks.first.content, reply);
+        expect(chunks.last.isDone, isTrue);
+        expect(chunks.last.error, isNull);
+      }
+
+      final offlineProvider = _provider((request) {
+        expect(request.path, '/health');
+        return _json({'status': 'down'}, 503);
+      }, () => user);
+      final offline = SmartSaveAIAssistantService(
+        repo,
+        provider: offlineProvider,
+      );
+      addTearDown(offline.dispose);
+      final kazakh = await offline
+          .sendMessageStream('Мақсатты қалай қоямын?')
+          .toList();
+      final russian = await offline
+          .sendMessageStream('Как составить бюджет?')
+          .toList();
+      expect(kazakh.first.content, contains('Мақсаттар'));
+      expect(russian.first.content, contains('расходы и бюджеты'));
+      expect(kazakh.last.isDone && russian.last.isDone, isTrue);
+    },
+  );
+
   testWidgets(
     'SSE renders before completion and reopens persisted replies',
     (tester) async {
@@ -214,10 +291,21 @@ void main() {
       );
       addTearDown(repo.close);
       final stream = StreamController<Uint8List>();
+      var sentRequests = 0;
       final user = _User('fixture-user', 'test-token');
 
       OpenRouterProvider buildProvider() => _provider((request) {
         if (request.path == '/health') return _json({'status': 'ok'}, 200);
+        sentRequests++;
+        if (sentRequests == 2) {
+          return ResponseBody.fromString(
+            'data: {"choices":[{"delta":{"content":"Ответ принят."}}]}\n\ndata: [DONE]\n\n',
+            200,
+            headers: {
+              'content-type': ['text/event-stream'],
+            },
+          );
+        }
         return ResponseBody(
           stream.stream,
           200,
@@ -241,39 +329,86 @@ void main() {
 
       await open();
       expect(find.text('Proxy reachable'), findsOneWidget);
-      await tester.enterText(find.byType(TextField), 'Fictional question');
-      await tester.tap(find.byTooltip('Send question'));
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final input = find.byType(TextField);
+      await tester.enterText(input, '  ');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
-      expect(find.text('Fictional question', findRichText: true), findsWidgets);
+      expect(find.byTooltip('Send question'), findsOneWidget);
+      await tester.enterText(input, 'Жинақ жоспары');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      final controller = tester.widget<TextField>(input).controller!;
+      expect(controller.text, 'Жинақ жоспары\n');
+      controller.value = controller.value.copyWith(
+        composing: const TextRange(start: 0, end: 4),
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      expect(controller.text, 'Жинақ жоспары\n');
+      controller.clearComposing();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(controller.text, isEmpty);
+      expect(find.text('Жинақ жоспары', findRichText: true), findsOneWidget);
       stream.add(
         Uint8List.fromList(
           utf8.encode(
-            'data: {"choices":[{"delta":{"content":"Fictional reply"}}]}\n\n',
+            'data: {"choices":[{"delta":{"content":"**Қаржылық жоспар**: 5 000 ₸"}}]}\n\n',
           ),
         ),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
       expect(
-        find.textContaining('Fictional reply', findRichText: true),
+        find.textContaining('Қаржылық жоспар: 5 000 ₸', findRichText: true),
         findsWidgets,
       );
+      expect(
+        tester
+            .widget<EditableText>(
+              find.descendant(of: input, matching: find.byType(EditableText)),
+            )
+            .focusNode
+            .hasFocus,
+        isTrue,
+      );
+      expect(sentRequests, 1);
       stream.add(Uint8List.fromList(utf8.encode('data: [DONE]\n\n')));
       await stream.close();
       await tester.pumpAndSettle();
       expect(
         await repo.assistantConversationHistory(),
-        contains('Fictional reply'),
+        contains('**Қаржылық жоспар**: 5 000 ₸'),
       );
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
       await open();
       expect(
-        find.textContaining('Fictional reply', findRichText: true),
+        find.textContaining('Қаржылық жоспар: 5 000 ₸', findRichText: true),
+        findsWidgets,
+      );
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await tester.enterText(input, 'Составь бюджет.\nПокажи итог.');
+      expect(
+        tester.widget<TextField>(input).textInputAction,
+        TextInputAction.newline,
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.newline);
+      await tester.pump();
+      expect(sentRequests, 1);
+      await tester.tap(find.byTooltip('Send question'));
+      await tester.pumpAndSettle();
+      expect(sentRequests, 2);
+      expect(
+        find.textContaining('Ответ принят.', findRichText: true),
         findsWidgets,
       );
       await tester.pumpWidget(const SizedBox.shrink());
+      debugDefaultTargetPlatformOverride = null;
     },
     timeout: const Timeout(Duration(seconds: 20)),
   );

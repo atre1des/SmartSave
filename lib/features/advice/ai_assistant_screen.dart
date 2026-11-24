@@ -1,7 +1,11 @@
+import '../../l10n/app_locale.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,48 +58,48 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   bool _isDailyQuotaExhausted = false;
 
 
-  static const _quickActions = [
+  static List<QuickAction> _quickActions(BuildContext context) => [
     QuickAction(
       type: QuickActionType.savingsGoal,
-      title: 'Help me reach a savings goal',
-      description: 'Create a plan with monthly targets',
+      title: context.l10n.goalAction,
+      description: context.l10n.goalActionDescription,
       prefillPrompt:
-          'I want to save for a goal. Help me create a realistic plan with monthly targets.',
+          context.l10n.goalPrompt,
     ),
     QuickAction(
       type: QuickActionType.explainOpportunity,
-      title: 'Explain an investment opportunity',
-      description: 'Understand risks, returns, and how it works',
+      title: context.l10n.opportunityAction,
+      description: context.l10n.opportunityDescription,
       prefillPrompt:
-          'Explain how a bank deposit differs from buying shares, in simple terms.',
+          context.l10n.opportunityPrompt,
     ),
     QuickAction(
       type: QuickActionType.compareDepositShares,
-      title: 'Compare a deposit and shares',
-      description: 'Side-by-side with risks and scenarios',
+      title: context.l10n.compareAction,
+      description: context.l10n.compareDescription,
       prefillPrompt:
-          'Compare putting KZT 500,000 in a 3-year deposit vs. investing in shares for 3 years. Show upside and downside scenarios.',
+          context.l10n.comparePrompt,
     ),
     QuickAction(
       type: QuickActionType.analyzePortfolio,
-      title: 'Analyze my portfolio',
-      description: 'Review holdings, sensitivities, and scenarios',
+      title: context.l10n.portfolioAction,
+      description: context.l10n.portfolioDescription,
       prefillPrompt:
-          'Analyze my current portfolio holdings and suggest what to review.',
+          context.l10n.portfolioPrompt,
     ),
     QuickAction(
       type: QuickActionType.exploreIPO,
-      title: 'Explore an IPO',
-      description: 'Learn about upcoming offerings and process',
+      title: context.l10n.ipoAction,
+      description: context.l10n.ipoDescription,
       prefillPrompt:
-          'What IPOs are currently available in Kazakhstan and how do they work?',
+          context.l10n.ipoPrompt,
     ),
     QuickAction(
       type: QuickActionType.whatIfScenario,
-      title: 'Show me what happens if I invest',
-      description: 'Scenario analysis for a specific amount',
+      title: context.l10n.scenarioAction,
+      description: context.l10n.scenarioDescription,
       prefillPrompt:
-          'What would happen if I invested KZT 100,000 in shares vs. a deposit over 2 years?',
+          context.l10n.scenarioPrompt,
     ),
   ];
 
@@ -302,7 +306,10 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     );
 
     try {
-      await for (final chunk in _assistantService!.sendMessageStream(prompt)) {
+      await for (final chunk in _assistantService!.sendMessageStream(
+        prompt,
+        languageCode: context.l10n.localeName,
+      )) {
         if (!mounted) {
           debugPrint('[AIAssistantScreen] Not mounted, returning');
           return;
@@ -496,7 +503,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'SmartSave Assistant',
+                          context.l10n.assistant,
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
@@ -504,7 +511,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                           ),
                         ),
                         Text(
-                          'Choose what you want to explore',
+                          context.l10n.chooseExplore,
                           style: TextStyle(color: Colors.white70, fontSize: 11),
                         ),
                       ],
@@ -518,14 +525,14 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
             // Fixed entries
             ListTile(
               leading: const Icon(Icons.add_circle_outline),
-              title: const Text('New Chat'),
-              subtitle: const Text('Start a fresh conversation'),
+              title: Text(context.l10n.newChat),
+              subtitle: Text(context.l10n.startConversation),
               onTap: _startNewConversation,
             ),
             ListTile(
               leading: const Icon(Icons.description_outlined),
-              title: const Text('Thesis Autopsy'),
-              subtitle: const Text('Record and test investment reasoning'),
+              title: Text(context.l10n.thesisReview),
+              subtitle: Text(context.l10n.recordReasoning),
               onTap: () {
                 _scaffoldKey.currentState?.closeDrawer();
                 _openFeature(const InvestmentIntelligenceScreen());
@@ -533,8 +540,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.waves_outlined),
-              title: const Text('Liquidity'),
-              subtitle: const Text('Test order size against volume'),
+              title: Text(context.l10n.liquidity),
+              subtitle: Text(context.l10n.testOrderSize),
               onTap: () {
                 _scaffoldKey.currentState?.closeDrawer();
                 _openFeature(const InvestmentIntelligenceScreen());
@@ -542,8 +549,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.timeline_outlined),
-              title: const Text('Economic Ripple'),
-              subtitle: const Text('Simulate macro shocks'),
+              title: Text(context.l10n.economicRipple),
+              subtitle: Text(context.l10n.simulateMacro),
               onTap: () {
                 _scaffoldKey.currentState?.closeDrawer();
                 _openFeature(const InvestmentIntelligenceScreen());
@@ -558,13 +565,13 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
                       child: Text(
-                        'Recent Chats',
+                        context.l10n.recentChats,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
@@ -578,7 +585,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                           final firstUserMsg = entry.value
                               .where((m) => m.isUser)
                               .firstOrNull;
-                          final title = firstUserMsg?.text ?? 'Untitled';
+                          final title = firstUserMsg?.text ?? context.l10n.untitledChat;
                           final preview = title.length > 30
                               ? '${title.substring(0, 30)}...'
                               : title;
@@ -645,7 +652,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        title: const Text('SmartSave Assistant'),
+        title: Text(context.l10n.assistant),
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
@@ -682,10 +689,10 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                     const SizedBox(width: 4),
                     Text(
                       isChecking
-                          ? 'Checking...'
+                          ? context.l10n.checking
                           : isConnected
-                          ? 'Proxy reachable'
-                          : 'Offline Mode',
+                          ? context.l10n.proxyReachable
+                          : context.l10n.offlineMode,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -698,7 +705,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
             ),
           ),
           PopupMenuButton<String>(
-            tooltip: 'Open a SmartSave feature',
+            tooltip: context.l10n.assistantFeature,
             onSelected: (value) {
               final page = switch (value) {
                 'investment' => const InvestmentIntelligenceScreen(),
@@ -713,14 +720,14 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
               };
               _openFeature(page);
             },
-            itemBuilder: (context) => const [
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'investment',
                 child: Row(
                   children: [
                     Icon(Icons.psychology_outlined, size: 18),
                     SizedBox(width: 8),
-                    Text('Investment Intelligence'),
+                    Text(context.l10n.investmentIntelligence),
                   ],
                 ),
               ),
@@ -730,7 +737,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                   children: [
                     Icon(Icons.description_outlined, size: 18),
                     SizedBox(width: 8),
-                    Text('Thesis Autopsy'),
+                    Text(context.l10n.thesisReview),
                   ],
                 ),
               ),
@@ -740,7 +747,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                   children: [
                     Icon(Icons.waves_outlined, size: 18),
                     SizedBox(width: 8),
-                    Text('Liquidity Analysis'),
+                    Text(context.l10n.liquidityAnalysis),
                   ],
                 ),
               ),
@@ -750,7 +757,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                   children: [
                     Icon(Icons.timeline_outlined, size: 18),
                     SizedBox(width: 8),
-                    Text('Economic Ripple'),
+                    Text(context.l10n.economicRipple),
                   ],
                 ),
               ),
@@ -760,7 +767,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                   children: [
                     Icon(Icons.lightbulb_outline, size: 18),
                     SizedBox(width: 8),
-                    Text('Recommendations'),
+                    Text(context.l10n.recommendations),
                   ],
                 ),
               ),
@@ -770,7 +777,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                   children: [
                     Icon(Icons.delete_outline, size: 18),
                     SizedBox(width: 8),
-                    Text('Clear Conversation'),
+                    Text(context.l10n.clearConversation),
                   ],
                 ),
               ),
@@ -795,7 +802,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                           onToggle: _toggleMode,
                         ),
                         _QuickActionsSection(
-                          actions: _quickActions,
+                          actions: _quickActions(context),
                           onSelect: _send,
                         ),
                       ],
@@ -890,8 +897,8 @@ class _DisclaimerBanner extends StatelessWidget {
         Expanded(
           child: Text(
             isConnected
-                ? 'The proxy responds. AI replies depend on OpenRouter availability. SmartSave provides educational information and scenario-based analysis. Investments can lose value. Verify current terms and make decisions at your own risk.'
-                : 'Running in offline mode (backend unavailable). Responses use local rules only. Start backend server to enable AI. Educational info only — not financial advice.',
+                ? context.l10n.aiProxyNotice
+                : context.l10n.aiOfflineNotice,
             style: TextStyle(
               color: isConnected ? AppColors.firefly : AppColors.gold,
               fontSize: 10,
@@ -916,12 +923,12 @@ class _ModeSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'How would you like to proceed?',
+          context.l10n.aiHowProceed,
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 4),
         Text(
-          'Choose your experience level — you can switch anytime.',
+          context.l10n.chooseLevel,
           style: TextStyle(color: AppColors.muted, fontSize: 12),
         ),
         const SizedBox(height: 16),
@@ -930,9 +937,9 @@ class _ModeSelector extends StatelessWidget {
             Expanded(
               child: _ModeCard(
                 icon: Icons.school_outlined,
-                title: 'I\'m new to investing',
+                title: context.l10n.beginnerChoice,
                 description:
-                    'Explain concepts step by step. Ask questions. Build understanding.',
+                    context.l10n.aiBeginnerExplainer,
                 selected: currentMode == AssistantMode.beginner,
                 onTap: onToggle,
               ),
@@ -941,9 +948,9 @@ class _ModeSelector extends StatelessWidget {
             Expanded(
               child: _ModeCard(
                 icon: Icons.analytics_outlined,
-                title: 'I understand investing',
+                title: context.l10n.experiencedChoice,
                 description:
-                    'Concise analysis, scenarios, comparisons, thesis monitoring.',
+                    context.l10n.aiAdvancedExplainer,
                 selected: currentMode == AssistantMode.experienced,
                 onTap: onToggle,
               ),
@@ -1026,7 +1033,7 @@ class _QuickActionsSection extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Quick actions', style: Theme.of(context).textTheme.titleMedium),
+        Text(context.l10n.quickActions, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
@@ -1092,19 +1099,19 @@ class _EmptyState extends StatelessWidget {
       ),
       const SizedBox(height: 12),
       Text(
-        'What would you like to understand?',
+        context.l10n.localWelcome,
         style: Theme.of(context).textTheme.titleLarge,
       ),
       const SizedBox(height: 6),
-      const Text(
-        'Ask about your spending, budgets, goals, investments, or explore opportunities.',
+      Text(
+        context.l10n.assistantWelcome,
         style: TextStyle(color: AppColors.muted, fontSize: 12),
       ),
       const SizedBox(height: 20),
       OutlinedButton.icon(
         onPressed: onClear,
         icon: const Icon(Icons.refresh, size: 16),
-        label: const Text('Show mode selector'),
+        label: Text(context.l10n.showModeSelector),
       ),
     ],
   );
@@ -1342,16 +1349,14 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String displayError;
-    if (isDailyQuotaExhausted) {
-      displayError =
-          'SmartSave AI is temporarily unavailable because the AI service has reached its daily request limit. Please try again later.';
-    } else if (isRateLimitError) {
-      displayError =
-          'SmartSave AI is temporarily rate-limited. Please wait a moment and try again.';
-    } else {
-      displayError = error;
-    }
+    final strings = context.l10n;
+    final displayError = isDailyQuotaExhausted
+        ? strings.aiDailyLimit
+        : isRateLimitError
+        ? strings.aiRateLimit
+        : strings.localeName == 'en'
+        ? error
+        : strings.aiRetryMessage;
 
     return Container(
       width: double.infinity,
@@ -1378,8 +1383,8 @@ class _ErrorBanner extends StatelessWidget {
               padding: EdgeInsets.zero,
               minimumSize: const Size(48, 32),
             ),
-            child: const Text(
-              'Retry',
+            child: Text(
+              context.l10n.retry,
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ),
@@ -1403,6 +1408,39 @@ class _Composer extends StatelessWidget {
   final AssistantMode mode;
   final VoidCallback onModeToggle;
 
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    final desktop = kIsWeb || switch (defaultTargetPlatform) {
+      TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.linux => true,
+      _ => false,
+    };
+    final keyboard = HardwareKeyboard.instance;
+    final enter = event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter;
+    if (!desktop || !enter || keyboard.isControlPressed ||
+        keyboard.isMetaPressed || keyboard.isAltPressed) {
+      return KeyEventResult.ignored;
+    }
+    final value = controller.value;
+    if (value.isComposingRangeValid && !value.composing.isCollapsed) {
+      return KeyEventResult.ignored;
+    }
+    if (busy || event is KeyRepeatEvent) return KeyEventResult.handled;
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    if (keyboard.isShiftPressed) {
+      final selection = value.selection;
+      final start = selection.isValid ? selection.start : value.text.length;
+      final end = selection.isValid ? selection.end : start;
+      controller.value = TextEditingValue(
+        text: value.text.replaceRange(start, end, '\n'),
+        selection: TextSelection.collapsed(offset: start + 1),
+      );
+    } else if (value.text.trim().isNotEmpty) {
+      onSend(value.text);
+    }
+    return KeyEventResult.handled;
+  }
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: EdgeInsets.fromLTRB(
@@ -1420,8 +1458,8 @@ class _Composer extends StatelessWidget {
           children: [
             Text(
               mode == AssistantMode.beginner
-                  ? 'Beginner mode'
-                  : 'Experienced mode',
+                  ? context.l10n.beginnerMode
+                  : context.l10n.experiencedMode,
               style: TextStyle(
                 color: AppColors.muted,
                 fontSize: 10,
@@ -1436,7 +1474,7 @@ class _Composer extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                'Switch',
+                context.l10n.switchMode,
                 style: TextStyle(
                   color: AppColors.prussianBlue,
                   fontSize: 10,
@@ -1451,17 +1489,19 @@ class _Composer extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
-              child: TextField(
+              child: Focus(
+                canRequestFocus: false,
+                onKeyEvent: _handleKey,
+                child: TextField(
                 controller: controller,
                 minLines: 1,
                 maxLines: 4,
-                textInputAction: TextInputAction.send,
-                onSubmitted: onSend,
-                enabled: !busy,
+                textInputAction: TextInputAction.newline,
+                readOnly: busy,
                 decoration: InputDecoration(
                   hintText: busy
-                      ? 'Waiting for response...'
-                      : 'Ask about your SmartSave data',
+                      ? context.l10n.waiting
+                      : context.l10n.askSmartSave,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 15,
                     vertical: 12,
@@ -1471,13 +1511,14 @@ class _Composer extends StatelessWidget {
                   isDense: true,
                 ),
               ),
+              ),
             ),
             const SizedBox(width: 8),
             SizedBox(
               height: 48,
               width: 48,
               child: IconButton.filled(
-                tooltip: 'Send question',
+                tooltip: context.l10n.sendQuestion,
                 onPressed: busy ? null : () => onSend(controller.text),
                 style: IconButton.styleFrom(
                   backgroundColor: AppColors.firefly,

@@ -45,7 +45,9 @@ final syncServiceProvider = ChangeNotifierProvider.autoDispose<SyncService>((ref
 });
 
 final syncRequestProvider = StateProvider<int>((ref) => 0);
-final syncStatusMessageProvider = StateProvider<String?>((ref) => null);
+enum SyncNotice { syncing, conflicts, unavailable, complete }
+
+final syncStatusMessageProvider = StateProvider<SyncNotice?>((ref) => null);
 
 // Stream provider for auth state changes
 final authStateProvider = StreamProvider<User?>((ref) {

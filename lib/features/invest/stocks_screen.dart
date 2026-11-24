@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -34,15 +36,15 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stocks for You'),
+        title: Text(context.l10n.stocksForYou),
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) => setState(() => _sortBy = value),
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'relevance', child: Text('Relevance to profile')),
-              PopupMenuItem(value: 'name', child: Text('Name (A-Z)')),
-              PopupMenuItem(value: 'change', child: Text('Price change')),
-              PopupMenuItem(value: 'risk', child: Text('Risk level')),
+            itemBuilder: (context) => [
+              PopupMenuItem(value: 'relevance', child: Text(context.l10n.stockProfileRelevance)),
+              PopupMenuItem(value: 'name', child: Text(context.l10n.stockNameSort)),
+              PopupMenuItem(value: 'change', child: Text(context.l10n.stockPriceChange)),
+              PopupMenuItem(value: 'risk', child: Text(context.l10n.stockRiskLevel)),
             ],
             child: Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -50,7 +52,7 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
                 children: [
                   const Icon(Icons.sort, size: 20),
                   const SizedBox(width: 4),
-                  Text(_sortBy == 'relevance' ? 'Relevance' : _sortBy.capitalize()),
+                  Text(_sortBy == 'relevance' ? context.l10n.stockRelevance : _sortBy.capitalize()),
                   const Icon(Icons.arrow_drop_down),
                 ],
               ),
@@ -83,11 +85,11 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  const SectionHeading('Available Stocks'),
+                  SectionHeading(context.l10n.availableStocks),
                   const SizedBox(height: 8),
 
                   // Disclaimer
-                  const SurfaceCard(
+                  SurfaceCard(
                     color: AppColors.paleGold,
                     padding: EdgeInsets.all(12),
                     child: Row(
@@ -96,7 +98,7 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Sample quotes only. Not investment advice. No securities can be purchased from SmartSave. Prices are illustrative and do not reflect real-time market data.',
+                            context.l10n.sampleStockNotice,
                             style: TextStyle(fontSize: 11),
                           ),
                         ),
@@ -116,8 +118,8 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
                     ),
 
                   const SizedBox(height: 24),
-                  const Text(
-                    'Fictional sample quotes. Not investment advice. No securities can be purchased from SmartSave.',
+                  Text(
+                    context.l10n.fictionalStocks,
                     style: TextStyle(color: AppColors.muted, fontSize: 11),
                   ),
                 ],
@@ -177,7 +179,7 @@ class _StockTile extends StatelessWidget {
               Text('${stock.$2} · ${stock.$3} · ${stock.$4} risk', style: const TextStyle(color: AppColors.muted, fontSize: 11)),
               const SizedBox(height: 4),
               Text(
-                stock.$6 ? '✓ Fits your profile' : '! Above your profile',
+                stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile,
                 style: TextStyle(fontSize: 10, color: stock.$6 ? AppColors.success : AppColors.wine),
               ),
               const SizedBox(height: 4),
@@ -202,7 +204,7 @@ class _StockTile extends StatelessWidget {
         IconButton(
           onPressed: onAskAI,
           icon: const Icon(Icons.psychology_outlined, size: 20, color: AppColors.prussianBlue),
-          tooltip: 'Ask SmartSave AI about this stock',
+          tooltip: context.l10n.askAboutStock,
           style: IconButton.styleFrom(
             backgroundColor: AppColors.mintLight,
             foregroundColor: AppColors.prussianBlue),

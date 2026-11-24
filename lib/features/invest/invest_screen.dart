@@ -1,3 +1,5 @@
+import '../../l10n/app_locale.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -35,7 +37,7 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: Navigator.of(context).canPop() ? BackButton() : null,
-        title: const Text('Deposits'),
+        title: Text(context.l10n.deposits),
       ),
       body: SafeArea(
         child: finance.isLoading
@@ -47,12 +49,12 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
                 children: [
                   const SizedBox(height: 10),
                   Text(
-                    'Deposits',
+                    context.l10n.deposits,
                     style: Theme.of(context).textTheme.headlineLarge,
                   ),
                   const SizedBox(height: 5),
-                  const Text(
-                    'Tenge deposits · Sample rate cards · Updated 31 Aug 2026',
+                  Text(
+                    context.l10n.sampleDepositHeading,
                     style: TextStyle(color: AppColors.muted, fontSize: 11),
                   ),
                   const SizedBox(height: 13),
@@ -73,26 +75,26 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
                     spacing: 4,
                     children: [
                       FilterChip(
-                        label: const Text('Top-up'),
+                        label: Text(context.l10n.topUp),
                         selected: _topUp,
                         onSelected: (value) => setState(() => _topUp = value),
                       ),
                       FilterChip(
-                        label: const Text('Withdrawal'),
+                        label: Text(context.l10n.withdrawal),
                         selected: _withdrawal,
                         onSelected: (value) =>
                             setState(() => _withdrawal = value),
                       ),
                       ActionChip(
-                        label: const Text('Compare'),
+                        label: Text(context.l10n.compare),
                         onPressed: () => setState(() => _compare = !_compare),
                       ),
                     ],
                   ),
                   if (_compare) ...[
                     const SizedBox(height: 6),
-                    const Text(
-                      'Select up to 3 products to compare.',
+                    Text(
+                      context.l10n.compareLimit,
                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                   ],
@@ -145,8 +147,8 @@ class _DepositRatesScreenState extends ConsumerState<DepositRatesScreen> {
                       ),
                     ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Rates are illustrative local sample data. Effective annual rate (ГЭСВ) and terms may change; verify with the bank.',
+                  Text(
+                    context.l10n.sampleDepositDisclaimer,
                     style: TextStyle(color: AppColors.muted, fontSize: 11),
                   ),
                 ],
@@ -216,8 +218,8 @@ class _DepositRow extends StatelessWidget {
               '${(product.effectiveRateBps / 100).toStringAsFixed(2)}%',
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
             ),
-            const Text(
-              'ГЭСВ',
+            Text(
+              context.l10n.effectiveRate,
               style: TextStyle(color: AppColors.muted, fontSize: 10),
             ),
           ],
@@ -232,7 +234,7 @@ class DepositDetailsScreen extends StatelessWidget {
   final DepositProduct product;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Deposit details')),
+    appBar: AppBar(title: Text(context.l10n.depositDetails)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
@@ -255,8 +257,8 @@ class DepositDetailsScreen extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const Text(
-                  'ГЭСВ · indicative rate',
+                Text(
+                  context.l10n.effectiveIndicative,
                   style: TextStyle(color: AppColors.mint),
                 ),
               ],
@@ -267,20 +269,20 @@ class DepositDetailsScreen extends StatelessWidget {
             child: Column(
               children: [
                 LabeledValue(
-                  label: 'Nominal rate',
+                  label: context.l10n.nominalRate,
                   value:
                       '${(product.nominalRateBps / 100).toStringAsFixed(2)}%',
                 ),
                 const Divider(),
                 LabeledValue(
-                  label: 'Term',
+                  label: context.l10n.term,
                   value: '${product.termMonths} months',
                 ),
                 const Divider(),
-                const LabeledValue(label: 'Currency', value: 'Tenge (KZT)'),
+                LabeledValue(label: context.l10n.currency, value: 'Tenge (KZT)'),
                 const Divider(),
-                const LabeledValue(
-                  label: 'Guarantee',
+                LabeledValue(
+                  label: context.l10n.guarantee,
                   value: 'KDIF, limits apply',
                 ),
               ],
@@ -291,20 +293,20 @@ class DepositDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Estimate your income',
+                Text(
+                  context.l10n.estimateIncome,
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'On 1 000 000 ₸ · about ${formatTenge(estimateSimpleInterest(principalTenge: 1000000, nominalRateBps: product.nominalRateBps, months: product.termMonths))} in ${product.termMonths} months (simple estimate).',
+                  'On 1 000 000 ₸ · about ${context.formatTenge(estimateSimpleInterest(principalTenge: 1000000, nominalRateBps: product.nominalRateBps, months: product.termMonths))} in ${product.termMonths} months (simple estimate).',
                   style: const TextStyle(fontSize: 12),
                 ),
                 const SizedBox(height: 4),
                 TextButton(
                   onPressed: () =>
                       _push(context, DepositCalculatorScreen(product: product)),
-                  child: const Text('Open calculator'),
+                  child: Text(context.l10n.openCalculator),
                 ),
               ],
             ),
@@ -315,40 +317,40 @@ class DepositDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Why this deposit?',
+                Text(
+                  context.l10n.whyDeposit,
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Rate and product information are prototype samples; check all terms directly with the provider.',
+                Text(
+                  context.l10n.depositTermsNotice,
                   style: TextStyle(fontSize: 12),
                 ),
                 TextButton(
                   onPressed: () =>
                       _push(context, WhyDepositScreen(product: product)),
-                  child: const Text('Why this?'),
+                  child: Text(context.l10n.whyThis),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 14),
           PrimaryAction(
-            label: 'Link to goal',
+            label: context.l10n.linkGoal,
             onPressed: () => _push(context, const GoalPickerScreen()),
           ),
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: () => showMessage(
               context,
-              'External bank handoff is not available in this local demo.',
+              context.l10n.noBankHandoff,
             ),
-            child: const Text('Open at bank'),
+            child: Text(context.l10n.openAtBank),
           ),
           TextButton(
             onPressed: () =>
                 _push(context, DepositComparisonScreen(products: [product])),
-            child: const Text('Add to compare'),
+            child: Text(context.l10n.addCompare),
           ),
         ],
       ),
@@ -386,7 +388,7 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen> {
             months: _term,
           );
     return Scaffold(
-      appBar: AppBar(title: const Text('Deposit calculator')),
+      appBar: AppBar(title: Text(context.l10n.depositCalculator)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(24),
@@ -395,8 +397,8 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen> {
               controller: _amount,
               keyboardType: TextInputType.number,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Amount',
+              decoration: InputDecoration(
+                labelText: context.l10n.amount,
                 suffixText: '₸',
               ),
             ),
@@ -420,10 +422,10 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Estimated income'),
+                  Text(context.l10n.estimatedIncome),
                   const SizedBox(height: 4),
                   Text(
-                    '≈ ${formatTenge(income)}',
+                    '≈ ${context.formatTenge(income)}',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -440,13 +442,13 @@ class _DepositCalculatorScreenState extends State<DepositCalculatorScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Estimate only. This uses simple interest and does not account for taxes, compounding or changing bank terms.',
+            Text(
+              context.l10n.depositCalculationNotice,
               style: TextStyle(fontSize: 11, color: AppColors.muted),
             ),
             const SizedBox(height: 20),
             PrimaryAction(
-              label: 'Link to goal',
+              label: context.l10n.linkGoal,
               onPressed: () => _push(context, const GoalPickerScreen()),
             ),
           ],
@@ -461,13 +463,13 @@ class DepositComparisonScreen extends StatelessWidget {
   final List<DepositProduct> products;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Filters & comparison')),
+    appBar: AppBar(title: Text(context.l10n.filtersComparison)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const Text(
-            'Compare (sample products)',
+          Text(
+            context.l10n.compareSamples,
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
@@ -500,8 +502,8 @@ class DepositComparisonScreen extends StatelessWidget {
               ),
           ],
           const SizedBox(height: 16),
-          const Text(
-            'Rates are indicative local samples; compare current terms with each bank.',
+          Text(
+            context.l10n.compareSampleRates,
             style: TextStyle(color: AppColors.muted, fontSize: 11),
           ),
         ],
@@ -515,7 +517,7 @@ class WhyDepositScreen extends StatelessWidget {
   final DepositProduct product;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Why this deposit?')),
+    appBar: AppBar(title: Text(context.l10n.whyDeposit)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
@@ -528,36 +530,36 @@ class WhyDepositScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          const SectionHeading('Recommended because'),
-          const SurfaceCard(
+          SectionHeading(context.l10n.recommendedBecause),
+          SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('✓  Among the highest rates in the local sample'),
+                Text(context.l10n.depositHighSample),
                 SizedBox(height: 10),
-                Text('✓  Matches the selected term'),
+                Text(context.l10n.depositTermMatch),
                 SizedBox(height: 10),
-                Text('✓  Deposit information is for comparison only'),
+                Text(context.l10n.depositCompareOnly),
               ],
             ),
           ),
           const SizedBox(height: 18),
-          const SectionHeading('Check before opening'),
-          const SurfaceCard(
+          SectionHeading(context.l10n.checkBeforeOpening),
+          SurfaceCard(
             child: Text(
-              'Top-up, withdrawal, guarantee and eligibility details may change. This data is a prototype sample and is not financial advice.',
+              context.l10n.depositTermsVary,
               style: TextStyle(fontSize: 12),
             ),
           ),
           const SizedBox(height: 18),
-          const SectionHeading('Data sources'),
-          const Text(
-            'Prototype rate-card sample · updated 31 Aug 2026 · verify directly with the bank.',
+          SectionHeading(context.l10n.dataSources),
+          Text(
+            context.l10n.sampleRateDateNotice,
             style: TextStyle(color: AppColors.muted, fontSize: 12),
           ),
           const SizedBox(height: 20),
           PrimaryAction(
-            label: 'Back to deposit',
+            label: context.l10n.backDeposit,
             onPressed: () => Navigator.pop(context),
           ),
         ],
@@ -581,14 +583,14 @@ class InvestScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         children: [
           Text(
-            'Stocks for you',
+            context.l10n.stocksForYouLower,
             style: Theme.of(context).textTheme.headlineLarge,
           ),
           const SizedBox(height: 10),
           SurfaceCard(
             color: AppColors.firefly,
             onTap: () => _push(context, const InvestmentIntelligenceScreen()),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(
                   Icons.auto_awesome,
@@ -601,7 +603,7 @@ class InvestScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Investment Intelligence',
+                        context.l10n.investmentIntelligence,
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -609,7 +611,7 @@ class InvestScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Challenge a thesis · test liquidity · explore economic shocks',
+                        context.l10n.challengeThesis,
                         style: TextStyle(color: Colors.white70, fontSize: 10),
                       ),
                     ],
@@ -623,13 +625,13 @@ class InvestScreen extends StatelessWidget {
           SurfaceCard(
             color: AppColors.mintLight,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.shield_outlined, size: 18),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Risk profile: Moderate · Kazakhstan',
+                    context.l10n.moderateRiskKazakhstan,
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -638,7 +640,7 @@ class InvestScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          const SectionHeading('Picks'),
+          SectionHeading(context.l10n.picks),
           for (final stock in _stocks)
             Padding(
               padding: const EdgeInsets.only(bottom: 9),
@@ -651,18 +653,18 @@ class InvestScreen extends StatelessWidget {
           SurfaceCard(
             color: AppColors.mintLight,
             onTap: () => _push(context, const BondsLaterScreen()),
-            child: const Row(
+            child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bonds and Auto-invest',
+                        context.l10n.bondsAndAuto,
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(
-                        'Coming later',
+                        context.l10n.comingLater,
                         style: TextStyle(color: AppColors.muted, fontSize: 12),
                       ),
                     ],
@@ -673,8 +675,8 @@ class InvestScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Fictional sample quotes. Not investment advice. No securities can be purchased from SmartSave.',
+          Text(
+            context.l10n.fictionalStocks,
             style: TextStyle(color: AppColors.muted, fontSize: 11),
           ),
         ],
@@ -724,7 +726,7 @@ class _StockTile extends StatelessWidget {
                 style: const TextStyle(color: AppColors.muted, fontSize: 11),
               ),
               Text(
-                stock.$6 ? '✓ Fits your profile' : '! Above your profile',
+                stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -830,9 +832,9 @@ class _StockDetailsScreenState extends ConsumerState<StockDetailsScreen> {
               color: AppColors.mintLight,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                'Illustrative sample-price trend',
+                context.l10n.sampleTrend,
                 style: TextStyle(color: AppColors.muted),
               ),
             ),
@@ -849,25 +851,25 @@ class _StockDetailsScreenState extends ConsumerState<StockDetailsScreen> {
                 const SizedBox(height: 6),
                 Text(
                   widget.stock.$6
-                      ? '✓ Fits your Moderate profile'
-                      : '! Above your Moderate profile',
+                      ? context.l10n.fitsModerate
+                      : context.l10n.aboveModerate,
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Why this?',
+                Text(
+                  context.l10n.whyThis,
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Sample company information only. Prices may fall and you may lose money.',
+                Text(
+                  context.l10n.companySampleWarning,
                   style: TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Source: sample data · Not investment advice',
+          Text(
+            context.l10n.sampleAdviceSource,
             style: TextStyle(color: AppColors.muted, fontSize: 11),
           ),
           const SizedBox(height: 18),
@@ -875,8 +877,8 @@ class _StockDetailsScreenState extends ConsumerState<StockDetailsScreen> {
             future: _watchFuture,
             builder: (context, snapshot) => PrimaryAction(
               label: snapshot.data == true
-                  ? 'Remove from watchlist'
-                  : 'Add to watchlist',
+                  ? context.l10n.removeWatchlist
+                  : context.l10n.addWatchlist,
               onPressed: snapshot.hasData ? _toggleWatch : null,
             ),
           ),
@@ -890,45 +892,45 @@ class BondsLaterScreen extends StatelessWidget {
   const BondsLaterScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Bonds and auto-invest')),
+    appBar: AppBar(title: Text(context.l10n.bondsAuto)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const SurfaceCard(
+          SurfaceCard(
             color: AppColors.mintLight,
             child: Text(
-              'Coming later',
+              context.l10n.comingLater,
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(height: 16),
-          const SectionHeading('What is planned'),
-          const SurfaceCard(
+          SectionHeading(context.l10n.whatPlanned),
+          SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('1. Bonds by your risk profile'),
+                Text(context.l10n.bondsByRisk),
                 SizedBox(height: 12),
-                Text('2. Auto-allocation rules'),
+                Text(context.l10n.autoAllocation),
                 SizedBox(height: 12),
                 Text(
-                  '3. Automatic purchase only after your approval through a licensed broker',
+                  context.l10n.licensedBrokerApproval,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Real purchases require a licensed brokerage partner and regulatory approval. No purchase or transfer is performed.',
+          Text(
+            context.l10n.licensedBrokerNotice,
             style: TextStyle(color: AppColors.muted, fontSize: 12),
           ),
           const SizedBox(height: 20),
           PrimaryAction(
-            label: 'Notify me',
+            label: context.l10n.notifyMe,
             onPressed: () => showMessage(
               context,
-              'Notification preference saved for this demo session.',
+              context.l10n.notificationSaved,
             ),
           ),
         ],
@@ -946,18 +948,18 @@ class _NoDeposits extends StatelessWidget {
       children: [
         const Icon(Icons.search_off, size: 38, color: AppColors.muted),
         const SizedBox(height: 10),
-        const Text(
-          'No deposits match your filters',
+        Text(
+          context.l10n.noMatchingDeposits,
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 5),
-        const Text(
-          'Try fewer filters or a different term.',
+        Text(
+          context.l10n.fewerFilters,
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.muted, fontSize: 12),
         ),
         if (onReset != null)
-          TextButton(onPressed: onReset, child: const Text('Reset filters')),
+          TextButton(onPressed: onReset, child: Text(context.l10n.resetFilters)),
       ],
     ),
   );
@@ -967,13 +969,13 @@ class GoalPickerScreen extends StatelessWidget {
   const GoalPickerScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Link to goal')),
+    appBar: AppBar(title: Text(context.l10n.linkGoal)),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const Text(
-            'Choose a goal to use in your deposit estimate. No money will be moved.',
+          Text(
+            context.l10n.depositGoalNotice,
             style: TextStyle(color: AppColors.muted),
           ),
           const SizedBox(height: 16),
