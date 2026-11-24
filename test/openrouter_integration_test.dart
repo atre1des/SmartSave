@@ -80,6 +80,64 @@ void main() {
     expect(provider.backendUrl, 'http://10.0.2.2:3001');
   });
 
+  test('hosted HTTPS probes coalesce and never replay a completion', () async {
+    final requests = <RequestOptions>[];
+    var probes = 0;
+    final provider = OpenRouterProvider(
+      baseUrl: 'https://proxy.example.invalid',
+      currentUser: () => _User('alice', 'test-token'),
+      dio: Dio()
+        ..httpClientAdapter = _Adapter((request) {
+          requests.add(request);
+          if (request.path == '/health') {
+            probes++;
+            return probes == 1
+                ? ResponseBody.fromString('waking', 502)
+                : _json({'status': 'ok'}, 200);
+          }
+          return _json({'code': 'OPENROUTER_HTTP_403'}, 403);
+        }),
+    );
+    addTearDown(provider.dispose);
+
+    expect(
+      await Future.wait([
+        provider.checkBackendHealth(),
+        provider.checkBackendHealth(),
+      ]),
+      [true, true],
+    );
+    final error = await provider.sendMessageStream(messages: _messages).single;
+    expect(error.error, contains('refused access'));
+    expect(requests.map((request) => request.method), ['GET', 'GET', 'POST']);
+    for (final request in requests) {
+      expect(request.uri.scheme, 'https');
+      expect(request.uri.host, 'proxy.example.invalid');
+      expect(request.followRedirects, isFalse);
+    }
+    expect(requests.first.headers['Authorization'], isNull);
+    expect(requests.last.headers['Authorization'], 'Bearer test-token');
+  });
+
+  test(
+    'remote cleartext is rejected before any probe or token request',
+    () async {
+      final provider = OpenRouterProvider(
+        baseUrl: 'http://proxy.example.invalid',
+        currentUser: () => _User('alice', 'test-token'),
+        dio: Dio()
+          ..httpClientAdapter = _Adapter((_) {
+            fail('The client must not send a request over remote HTTP.');
+          }),
+      );
+      addTearDown(provider.dispose);
+      expect(await provider.checkBackendHealth(), isFalse);
+      final result = await provider.sendMessage(messages: _messages);
+      expect(result.success, isFalse);
+      expect(result.error, contains('trusted HTTPS'));
+    },
+  );
+
   test('late sign-in, token rotation and account boundaries', () async {
     _User? current;
     final sent = <RequestOptions>[];
@@ -138,6 +196,8 @@ void main() {
         (402, 'OPENROUTER_HTTP_402', 'insufficient credits'),
         (429, 'OPENROUTER_DAILY_QUOTA_EXCEEDED', 'daily quota'),
         (500, 'OPENROUTER_HTTP_500', 'temporarily unavailable'),
+        (502, 'OPENROUTER_HTTP_502', 'invalid response'),
+        (503, 'OPENROUTER_HTTP_503', 'unavailable or restarting'),
         (503, 'OPENROUTER_KEY_MISSING', 'no OpenRouter key'),
         (504, 'UPSTREAM_TIMEOUT', 'timed out'),
       ]) {

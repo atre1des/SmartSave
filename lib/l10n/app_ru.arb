@@ -671,5 +671,7 @@
   "untitledChat": "Без названия",
   "monthsMoreGoals": "{count, plural, one{Посмотреть ещё {count} цель} few{Посмотреть ещё {count} цели} many{Посмотреть ещё {count} целей} other{Посмотреть ещё {count} цели}}",
   "goalMonth": "Месяц {number}",
-  "monthlyFreeCash": "Свободные средства в этом месяце: {amount}"
+  "monthlyFreeCash": "Свободные средства в этом месяце: {amount}",
+  "aiConnecting": "Подключение…",
+  "aiWakingNotice": "Подключаемся к прокси ИИ. Запуск сервиса на хостинге может занять около минуты."
 }

@@ -87,11 +87,13 @@ const originalEnv = {
   PORT: process.env.PORT,
   OPENROUTER_MODEL: process.env.OPENROUTER_MODEL,
   OPENROUTER_FALLBACK_MODEL: process.env.OPENROUTER_FALLBACK_MODEL,
+  SMARTSAVE_ALLOWED_ORIGINS: process.env.SMARTSAVE_ALLOWED_ORIGINS,
 };
 process.env.PORT = String(await freePort());
 process.env.OPENROUTER_API_KEY = DUMMY_KEY; // dotenv will not override this
 process.env.OPENROUTER_MODEL = FREE_PRIMARY;
 process.env.OPENROUTER_FALLBACK_MODEL = FREE_SECONDARY;
+process.env.SMARTSAVE_ALLOWED_ORIGINS = 'https://app.example.invalid';
 
 global.fetch = async (url, options) => {
   const urlStr = String(url);
@@ -432,6 +434,22 @@ test('security: limits authenticated requests per verified UID', async () => {
   assert.equal(response.status, 429);
   assert.ok(response.headers.get('retry-after'));
   assert.equal((await post(body, 'mock-another-account')).status, 200);
+});
+
+test('web preflight permits the configured origin and bearer header', async () => {
+  const origin = 'https://app.example.invalid';
+  const response = await realFetch(`${baseUrl}/api/chat/completions`, {
+    method: 'OPTIONS',
+    headers: {
+      Origin: origin,
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'authorization,content-type',
+    },
+  });
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('access-control-allow-origin'), origin);
+  assert.match(response.headers.get('access-control-allow-headers'), /authorization/);
+  assert.equal(upstreamCalls.length, 0);
 });
 
 test('security: health stays public and arbitrary browser origins receive no CORS grant', async () => {

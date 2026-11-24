@@ -671,5 +671,7 @@
   "untitledChat": "Атаусыз",
   "monthsMoreGoals": "Тағы {count} мақсатты көру",
   "goalMonth": "{number}-ай",
-  "monthlyFreeCash": "Осы айдағы бос қаражат: {amount}"
+  "monthlyFreeCash": "Осы айдағы бос қаражат: {amount}",
+  "aiConnecting": "Қосылып жатыр…",
+  "aiWakingNotice": "ЖИ проксиіне қосылып жатыр. Хостингтегі қызметтің іске қосылуына шамамен бір минут кетуі мүмкін."
 }

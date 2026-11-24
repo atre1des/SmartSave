@@ -120,15 +120,17 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
   Future<void> _checkBackendHealth() async {
     if (_assistantService == null) return;
-    setState(() => _backendStatus = BackendStatus.checking);
-    final isHealthy = await _assistantService!.isProxyReachable;
-    if (mounted) {
-      setState(
-        () => _backendStatus = isHealthy
-            ? BackendStatus.connected
-            : BackendStatus.disconnected,
-      );
-    }
+    _showProxyStatus(null);
+    _showProxyStatus(await _assistantService!.isProxyReachable);
+  }
+
+  void _showProxyStatus(bool? reachable) {
+    if (!mounted) return;
+    setState(() => _backendStatus = switch (reachable) {
+      null => BackendStatus.checking,
+      true => BackendStatus.connected,
+      false => BackendStatus.disconnected,
+    });
   }
 
   Future<void> _loadConversationHistory() async {
@@ -309,6 +311,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
       await for (final chunk in _assistantService!.sendMessageStream(
         prompt,
         languageCode: context.l10n.localeName,
+        onProxyStatus: _showProxyStatus,
       )) {
         if (!mounted) {
           debugPrint('[AIAssistantScreen] Not mounted, returning');
@@ -689,7 +692,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                     const SizedBox(width: 4),
                     Text(
                       isChecking
-                          ? context.l10n.checking
+                          ? context.l10n.aiConnecting
                           : isConnected
                           ? context.l10n.proxyReachable
                           : context.l10n.offlineMode,
@@ -790,13 +793,13 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
         child: Column(
           children: [
             if (!_showModeSelector || messages.isNotEmpty)
-              _DisclaimerBanner(isConnected: isConnected),
+              _DisclaimerBanner(isConnected: isConnected, isChecking: isChecking),
 
             Expanded(
               child: messages.isEmpty && _showModeSelector
                   ? ListView(
                       children: [
-                        _DisclaimerBanner(isConnected: isConnected),
+                        _DisclaimerBanner(isConnected: isConnected, isChecking: isChecking),
                         _ModeSelector(
                           currentMode: _mode,
                           onToggle: _toggleMode,
@@ -877,7 +880,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 }
 
 class _DisclaimerBanner extends StatelessWidget {
-  const _DisclaimerBanner({required this.isConnected});
+  const _DisclaimerBanner({required this.isConnected, required this.isChecking});
+  final bool isChecking;
   final bool isConnected;
 
   @override
@@ -896,7 +900,9 @@ class _DisclaimerBanner extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            isConnected
+            isChecking
+                ? context.l10n.aiWakingNotice
+                : isConnected
                 ? context.l10n.aiProxyNotice
                 : context.l10n.aiOfflineNotice,
             style: TextStyle(
