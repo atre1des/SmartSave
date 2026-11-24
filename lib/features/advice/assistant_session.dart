@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../ai/models.dart';
+import '../../ai/conversations.dart';
+import '../../data/providers.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
 final appSessionActive = ValueNotifier<bool>(false);
@@ -17,9 +19,8 @@ final assistantConversationProvider = StateProvider<List<AssistantMessage>>(
   (ref) => const [],
 );
 
-/// Provider for the AI-powered assistant conversation (uses AIMessage with role, content, etc.)
-final assistantAIConversationProvider = StateProvider<List<AIMessage>>(
-  (ref) => const [],
+final aiConversationsProvider = ChangeNotifierProvider<AIConversations>(
+  (ref) => AIConversations(ref.watch(financeRepositoryProvider)),
 );
 
 /// Provider for the assistant conversation mode (beginner/experienced)

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,6 +10,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_save/ai/ai_assistant_service.dart';
+import 'package:smart_save/ai/conversation_context.dart';
+import 'package:smart_save/ai/conversations.dart';
 import 'package:smart_save/ai/models.dart';
 import 'package:smart_save/ai/openrouter_provider.dart';
 import 'package:smart_save/data/finance_repository.dart';
@@ -339,6 +342,222 @@ void main() {
     },
   );
 
+  test(
+    'restored turns, multilingual follow-ups, retry, and account isolation reach the outgoing payload',
+    () async {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfiNoIsolate;
+      final directory = await Directory.systemTemp.createTemp(
+        'smartsave-memory-test',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      var repo = await FinanceRepository.openForAccount(
+        'alice',
+        directory: directory.path,
+      );
+      var store = AIConversations(repo);
+      Future<void> awaitLoad() async {
+        while (!store.ready) {
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+        }
+      }
+
+      final payloads = <List<Map<String, dynamic>>>[];
+      var response =
+          'An ETF holds a basket. At 10%, 10 000 ₸ would gain 1 000 ₸.';
+      var mode = 'online';
+      var user = _User('alice', 'test-token');
+
+      SmartSaveAIAssistantService makeService() => SmartSaveAIAssistantService(
+        repo,
+        provider: _provider((options) {
+          if (options.path == '/health') {
+            return _json({'status': 'ok'}, mode == 'offline' ? 503 : 200);
+          }
+          final messages = (options.data as Map)['messages'] as List;
+          payloads.add(messages.cast<Map<String, dynamic>>());
+          final event = jsonEncode({
+            'choices': [
+              {
+                'delta': {'content': response},
+              },
+            ],
+          });
+          return ResponseBody.fromString(
+            'data: $event\n\n${mode == 'partial' ? '' : 'data: [DONE]\n\n'}',
+            200,
+            headers: {
+              'content-type': ['text/event-stream'],
+            },
+          );
+        }, () => user),
+      );
+      var service = makeService();
+
+      Future<void> send(
+        String text,
+        String language, {
+        bool retry = false,
+      }) async {
+        final request = store.begin(text, retry: retry)!;
+        final chunks = await service
+            .sendMessageStream(
+              request.prompt,
+              history: request.history,
+              languageCode: language,
+            )
+            .toList();
+        expect(chunks.last.isDone, isTrue);
+        await store.finish(
+          request,
+          reply: chunks.last.error != null
+              ? null
+              : AIMessage.assistant(
+                  chunks.map((chunk) => chunk.content).join(),
+                  isLocalFallback: chunks.any((chunk) => chunk.isLocalFallback),
+                ),
+        );
+      }
+
+      await awaitLoad();
+      const first =
+          'Explain an ETF versus an individual stock using a numerical example.';
+      final firstReply = response;
+      await send(first, 'en');
+      expect(payloads.last.map((item) => item['role']), ['system', 'user']);
+      expect(
+        payloads.last.first['content'],
+        contains('User financial context'),
+      );
+      expect(store.messages.map((item) => item.content), [first, firstReply]);
+
+      const russian = 'Explain the same thing I asked earlier in Russian.';
+      response = 'ETF содержит несколько активов. Доход — 1 000 ₸.';
+      final russianReply = response;
+      await send(russian, 'ru');
+      expect(payloads.last.skip(1).map((item) => item['content']), [
+        first,
+        firstReply,
+        russian,
+      ]);
+      const kazakh = 'Енді осыны қазақша түсіндір.';
+      response = 'ETF бірнеше активті қамтиды. Табыс — 1 000 ₸.';
+      await send(kazakh, 'kk');
+      expect(payloads.last.skip(1).map((item) => item['content']), [
+        first,
+        firstReply,
+        russian,
+        russianReply,
+        kazakh,
+      ]);
+
+      final originalId = store.activeId!;
+      store.startNew();
+      await send('A separate conversation', 'en');
+      expect(payloads.last.map((item) => item['role']), ['system', 'user']);
+      await store.select(originalId);
+      store.dispose();
+      service.dispose();
+      await repo.close();
+      repo = await FinanceRepository.openForAccount(
+        'alice',
+        directory: directory.path,
+      );
+      store = AIConversations(repo);
+      service = makeService();
+      await awaitLoad();
+      expect(store.activeId, originalId);
+
+      mode = 'partial';
+      response = 'incomplete private fixture';
+      const followUp = 'What was the first question I asked you?';
+      await send(followUp, 'en');
+      expect(payloads.last[1]['content'], first);
+      expect(store.messages.last.isUser, isTrue);
+      expect(store.messages.map((m) => m.content), isNot(contains(response)));
+
+      mode = 'online';
+      response = 'You asked about ETFs versus individual stocks.';
+      await send(followUp, 'en', retry: true);
+      expect(
+        payloads.last.where((item) => item['content'] == followUp),
+        hasLength(1),
+      );
+      expect(store.messages.where((m) => m.content == followUp), hasLength(1));
+
+      mode = 'offline';
+      final requestCount = payloads.length;
+      await send('An offline-only question', 'en');
+      expect(payloads, hasLength(requestCount));
+      expect(store.messages.last.isLocalFallback, isTrue);
+      mode = 'online';
+      await send('Continue from before the outage', 'en');
+      expect(
+        payloads.last.any(
+          (item) => item['content'] == 'An offline-only question',
+        ),
+        isFalse,
+      );
+
+      store.dispose();
+      service.dispose();
+      await repo.close();
+      repo = await FinanceRepository.openForAccount(
+        'bob',
+        directory: directory.path,
+      );
+      user = _User('bob', 'test-bob-token');
+      store = AIConversations(repo);
+      service = makeService();
+      await awaitLoad();
+      expect(store.entries, isEmpty);
+      await send('Bob’s first question', 'en');
+      expect(payloads.last.map((item) => item['role']), ['system', 'user']);
+      store.dispose();
+      service.dispose();
+      await repo.close();
+    },
+    timeout: const Timeout(Duration(seconds: 25)),
+  );
+
+  test(
+    'the context budget chooses complete recent turns and truncates UTF-8 safely',
+    () {
+      const context = ConversationContext(inputBytes: 10000);
+      final latest = List.filled(3000, 'Ә').join();
+      final messages = context.build(
+        systemPrompt: 'System',
+        financialContext: List.filled(4000, '₸').join(),
+        history: [
+          AIMessage.system('Untrusted system-role history'),
+          AIMessage.user('Older question'),
+          AIMessage.assistant(List.filled(3000, 'қ').join()),
+          AIMessage.user('Recent question'),
+          AIMessage.assistant('Recent reply'),
+          AIMessage.user('Interrupted question'),
+          AIMessage.assistant('Partial', isStreaming: true),
+        ],
+        prompt: latest,
+      );
+      expect(messages.map((message) => message.role), [
+        'system',
+        'user',
+        'assistant',
+        'user',
+      ]);
+      expect(messages[1].content, 'Recent question');
+      expect(messages.last.content, endsWith('[truncated]'));
+      expect(messages.last.content, isNot(contains('�')));
+      expect(
+        messages.fold(
+          0,
+          (size, message) => size + utf8.encode(message.content).length + 32,
+        ),
+        lessThanOrEqualTo(10000),
+      );
+    },
+  );
+
   testWidgets(
     'SSE renders before completion and reopens persisted replies',
     (tester) async {
@@ -358,6 +577,17 @@ void main() {
         if (request.path == '/health') return _json({'status': 'ok'}, 200);
         sentRequests++;
         if (sentRequests == 2) {
+          final history = (request.data as Map)['messages'] as List;
+          expect(history.map((item) => item['role']), [
+            'system',
+            'user',
+            'assistant',
+            'user',
+          ]);
+          expect(history[1]['content'], 'Жинақ жоспары');
+          expect(history[2]['content'], '**Қаржылық жоспар**: 5 000 ₸');
+          expect(history[3]['content'], 'Составь бюджет.\nПокажи итог.');
+
           return ResponseBody.fromString(
             'data: {"choices":[{"delta":{"content":"Ответ принят."}}]}\n\ndata: [DONE]\n\n',
             200,
