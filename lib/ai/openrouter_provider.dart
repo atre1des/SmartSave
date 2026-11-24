@@ -73,32 +73,37 @@ class OpenRouterProvider {
 
   void _configureDio() {
     _dio.options.baseUrl = _baseUrl;
-    _dio.options.headers.addAll({
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://github.com/smartsave',
-      'X-Title': 'SmartSave',
-    });
 
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          final destination = options.uri;
+          final localDevelopment =
+              kDebugMode &&
+              destination.scheme == 'http' &&
+              const {
+                'localhost',
+                '127.0.0.1',
+                '10.0.2.2',
+              }.contains(destination.host);
+          if (destination.host.isEmpty ||
+              destination.userInfo.isNotEmpty ||
+              (destination.scheme != 'https' && !localDevelopment)) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                message: 'Configure a trusted HTTPS address for the AI proxy.',
+              ),
+            );
+            return;
+          }
+
+          options.followRedirects = false;
           if (options.path != '/api/chat/completions') {
             handler.next(options);
             return;
           }
           try {
-            final destination = options.uri;
-            final localDevelopment =
-                kDebugMode &&
-                destination.scheme == 'http' &&
-                const {
-                  'localhost',
-                  '127.0.0.1',
-                  '10.0.2.2',
-                }.contains(destination.host);
-            if (destination.scheme != 'https' && !localDevelopment) {
-              throw StateError('A trusted backend transport is required.');
-            }
             final user = _currentUser();
             if (user == null ||
                 (_sessionUid != null && user.uid != _sessionUid)) {
@@ -112,7 +117,6 @@ class OpenRouterProvider {
                 _currentUser()?.uid != user.uid) {
               throw StateError('The account session changed.');
             }
-            options.followRedirects = false;
             options.headers['Authorization'] = 'Bearer $token';
             handler.next(options);
           } catch (_) {
@@ -136,22 +140,66 @@ class OpenRouterProvider {
   /// Get the backend URL for debugging
   String get backendUrl => _baseUrl;
 
-  /// Checks proxy reachability only. This does not validate upstream generation.
-  Future<bool> checkBackendHealth() async {
-    try {
-      final response = await _dio.get(
-        '/health',
-        options: Options(
-          receiveTimeout: const Duration(seconds: 5),
-          sendTimeout: const Duration(seconds: 5),
-        ),
-      );
-      final isHealthy =
-          response.statusCode == 200 && response.data['status'] == 'ok';
-      return isHealthy;
-    } catch (e) {
-      return false;
+  Future<bool>? _healthInFlight;
+
+  /// Probes only liveness. Concurrent callers share the same bounded probe.
+  Future<bool> checkBackendHealth() =>
+      _healthInFlight ??= _probeBackend().whenComplete(() {
+        _healthInFlight = null;
+      });
+
+  Future<bool> _probeBackend() async {
+    final hosted = Uri.tryParse(_baseUrl)?.scheme == 'https';
+    final attempts = hosted ? 2 : 1;
+    final timeout = Duration(seconds: hosted ? 38 : 5);
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      final cancel = CancelToken();
+      final deadline = Timer(timeout, cancel.cancel);
+      try {
+        final response = await _dio.get<Object?>(
+          '/health',
+          cancelToken: cancel,
+          options: Options(
+            connectTimeout: timeout,
+            receiveTimeout: timeout,
+            sendTimeout: Duration.zero,
+            validateStatus: (status) => status != null,
+          ),
+        );
+        final body = response.data;
+        if (response.statusCode == 200 &&
+            body is Map &&
+            body['status'] == 'ok') {
+          return true;
+        }
+        final wakingPage =
+            response.statusCode == 200 &&
+            body is String &&
+            (response.headers.value('content-type') ?? '').contains(
+              'text/html',
+            );
+        if (!wakingPage &&
+            !const {502, 503, 504}.contains(response.statusCode)) {
+          return false;
+        }
+      } on DioException catch (error) {
+        if (!const {
+          DioExceptionType.connectionTimeout,
+          DioExceptionType.sendTimeout,
+          DioExceptionType.receiveTimeout,
+          DioExceptionType.connectionError,
+          DioExceptionType.cancel,
+        }.contains(error.type)) {
+          return false;
+        }
+      } finally {
+        deadline.cancel();
+      }
+      if (attempt + 1 < attempts) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
     }
+    return false;
   }
 
   /// Send a chat completion request (non-streaming)
@@ -371,11 +419,16 @@ class OpenRouterProvider {
         'OpenRouter rejected the proxy credentials.',
       401 =>
         'The AI proxy could not verify your sign-in. Please sign in again.',
+      403 =>
+        'The AI provider refused access. Check the proxy key and model permissions.',
       402 =>
         'OpenRouter refused the request due to insufficient credits or quota.',
       429 when payload is Map && payload['isDailyQuota'] == true =>
         'The OpenRouter daily quota is exhausted.',
       429 => 'Rate limit exceeded. Please wait and try again.',
+      502 =>
+        'The AI proxy received an invalid response from its provider. Please try again.',
+      503 => 'The AI proxy is unavailable or restarting. Please try again.',
       504 => 'The AI provider timed out. Please try again.',
       >= 500 => 'The AI service is temporarily unavailable. Please try again.',
       _ => 'The AI request failed (HTTP $status). Please try again.',

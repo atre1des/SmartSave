@@ -6,18 +6,31 @@ import { fileURLToPath } from 'node:url';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { openRouterKey, runtimeConfig } from './runtime_config.js';
 
-dotenv.config({ path: fileURLToPath(new URL('./.env', import.meta.url)) });
+if (process.env.RENDER !== 'true') {
+  dotenv.config({ path: fileURLToPath(new URL('./.env', import.meta.url)) });
+}
+
+let config;
+try {
+  config = runtimeConfig();
+} catch (error) {
+  console.error('[SmartSave] Startup configuration error:', error.message);
+  process.exit(1);
+}
 
 export const app = express();
-const firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
-const firebaseApp = firebaseProjectId
-  ? initializeApp({ projectId: firebaseProjectId })
+const firebaseApp = config.projectId
+  ? initializeApp({
+      projectId: config.projectId,
+      ...(config.credential && { credential: config.credential }),
+    })
   : null;
 app.locals.verifyIdToken = firebaseApp
   ? (token) => getAuth(firebaseApp).verifyIdToken(token)
   : null;
-if (firebaseApp && process.env.SMARTSAVE_ENABLE_ACCOUNT_DELETION === 'true') {
+if (firebaseApp && config.accountDeletionEnabled) {
   app.locals.verifyDeletionToken = (token) => getAuth(firebaseApp).verifyIdToken(token, true);
   app.locals.deleteCloudRecords = async (uid) => {
     const firestore = getFirestore(firebaseApp);
@@ -27,7 +40,7 @@ if (firebaseApp && process.env.SMARTSAVE_ENABLE_ACCOUNT_DELETION === 'true') {
     await firestore.recursiveDelete(firestore.collection('users').doc(uid));
   };
 }
-const PORT = process.env.PORT || 3001;
+const PORT = config.port;
 app.locals.upstreamTimeoutMs = 120_000;
 
 // --- Model configuration (free-tier only, no paid fallbacks) ---
@@ -70,7 +83,10 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'no-referrer');
   next();
 });
-app.use(cors({ origin: (origin, callback) => callback(null, allowedOrigins.has(origin)) }));
+app.use(cors({
+  origin: (origin, callback) => callback(null, allowedOrigins.has(origin)),
+  exposedHeaders: ['Retry-After'],
+}));
 
 const rateWindow = 60_000;
 function rateLimit(keyFor, maximum) {
@@ -288,17 +304,13 @@ app.post('/api/chat/completions',
   try {
     const { model, messages, temperature, max_tokens, stream } = req.body;
 
-    const openRouterApiKey = process.env.OPENROUTER_API_KEY;
-    if (
-      !openRouterApiKey ||
-      openRouterApiKey.trim() === '' ||
-      openRouterApiKey === 'paste_your_openrouter_key_here'
-    ) {
+    const openRouterApiKey = openRouterKey();
+    if (!openRouterApiKey) {
       return res.status(503).json(
         buildErrorResponse({
           status: 503,
           message:
-            'OpenRouter API key not configured. Set OPENROUTER_API_KEY in backend/.env.',
+            'OpenRouter API key is not configured on the proxy.',
           code: 'OPENROUTER_KEY_MISSING',
           isDailyQuota: false,
           retryable: false,
@@ -434,7 +446,7 @@ app.post('/api/chat/completions',
 
       // Proxy the SSE stream
       res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
       for (const [key, value] of Object.entries(rateLimitHeaders)) {
@@ -583,8 +595,14 @@ app.get('/api/models', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`SmartSave AI Proxy (OpenRouter) running on http://localhost:${PORT}`);
+function onListening() {
+  console.log(`SmartSave AI Proxy listening on port ${PORT}`);
   console.log(`  Primary model: ${DEFAULT_MODEL}`);
   console.log(`  Fallback model: ${FALLBACK_MODEL}`);
-});
+}
+
+if (config.render) {
+  app.listen(PORT, '0.0.0.0', onListening);
+} else {
+  app.listen(PORT, onListening);
+}

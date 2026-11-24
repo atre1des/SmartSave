@@ -789,5 +789,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "aiConnecting": "Connecting…",
+  "aiWakingNotice": "Connecting to the AI proxy. A hosted service may need about a minute to wake up."
 }

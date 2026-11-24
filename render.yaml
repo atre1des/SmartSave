@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: smartsave-ai-proxy
+    runtime: node
+    plan: free
+    branch: development
+    rootDir: backend
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: NODE_VERSION
+        value: '24.22.3'
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/firebase-admin.json
+      - key: SMARTSAVE_ALLOWED_ORIGINS
+        value: ''
+      - key: SMARTSAVE_ENABLE_ACCOUNT_DELETION
+        value: 'false'

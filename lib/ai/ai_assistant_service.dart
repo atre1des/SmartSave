@@ -209,6 +209,7 @@ Response style:
   Stream<AIStreamChunk> sendMessageStream(
     String prompt, {
     String languageCode = 'en',
+    ValueChanged<bool?>? onProxyStatus,
   }) async* {
     final context = await _buildFinancialContext();
     final systemPrompt = _buildSystemPrompt(context, languageCode);
@@ -221,7 +222,9 @@ Response style:
       '[AIAssistantService] Built messages: ${messages.length} messages',
     );
 
+    onProxyStatus?.call(null);
     final isBackendHealthy = await _provider.checkBackendHealth();
+    onProxyStatus?.call(isBackendHealthy);
     debugPrint('[AIAssistantService] Backend health check: $isBackendHealthy');
 
     if (!isBackendHealthy) {
