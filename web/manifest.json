@@ -1,12 +1,12 @@
 {
-    "name": "smart_save",
-    "short_name": "smart_save",
+    "name": "SmartSave",
+    "short_name": "SmartSave",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#EDF5F5",
     "theme_color": "#033236",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "description": "SmartSave financial workspace",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

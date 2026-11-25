@@ -7,6 +7,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import 'models.dart';
+import 'stream_adapter_stub.dart'
+    if (dart.library.js_interop) 'stream_adapter_web.dart';
 
 /// Result of an AI request
 class AIRequestResult {
@@ -40,13 +42,17 @@ class OpenRouterProvider {
     _configureDio();
   }
 
-  static Dio _createDefaultDio() => Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 120),
-      sendTimeout: const Duration(seconds: 30),
-    ),
-  );
+  static Dio _createDefaultDio() {
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
+    dio.httpClientAdapter = browserStreamAdapter(dio.httpClientAdapter);
+    return dio;
+  }
 
   /// Get the default backend URL based on platform
   static String _getDefaultBackendUrl() {
@@ -56,7 +62,8 @@ class OpenRouterProvider {
     // For Android emulator, use 10.0.2.2 to reach host machine
     // For iOS simulator, use localhost
     // For web/desktop, use localhost
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    if (kIsWeb) return 'https://smartsave-sl61.onrender.com';
+    if (defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:3001';
     }
     return 'http://localhost:3001';
@@ -276,9 +283,11 @@ class OpenRouterProvider {
     double temperature = 0.7,
     int maxTokens = 2000,
   }) async* {
+    final browserCancel = kIsWeb ? CancelToken() : null;
     try {
       final response = await _dio.post(
         '/api/chat/completions',
+        cancelToken: browserCancel,
         data: {
           'model': ?_model,
           'messages': messages
@@ -338,6 +347,8 @@ class OpenRouterProvider {
         isDone: true,
         error: 'The AI response was interrupted. Please try again.',
       );
+    } finally {
+      browserCancel?.cancel();
     }
   }
 

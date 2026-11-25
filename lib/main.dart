@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/providers.dart';
+import 'platform_web/workspace_stub.dart'
+    if (dart.library.js_interop) 'platform_web/workspace.dart';
 import 'data/finance_repository.dart';
 import 'features/app/app.dart';
 import 'features/app/account_sync_scope.dart';
@@ -19,6 +21,7 @@ import 'shared/appearance.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (await runBrowserWorkspace()) return;
 
   final prefs = await SharedPreferences.getInstance();
   final appearance = AppearanceController(prefs);

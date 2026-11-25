@@ -53,6 +53,7 @@ dependencies:
 
   # HTTP client for AI integration
   dio: ^5.5.0+1
+  web: 1.1.1
 
   # Markdown rendering for AI responses
   flutter_markdown: ^0.7.4
@@ -99,6 +100,14 @@ flutter:
 
   assets:
     - assets/figma/
+    - assets/fonts/OFL-NotoSans.txt
+
+  fonts:
+    - family: Noto Sans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.ttf
+        - asset: assets/fonts/NotoSans-Bold.ttf
+          weight: 700
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

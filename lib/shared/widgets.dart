@@ -482,10 +482,16 @@ class RecordGroup extends StatelessWidget {
 }
 
 class FinancialFigure extends StatelessWidget {
-  const FinancialFigure(this.value, {super.key, this.label});
+  const FinancialFigure(
+    this.value, {
+    super.key,
+    this.label,
+    this.fontSize = 42,
+  });
 
   final String value;
   final String? label;
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -499,7 +505,7 @@ class FinancialFigure extends StatelessWidget {
         child: Text(
           value,
           style: glassTitle(context).copyWith(
-            fontSize: 42,
+            fontSize: fontSize,
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),

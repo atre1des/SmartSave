@@ -71,7 +71,10 @@ extension AppThemeContext on BuildContext {
   AppColors get colors => AppColors(Theme.of(this).brightness);
 }
 
-ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
+ThemeData buildAppTheme([
+  Brightness brightness = Brightness.light,
+  String fontFamily = 'Inter',
+]) {
   final colors = AppColors(brightness);
   final scheme = ColorScheme(
     brightness: brightness,
@@ -140,7 +143,7 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: colors.canvas,
-    fontFamily: 'Inter',
+    fontFamily: fontFamily,
     textTheme: text,
     appBarTheme: AppBarTheme(
       backgroundColor: colors.canvas,
@@ -165,7 +168,7 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
       backgroundColor: colors.surface,
       selectedColor: colors.subtleSurface,
       side: BorderSide(color: colors.fieldOutline),
-      labelStyle: TextStyle(color: colors.text, fontFamily: 'Inter'),
+      labelStyle: TextStyle(color: colors.text, fontFamily: fontFamily),
       secondaryLabelStyle: TextStyle(color: colors.text),
       checkmarkColor: colors.action,
     ),
