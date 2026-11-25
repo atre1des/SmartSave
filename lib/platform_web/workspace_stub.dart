@@ -1,1 +1,1 @@
-Future<bool> runBrowserWorkspace() async => false;
+Future<bool> runBrowserWorkspace({bool review = false}) async => false;

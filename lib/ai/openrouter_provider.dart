@@ -86,7 +86,13 @@ class OpenRouterProvider {
         onRequest: (options, handler) async {
           final destination = options.uri;
           final localDevelopment =
-              kDebugMode &&
+              (kDebugMode ||
+                  (kIsWeb &&
+                      const bool.fromEnvironment('SMARTSAVE_WEB_EMULATORS') &&
+                      const {
+                        'localhost',
+                        '127.0.0.1',
+                      }.contains(Uri.base.host))) &&
               destination.scheme == 'http' &&
               const {
                 'localhost',

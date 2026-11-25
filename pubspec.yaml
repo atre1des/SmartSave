@@ -54,6 +54,7 @@ dependencies:
   # HTTP client for AI integration
   dio: ^5.5.0+1
   web: 1.1.1
+  crypto: 3.0.7
 
   # Markdown rendering for AI responses
   flutter_markdown: ^0.7.4

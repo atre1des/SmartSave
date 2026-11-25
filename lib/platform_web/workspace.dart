@@ -1,8 +1,16 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:js_interop';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web/web.dart' as web;
 
 import '../l10n/app_locale.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -10,20 +18,26 @@ import '../shared/appearance.dart';
 import '../shared/glass.dart';
 import '../shared/theme.dart';
 import '../shared/widgets.dart';
+import '../ai/models.dart';
+import '../ai/openrouter_provider.dart';
+import 'cloud_repository.dart';
 import 'review_data.dart';
 
-const _reviewEnabled = bool.fromEnvironment('SMARTSAVE_WEB_REVIEW');
+part 'live_session.dart';
+part 'live_workspace.dart';
+part 'live_chat.dart';
+
 const _sidebarWidth = 224.0;
 const _desktopBreakpoint = 1024.0;
 const _columnsBreakpoint = 720.0;
 
-Future<bool> runBrowserWorkspace() async {
+Future<bool> runBrowserWorkspace({bool review = false}) async {
   SemanticsBinding.instance.ensureSemantics();
   final preferences = await SharedPreferences.getInstance();
   runApp(
     AppearanceScope(
       controller: AppearanceController(preferences),
-      child: const _BrowserApp(),
+      child: _BrowserApp(review: review),
     ),
   );
   return true;
@@ -44,7 +58,8 @@ String _reviewLabel(BuildContext context) => _copy(
 );
 
 class _BrowserApp extends StatefulWidget {
-  const _BrowserApp();
+  const _BrowserApp({required this.review});
+  final bool review;
 
   @override
   State<_BrowserApp> createState() => _BrowserAppState();
@@ -64,11 +79,11 @@ class _BrowserAppState extends State<_BrowserApp> {
     supportedLocales: AppLocalizations.supportedLocales,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     localeResolutionCallback: AppLocaleController.resolve,
-    home: _reviewEnabled
+    home: widget.review
         ? _ReviewWorkspace(
             onLocale: (locale) => setState(() => _locale = locale),
           )
-        : const _UnavailableWorkspace(),
+        : const _LiveSession(),
   );
 }
 
@@ -92,7 +107,7 @@ class _UnavailableWorkspace extends StatelessWidget {
                 Text(
                   _copy(
                     context,
-                    'The browser workspace is under review. Account sign-in and financial records are unavailable here.',
+                    'Browser sign-in is unavailable. Check the Firebase web configuration and connection.',
                     'Браузердегі жұмыс кеңістігі тексеріліп жатыр. Мұнда есептік жазбаға кіру және қаржылық деректер қолжетімсіз.',
                     'Веб-версия проходит проверку. Вход в аккаунт и финансовые данные здесь недоступны.',
                   ),
@@ -108,8 +123,20 @@ class _UnavailableWorkspace extends StatelessWidget {
 }
 
 class _ReviewWorkspace extends StatefulWidget {
-  const _ReviewWorkspace({required this.onLocale});
+  const _ReviewWorkspace({
+    required this.onLocale,
+    this.data,
+    this.repository,
+    this.stale = false,
+    this.loading = false,
+    this.refresh,
+  });
   final ValueChanged<Locale> onLocale;
+  final WebSnapshot? data;
+  final WebFinanceRepository? repository;
+  final bool stale;
+  final bool loading;
+  final Future<void> Function()? refresh;
 
   @override
   State<_ReviewWorkspace> createState() => _ReviewWorkspaceState();
@@ -126,6 +153,9 @@ class _ReviewWorkspaceState extends State<_ReviewWorkspace> {
 
   @override
   Widget build(BuildContext context) {
+    final live = widget.data;
+    final repository = widget.repository;
+    final data = live ?? _data;
     final labels = [
       context.l10n.home,
       context.l10n.deposits,
@@ -144,7 +174,13 @@ class _ReviewWorkspaceState extends State<_ReviewWorkspace> {
       builder: (context, viewport) {
         final desktop = viewport.maxWidth >= _desktopBreakpoint;
         final pages = [
-          _Home(data: _data, onNavigate: _select),
+          _Home(
+            data: data,
+            onNavigate: _select,
+            actions: live == null || repository == null || widget.stale
+                ? null
+                : _financeActions(context, repository, live, widget.refresh!),
+          ),
           _SectionPage(
             title: context.l10n.deposits,
             child: _Deferred(
@@ -152,11 +188,24 @@ class _ReviewWorkspaceState extends State<_ReviewWorkspace> {
               description: context.l10n.sampleDepositDisclaimer,
             ),
           ),
-          const _Chat(),
-          _Investment(data: _data, onAssistant: () => _select(2)),
+          _Chat(repository: repository),
+          live == null
+              ? _Investment(data: data, onAssistant: () => _select(2))
+              : _liveInvestment(context, live, () => _select(2)),
           _SectionPage(
             title: context.l10n.myAccount,
-            child: _Preferences(onLocale: widget.onLocale),
+            child: _Preferences(
+              onLocale: widget.onLocale,
+              account: repository == null
+                  ? null
+                  : _accountActions(
+                      context,
+                      repository,
+                      live!,
+                      widget.refresh!,
+                      widget.stale,
+                    ),
+            ),
           ),
         ];
         final requestedPage = IndexedStack(
@@ -168,7 +217,16 @@ class _ReviewWorkspaceState extends State<_ReviewWorkspace> {
         );
         final body = Column(
           children: [
-            _WorkspaceBar(compact: !desktop),
+            _WorkspaceBar(
+              compact: !desktop,
+              status: repository == null
+                  ? null
+                  : widget.stale
+                  ? _webUnavailable(context)
+                  : repository.auth.currentUser?.email ??
+                        context.l10n.myAccount,
+            ),
+            if (widget.loading) const LinearProgressIndicator(minHeight: 2),
             Expanded(child: requestedPage),
           ],
         );
@@ -285,8 +343,9 @@ class _Sidebar extends StatelessWidget {
 }
 
 class _WorkspaceBar extends StatelessWidget {
-  const _WorkspaceBar({required this.compact});
+  const _WorkspaceBar({required this.compact, this.status});
   final bool compact;
+  final String? status;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -308,7 +367,7 @@ class _WorkspaceBar extends StatelessWidget {
                 ? AlignmentDirectional.centerEnd
                 : AlignmentDirectional.centerStart,
             child: Text(
-              _reviewLabel(context),
+              status ?? _reviewLabel(context),
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: compact ? TextAlign.end : TextAlign.start,
             ),
@@ -435,134 +494,155 @@ class _Heading extends StatelessWidget {
 }
 
 class _Home extends StatelessWidget {
-  const _Home({required this.data, required this.onNavigate});
+  const _Home({required this.data, required this.onNavigate, this.actions});
+  final Widget? actions;
   final WorkspaceData data;
   final ValueChanged<int> onNavigate;
 
   @override
   Widget build(BuildContext context) => _SectionPage(
     title: context.l10n.yourFinances,
-    child: _Columns(
-      primary: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 28),
-            child: FinancialFigure(
-              context.formatTenge(data.balance),
-              label: context.l10n.totalBalance,
-              fontSize: 58,
-            ),
-          ),
-          _Heading(context.l10n.recent),
-          const SizedBox(height: 12),
-          RecordGroup(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Column(
-              children: [
-                for (final (index, transaction)
-                    in data.transactions.indexed) ...[
-                  if (index > 0) const Divider(height: 1),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      foregroundColor: context.colors.action,
-                      backgroundColor: context.colors.action.withValues(
-                        alpha: .10,
-                      ),
-                      child: Icon(
-                        transaction.amount >= 0
-                            ? Icons.south_west
-                            : Icons.north_east,
-                        size: 17,
-                      ),
-                    ),
-                    title: Text(transaction.merchant),
-                    subtitle: Text(
-                      context.transactionCategory(transaction.category),
-                    ),
-                    trailing: Text(
-                      context.formatSignedTenge(
-                        transaction.amount.abs(),
-                        income: transaction.amount >= 0,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 22),
-          OutlinedButton.icon(
-            onPressed: () => onNavigate(2),
-            icon: const Icon(Icons.auto_awesome, size: 18),
-            label: Text(context.l10n.askSmartSaveShort),
-          ),
-        ],
-      ),
-      secondary: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Heading(context.l10n.spentMonth),
-          const SizedBox(height: 10),
-          RecordGroup(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FinancialFigure(context.formatTenge(data.monthlySpending)),
-                const SizedBox(height: 12),
-                ProgressTrack(
-                  value: data.monthlySpending / data.budget,
-                  height: 6,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Columns(
+          primary: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 28),
+                child: FinancialFigure(
+                  context.formatTenge(data.balance).replaceFirst('−', '-'),
+                  label: data is WebSnapshot
+                      ? _copy(
+                          context,
+                          'Net recorded balance',
+                          'Жазбалар бойынша таза қалдық',
+                          'Баланс по записям',
+                        )
+                      : context.l10n.totalBalance,
+                  fontSize: 58,
                 ),
-                const SizedBox(height: 9),
-                Text(
-                  context.l10n.budgetSpent(
-                    context.formatTenge(data.monthlySpending),
-                    context.formatTenge(data.budget),
-                  ),
+              ),
+              _Heading(context.l10n.recent),
+              const SizedBox(height: 12),
+              RecordGroup(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
                 ),
-              ],
-            ),
+                child: Column(
+                  children: [
+                    for (final (index, transaction)
+                        in data.transactions.indexed) ...[
+                      if (index > 0) const Divider(height: 1),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          foregroundColor: context.colors.action,
+                          backgroundColor: context.colors.action.withValues(
+                            alpha: .10,
+                          ),
+                          child: Icon(
+                            transaction.amount >= 0
+                                ? Icons.south_west
+                                : Icons.north_east,
+                            size: 17,
+                          ),
+                        ),
+                        title: Text(transaction.merchant),
+                        subtitle: Text(
+                          context.transactionCategory(transaction.category),
+                        ),
+                        trailing: Text(
+                          context
+                              .formatSignedTenge(
+                                transaction.amount.abs(),
+                                income: transaction.amount >= 0,
+                              )
+                              .replaceFirst('−', '-'),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+              OutlinedButton.icon(
+                onPressed: () => onNavigate(2),
+                icon: const Icon(Icons.auto_awesome, size: 18),
+                label: Text(context.l10n.askSmartSaveShort),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          _Heading(context.l10n.goalProgress),
-          const SizedBox(height: 10),
-          RecordGroup(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final (index, goal) in data.goals.indexed) ...[
-                  if (index > 0)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Divider(height: 1),
+          secondary: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Heading(context.l10n.spentMonth),
+              const SizedBox(height: 10),
+              RecordGroup(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FinancialFigure(context.formatTenge(data.monthlySpending)),
+                    const SizedBox(height: 12),
+                    ProgressTrack(
+                      value: data.budget == 0
+                          ? 0
+                          : data.monthlySpending / data.budget,
+                      height: 6,
                     ),
-                  Text(
-                    goal.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    context.l10n.amountOf(
-                      context.formatTenge(goal.saved),
-                      context.formatTenge(goal.target),
+                    const SizedBox(height: 9),
+                    Text(
+                      context.l10n.budgetSpent(
+                        context.formatTenge(data.monthlySpending),
+                        context.formatTenge(data.budget),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  ProgressTrack(value: goal.saved / goal.target, height: 5),
-                ],
-              ],
-            ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              _Heading(context.l10n.goalProgress),
+              const SizedBox(height: 10),
+              RecordGroup(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final (index, goal) in data.goals.indexed) ...[
+                      if (index > 0)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Divider(height: 1),
+                        ),
+                      Text(
+                        goal.name,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        context.l10n.amountOf(
+                          context.formatTenge(goal.saved),
+                          context.formatTenge(goal.target),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ProgressTrack(value: goal.saved / goal.target, height: 5),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextButton.icon(
+                onPressed: () => onNavigate(3),
+                icon: const Icon(Icons.arrow_outward, size: 16),
+                label: Text(context.l10n.investmentIntelligence),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
-          TextButton.icon(
-            onPressed: () => onNavigate(3),
-            icon: const Icon(Icons.arrow_outward, size: 16),
-            label: Text(context.l10n.investmentIntelligence),
-          ),
-        ],
-      ),
+        ),
+        if (actions != null) ...[const SizedBox(height: 30), actions!],
+      ],
     ),
   );
 }
@@ -706,7 +786,7 @@ class _MarketBar extends StatelessWidget {
         SizedBox(
           width: 64,
           child: Text(
-            '${change >= 0 ? '+' : '−'}${change.abs()}%',
+            '${change >= 0 ? '+' : '-'}${change.abs()}%',
             textAlign: TextAlign.end,
           ),
         ),
@@ -743,7 +823,8 @@ class _Deferred extends StatelessWidget {
 }
 
 class _Preferences extends StatelessWidget {
-  const _Preferences({required this.onLocale});
+  const _Preferences({required this.onLocale, this.account});
+  final Widget? account;
   final ValueChanged<Locale> onLocale;
 
   @override
@@ -769,321 +850,11 @@ class _Preferences extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 26),
-      _Deferred(
-        heading: context.l10n.privacyData,
-        description: _reviewLabel(context),
-      ),
+      account ??
+          _Deferred(
+            heading: context.l10n.privacyData,
+            description: _reviewLabel(context),
+          ),
     ],
-  );
-}
-
-class _Chat extends StatefulWidget {
-  const _Chat();
-
-  @override
-  State<_Chat> createState() => _ChatState();
-}
-
-class _ChatState extends State<_Chat> {
-  final _input = TextEditingController();
-  final _scroll = ScrollController();
-  final _drafts = <int, List<String>>{};
-  int _thread = 0;
-  bool _beginner = true;
-
-  @override
-  void dispose() {
-    _input.dispose();
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  void _saveDraft() {
-    final text = _input.text.trim();
-    if (text.isEmpty) return;
-    setState(() => (_drafts[_thread] ??= []).add(text));
-    _input.clear();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
-    });
-  }
-
-  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
-    final keyboard = HardwareKeyboard.instance;
-    if (event is! KeyDownEvent ||
-        !{
-          LogicalKeyboardKey.enter,
-          LogicalKeyboardKey.numpadEnter,
-        }.contains(event.logicalKey) ||
-        keyboard.isShiftPressed ||
-        keyboard.isAltPressed ||
-        keyboard.isControlPressed ||
-        keyboard.isMetaPressed ||
-        (_input.value.isComposingRangeValid &&
-            !_input.value.composing.isCollapsed)) {
-      return KeyEventResult.ignored;
-    }
-    _saveDraft();
-    return KeyEventResult.handled;
-  }
-
-  void _selectThread(int thread) {
-    setState(() {
-      _thread = thread;
-      _input.clear();
-      if (_scroll.hasClients) _scroll.jumpTo(0);
-    });
-  }
-
-  List<String> _subjects(BuildContext context) => [
-    _copy(context, 'Emergency fund', 'Төтенше жағдай қоры', 'Резервный фонд'),
-    _copy(context, 'Monthly spending', 'Айлық шығындар', 'Ежемесячные расходы'),
-  ];
-
-  Widget _history(BuildContext context, ValueChanged<int> onSelect) => ListView(
-    padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
-    children: [
-      _Heading(context.l10n.conversationHistory),
-      const SizedBox(height: 16),
-      for (final (index, label) in _subjects(context).indexed)
-        TextButton.icon(
-          onPressed: () => onSelect(index),
-          icon: Icon(
-            index == _thread ? Icons.chat_bubble : Icons.chat_bubble_outline,
-            size: 17,
-          ),
-          label: Text(label),
-          style: TextButton.styleFrom(
-            alignment: AlignmentDirectional.centerStart,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            backgroundColor: index == _thread
-                ? context.colors.action.withValues(alpha: .10)
-                : null,
-          ),
-        ),
-    ],
-  );
-
-  Future<void> _openHistory(BuildContext context) => showModalBottomSheet<void>(
-    context: context,
-    useSafeArea: true,
-    showDragHandle: true,
-    builder: (sheetContext) => _history(sheetContext, (index) {
-      Navigator.of(sheetContext).pop();
-      _selectThread(index);
-    }),
-  );
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final wide = constraints.maxWidth >= 790;
-      final title = _subjects(context)[_thread];
-      final response = _thread == 0
-          ? _copy(
-              context,
-              '### Your emergency fund is 70% funded\n\nYou’ve set aside **₸420,000** toward your **₸600,000** goal. With six months remaining, the monthly estimate is **₸30,000**.',
-              '### Қордың 70%-ы жиналды\n\n**₸600 000** мақсатқа **₸420 000** жиналды. Алты ай қалса, ай сайын **₸30 000** жинау қажет.',
-              '### Резервный фонд пополнен на 70%\n\nВы отложили **₸420 000** из **₸600 000**. Если осталось шесть месяцев, ежемесячная сумма составит **₸30 000**.',
-            )
-          : _copy(
-              context,
-              '### Spending is within the example budget\n\nRecorded expenses are **₸74,800** against a fictional budget of **₸95,000**.',
-              '### Шығындар үлгі бюджеттен аспады\n\nТіркелген шығын **₸74 800**, үлгі бюджет **₸95 000**.',
-              '### Расходы в пределах примерного бюджета\n\nУчтённые расходы — **₸74 800** при условном бюджете **₸95 000**.',
-            );
-      return Row(
-        children: [
-          if (wide)
-            SizedBox(width: 218, child: _history(context, _selectThread)),
-          if (wide) const VerticalDivider(width: 1),
-          Expanded(
-            key: const ValueKey('transcript'),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: wide ? 28 : 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              context.l10n.assistant,
-                              style: glassTitle(
-                                context,
-                              ).copyWith(fontSize: wide ? 38 : 27),
-                              maxLines: 2,
-                            ),
-                          ),
-                          if (!wide)
-                            IconButton(
-                              tooltip: context.l10n.conversationHistory,
-                              onPressed: () => _openHistory(context),
-                              icon: const Icon(Icons.history),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _copy(
-                          context,
-                          'Preview · AI connection disabled',
-                          'Алдын ала қарау · AI байланысы өшірулі',
-                          'Предпросмотр · ИИ отключён',
-                        ),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 12),
-                      const Divider(height: 1),
-                      Expanded(
-                        child: ListView(
-                          controller: _scroll,
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          children: [
-                            _ChatBubble(title),
-                            const SizedBox(height: 24),
-                            _Heading(context.l10n.assistant),
-                            const SizedBox(height: 7),
-                            SelectionArea(
-                              child: MarkdownBody(
-                                data: response,
-                                styleSheet:
-                                    MarkdownStyleSheet.fromTheme(
-                                      Theme.of(context),
-                                    ).copyWith(
-                                      p: Theme.of(context).textTheme.bodyLarge
-                                          ?.copyWith(
-                                            fontSize: 16,
-                                            height: 1.55,
-                                          ),
-                                      h3: Theme.of(context).textTheme.titleLarge
-                                          ?.copyWith(
-                                            fontSize: 21,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                              ),
-                            ),
-                            for (final draft
-                                in _drafts[_thread] ?? const <String>[]) ...[
-                              const SizedBox(height: 18),
-                              _ChatBubble(draft),
-                            ],
-                          ],
-                        ),
-                      ),
-                      if (constraints.maxHeight >= 465)
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 3,
-                          children: [
-                            for (final subject in _subjects(context))
-                              ActionChip(
-                                label: Text(subject),
-                                onPressed: () => _input.text = subject,
-                              ),
-                          ],
-                        ),
-                      const SizedBox(height: 7),
-                      GlassSurface(
-                        radius: 28,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            IconButton(
-                              tooltip: _beginner
-                                  ? context.l10n.beginnerMode
-                                  : context.l10n.experiencedMode,
-                              onPressed: () =>
-                                  setState(() => _beginner = !_beginner),
-                              icon: Icon(
-                                _beginner
-                                    ? Icons.school_outlined
-                                    : Icons.analytics_outlined,
-                              ),
-                            ),
-                            Expanded(
-                              child: Focus(
-                                canRequestFocus: false,
-                                onKeyEvent: _handleKey,
-                                child: TextField(
-                                  controller: _input,
-                                  maxLines: 4,
-                                  minLines: 1,
-                                  textInputAction: TextInputAction.newline,
-                                  decoration: InputDecoration(
-                                    hintText: context.l10n.askSmartSave,
-                                    filled: false,
-                                    border: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            IconButton.filled(
-                              tooltip: _copy(
-                                context,
-                                'Add preview draft',
-                                'Сынақ нобайын қосу',
-                                'Добавить черновик',
-                              ),
-                              onPressed: _saveDraft,
-                              icon: const Icon(Icons.arrow_upward),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          _copy(
-                            context,
-                            'Drafts stay in this tab and aren’t sent.',
-                            'Нобайлар осы қойындыда қалады және жіберілмейді.',
-                            'Черновики остаются в этой вкладке и не отправляются.',
-                          ),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-class _ChatBubble extends StatelessWidget {
-  const _ChatBubble(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Align(
-    alignment: AlignmentDirectional.centerEnd,
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          context.colors.action.withValues(alpha: .13),
-          context.colors.canvas,
-        ),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: SelectionArea(child: Text(text)),
-      ),
-    ),
   );
 }

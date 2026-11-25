@@ -1,5 +1,7 @@
 # Stage 10 Phase A · SmartSave browser workspace
 
+For the current authenticated build and separate review entry point, see [Phase B verification](../PHASE_B_VERIFICATION.md). The material below records Phase A.
+
 Branch `experimental/stage-10-flutter-web`, based on `ac70823071b27b77e4c229dbda2df6fef3c2259b`.
 
 This is the visual and architectural review of the Flutter browser workspace. The desktop rail replaces the bottom dock at 1024 logical pixels. Home pairs balance and grouped records with spending, budget and goals. Invest gives signed illustrative changes a shared scale and separate research space. Chat provides a history column or a compact history sheet, selectable Markdown and a floating multiline composer.

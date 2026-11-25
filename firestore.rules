@@ -97,6 +97,32 @@ service cloud.firestore {
           request.resource.data.value is string;
       }
 
+      match /webOperations/{id} {
+        allow read: if owns(uid);
+        allow create: if owns(uid) &&
+          request.resource.data.keys().hasOnly(['target', 'fingerprint']) &&
+          request.resource.data.target is string &&
+          request.resource.data.target.size() <= 500 &&
+          request.resource.data.fingerprint is string &&
+          request.resource.data.fingerprint.matches("^[0-9a-f]{64}$");
+      }
+
+      match /webPreferences/{id} {
+        allow read: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          syncFields(request.resource.data) && nextRevision() &&
+          request.resource.data.locale in ['en', 'kk', 'ru'];
+      }
+
+      match /webConversations/{id} {
+        allow read: if owns(uid);
+        allow create, update: if owns(uid) && validOwner(uid) &&
+          syncFields(request.resource.data) && nextRevision() && preservesDeletion() &&
+          request.resource.data.title is string && request.resource.data.title.size() <= 120 &&
+          request.resource.data.transcript is string &&
+          request.resource.data.transcript.size() <= 100000;
+      }
+
       match /syncMetadata/metadata {
         allow read: if owns(uid);
         allow create, update: if owns(uid) && validOwner(uid) &&

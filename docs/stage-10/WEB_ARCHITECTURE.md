@@ -1,5 +1,7 @@
 # Stage 10 · Web architecture and release plan
 
+For the current authenticated build and separate review entry point, see [Phase B verification](PHASE_B_VERIFICATION.md). The material below records Phase A.
+
 ## Review boundary
 
 The native startup and storage path remains the mobile path. The web entry uses a separate Flutter shell selected by a conditional import, so opening the browser does not invoke native SQLite or the account sync scope. The default build renders an explicit unavailable state. Adding `--dart-define=SMARTSAVE_WEB_REVIEW=true` enables the fictional workspace. There is no runtime switch from the authenticated application into the fixture.

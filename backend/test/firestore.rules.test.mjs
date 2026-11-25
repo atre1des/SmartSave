@@ -151,3 +151,32 @@ test('goal deletion leaves a tombstone and the linked contribution readable', as
   await assertFails(updateDoc(goal, { isDeleted: false, version: 3 }));
   assert.equal((await getDoc(contribution)).exists(), true);
 });
+
+test('web operation markers are immutable and private to the account', async () => {
+  const path = 'users/web-owner/webOperations/web-fixture';
+  const marker = { target: 'transactions/web-fixture', fingerprint: 'a'.repeat(64) };
+  await assertSucceeds(setDoc(record('web-owner', path), marker));
+  await assertSucceeds(getDoc(record('web-owner', path)));
+  await assertFails(setDoc(record('web-owner', path), { ...marker, target: 'goals/changed' }));
+  await assertFails(deleteDoc(record('web-owner', path)));
+  await assertFails(getDoc(record('bob', path)));
+  await assertFails(getDoc(record(null, path)));
+  await assertFails(setDoc(record('web-owner', 'users/web-owner/webOperations/invalid'), {
+    ...marker, fingerprint: 'unhashed payload',
+  }));
+});
+
+test('web conversations and locale enforce account isolation and revisions', async () => {
+  const transcript = { ...sync, title: 'Disposable thread', transcript: '[]' };
+  const thread = 'users/web-owner/webConversations/web-fixture';
+  const locale = 'users/web-owner/webPreferences/locale';
+  await assertSucceeds(setDoc(record('web-owner', thread), transcript));
+  await assertFails(getDoc(record('bob', thread)));
+  await assertFails(setDoc(record('bob', thread), { ...transcript, version: 2 }));
+  await assertFails(updateDoc(record('web-owner', thread), { title: 'stale' }));
+  await assertSucceeds(updateDoc(record('web-owner', thread), { title: 'current', version: 2 }));
+  await assertFails(updateDoc(record('web-owner', thread), { transcript: 'x'.repeat(100001), version: 3 }));
+  await assertFails(setDoc(record('web-owner', locale), { ...sync, locale: 'de' }));
+  await assertSucceeds(setDoc(record('web-owner', locale), { ...sync, locale: 'kk' }));
+  await assertFails(getDoc(record('bob', locale)));
+});
