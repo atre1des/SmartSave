@@ -298,10 +298,14 @@ class _ChatState extends State<_Chat> {
       _Heading(context.l10n.conversationHistory),
       const SizedBox(height: 16),
       if (_live)
-        TextButton.icon(
-          onPressed: _busy || _pendingSave != null ? null : () => onSelect(-1),
-          icon: const Icon(Icons.add),
-          label: Text(context.l10n.newChat),
+        _WebAction(
+          child: TextButton.icon(
+            onPressed: _busy || _pendingSave != null
+                ? null
+                : () => onSelect(-1),
+            icon: const Icon(Icons.add),
+            label: Text(context.l10n.newChat),
+          ),
         ),
       for (final (index, label)
           in (_live
@@ -556,14 +560,18 @@ class _ChatState extends State<_Chat> {
                       if (_error != null)
                         Semantics(liveRegion: true, child: Text(_error!)),
                       if (_pendingSave != null)
-                        TextButton(
-                          onPressed: _busy ? null : _retrySave,
-                          child: Text(context.l10n.retry),
+                        _WebAction(
+                          child: TextButton(
+                            onPressed: _busy ? null : _retrySave,
+                            child: Text(context.l10n.retry),
+                          ),
                         ),
                       if (_live && !_ready && _error != null)
-                        TextButton(
-                          onPressed: _loadHistory,
-                          child: Text(context.l10n.retry),
+                        _WebAction(
+                          child: TextButton(
+                            onPressed: _loadHistory,
+                            child: Text(context.l10n.retry),
+                          ),
                         ),
                       if (!_live)
                         Padding(

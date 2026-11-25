@@ -153,12 +153,13 @@ Widget _financeActions(
 ) => Column(
   crossAxisAlignment: CrossAxisAlignment.stretch,
   children: [
-    _Heading(context.l10n.transactions),
-    const SizedBox(height: 8),
-    OutlinedButton(
-      onPressed: () =>
-          _editRecord(context, repository, 'transactions', null, refresh),
-      child: Text(context.l10n.addTransaction),
+    _WebSectionAction(
+      title: context.l10n.transactions,
+      action: FilledButton(
+        onPressed: () =>
+            _editRecord(context, repository, 'transactions', null, refresh),
+        child: Text(context.l10n.addTransaction),
+      ),
     ),
     for (final row in data.transactionRows)
       ListTile(
@@ -178,11 +179,13 @@ Widget _financeActions(
             _editRecord(context, repository, 'transactions', row, refresh),
       ),
     const SizedBox(height: 20),
-    _Heading(context.l10n.goals),
-    const SizedBox(height: 8),
-    OutlinedButton(
-      onPressed: () => _editRecord(context, repository, 'goals', null, refresh),
-      child: Text(context.l10n.newGoal),
+    _WebSectionAction(
+      title: context.l10n.goals,
+      action: FilledButton(
+        onPressed: () =>
+            _editRecord(context, repository, 'goals', null, refresh),
+        child: Text(context.l10n.newGoal),
+      ),
     ),
     for (final row in data.goalRows)
       ListTile(
@@ -195,18 +198,19 @@ Widget _financeActions(
         ),
       ),
     const SizedBox(height: 20),
-    _Heading(context.l10n.editMonthlyBudget),
-    const SizedBox(height: 8),
-    OutlinedButton(
-      onPressed: () => _editRecord(
-        context,
-        repository,
-        'budgets',
-        null,
-        refresh,
-        budgets: data.budgetRows,
+    _WebSectionAction(
+      title: context.l10n.editMonthlyBudget,
+      action: OutlinedButton(
+        onPressed: () => _editRecord(
+          context,
+          repository,
+          'budgets',
+          null,
+          refresh,
+          budgets: data.budgetRows,
+        ),
+        child: Text(context.l10n.editBudget),
       ),
-      child: Text(context.l10n.editBudget),
     ),
     for (final row in data.budgetRows)
       ListTile(
@@ -442,21 +446,25 @@ class _CloudEditorState extends State<_CloudEditor> {
                   : (value) => setState(() => _income = value),
             ),
           if (isGoal || isTransaction)
-            TextButton(
-              onPressed: _saving
-                  ? null
-                  : () async {
-                      final date = await showDatePicker(
-                        useRootNavigator: false,
-                        context: context,
-                        initialDate: _date,
-                        firstDate: DateTime(1900),
-                        lastDate: DateTime(2200),
-                      );
-                      if (date != null && mounted) setState(() => _date = date);
-                    },
-              child: Text(
-                '${isGoal ? strings.deadline : strings.date}: ${context.formatShortDate(_date)}',
+            _WebAction(
+              child: TextButton(
+                onPressed: _saving
+                    ? null
+                    : () async {
+                        final date = await showDatePicker(
+                          useRootNavigator: false,
+                          context: context,
+                          initialDate: _date,
+                          firstDate: DateTime(1900),
+                          lastDate: DateTime(2200),
+                        );
+                        if (date != null && mounted) {
+                          setState(() => _date = date);
+                        }
+                      },
+                child: Text(
+                  '${isGoal ? strings.deadline : strings.date}: ${context.formatShortDate(_date)}',
+                ),
               ),
             ),
           if (_error != null) Semantics(liveRegion: true, child: Text(_error!)),
@@ -567,9 +575,11 @@ Widget _liveInvestment(
           heading: context.l10n.explore,
           description: context.l10n.portfolioUnknownNotice,
         ),
-        TextButton(
-          onPressed: onAssistant,
-          child: Text(context.l10n.askSmartSaveShort),
+        _WebAction(
+          child: TextButton(
+            onPressed: onAssistant,
+            child: Text(context.l10n.askSmartSaveShort),
+          ),
         ),
       ],
     ),
@@ -588,86 +598,100 @@ Widget _accountActions(
     _Heading(context.l10n.privacyData),
     Text(repository.auth.currentUser?.email ?? ''),
     const SizedBox(height: 10),
-    OutlinedButton(onPressed: refresh, child: Text(context.l10n.syncRecords)),
-    OutlinedButton(
-      onPressed: stale
-          ? null
-          : () async {
-              try {
-                final snapshot = await repository.snapshot();
-                if (!context.mounted || !repository.active) return;
-                final export =
-                    JsonEncoder.withIndent(
-                      '  ',
-                      (value) => value is Timestamp
-                          ? value.toDate().toIso8601String()
-                          : value.toString(),
-                    ).convert({
-                      'transactions': snapshot.transactionRows
-                          .map((r) => r.data)
-                          .toList(),
-                      'goals': snapshot.goalRows.map((r) => r.data).toList(),
-                      'budgets': snapshot.budgetRows
-                          .map((r) => r.data)
-                          .toList(),
-                      'investmentTheses': snapshot.thesisRows
-                          .map((r) => r.data)
-                          .toList(),
-                      'portfolioHoldings': snapshot.holdingRows
-                          .map((r) => r.data)
-                          .toList(),
-                    });
-                await showEditorSheet<void>(
-                  context: context,
-                  builder: (context) => EditorSheet(
-                    title: Text(context.l10n.localDataExport),
-                    content: SizedBox(
-                      height: 260,
-                      child: SingleChildScrollView(
-                        child: SelectableText(export),
+    _WebActionGroup(
+      children: [
+        OutlinedButton(
+          onPressed: refresh,
+          child: Text(context.l10n.syncRecords),
+        ),
+        OutlinedButton(
+          onPressed: stale
+              ? null
+              : () async {
+                  try {
+                    final snapshot = await repository.snapshot();
+                    if (!context.mounted || !repository.active) return;
+                    final export =
+                        JsonEncoder.withIndent(
+                          '  ',
+                          (value) => value is Timestamp
+                              ? value.toDate().toIso8601String()
+                              : value.toString(),
+                        ).convert({
+                          'transactions': snapshot.transactionRows
+                              .map((r) => r.data)
+                              .toList(),
+                          'goals': snapshot.goalRows
+                              .map((r) => r.data)
+                              .toList(),
+                          'budgets': snapshot.budgetRows
+                              .map((r) => r.data)
+                              .toList(),
+                          'investmentTheses': snapshot.thesisRows
+                              .map((r) => r.data)
+                              .toList(),
+                          'portfolioHoldings': snapshot.holdingRows
+                              .map((r) => r.data)
+                              .toList(),
+                        });
+                    await showEditorSheet<void>(
+                      context: context,
+                      builder: (context) => EditorSheet(
+                        title: Text(context.l10n.localDataExport),
+                        content: SizedBox(
+                          height: 260,
+                          child: SingleChildScrollView(
+                            child: SelectableText(export),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () async {
+                              if (!repository.active) return;
+                              await Clipboard.setData(
+                                ClipboardData(text: export),
+                              );
+                              if (context.mounted && repository.active) {
+                                Navigator.pop(context);
+                              }
+                            },
+                            child: Text(context.l10n.copyJson),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(context.l10n.close),
+                          ),
+                        ],
                       ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () async {
-                          if (!repository.active) return;
-                          await Clipboard.setData(ClipboardData(text: export));
-                          if (context.mounted && repository.active) {
-                            Navigator.pop(context);
-                          }
-                        },
-                        child: Text(context.l10n.copyJson),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(context.l10n.close),
-                      ),
-                    ],
-                  ),
-                );
-              } catch (error) {
-                if (context.mounted && repository.active) {
-                  showMessage(context, _writeNotice(context, error));
-                }
-              }
-            },
-      child: Text(context.l10n.exportData),
+                    );
+                  } catch (error) {
+                    if (context.mounted && repository.active) {
+                      showMessage(context, _writeNotice(context, error));
+                    }
+                  }
+                },
+          child: Text(context.l10n.exportData),
+        ),
+      ],
     ),
+    const SizedBox(height: 12),
     _Deferred(
       heading: context.l10n.deleteAccount,
       description: context.l10n.privacyDisclosure,
     ),
-    TextButton(
-      onPressed: () async {
-        try {
-          await repository.auth.signOut();
-        } catch (error) {
-          if (context.mounted) {
-            showMessage(context, _writeNotice(context, error));
+    _WebAction(
+      child: TextButton(
+        onPressed: () async {
+          try {
+            await repository.auth.signOut();
+          } catch (error) {
+            if (context.mounted) {
+              showMessage(context, _writeNotice(context, error));
+            }
           }
-        }
-      },
-      child: Text(context.l10n.signOut),
+        },
+        child: Text(context.l10n.signOut),
+      ),
     ),
   ],
 );

@@ -203,35 +203,41 @@ class _WebSignInState extends State<_WebSignIn> {
                     _Heading(strings.verifyEmail),
                     Text(strings.emailVerificationNotice),
                     const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _run(() async {
-                              await user.reload();
-                              return mounted &&
-                                      auth.currentUser?.emailVerified != true
-                                  ? strings.emailUnverified
-                                  : null;
-                            }),
-                      child: Text(strings.verifiedEmail),
+                    _WebAction(
+                      child: FilledButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _run(() async {
+                                await user.reload();
+                                return mounted &&
+                                        auth.currentUser?.emailVerified != true
+                                    ? strings.emailUnverified
+                                    : null;
+                              }),
+                        child: Text(strings.verifiedEmail),
+                      ),
                     ),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _run(() async {
-                              await user.sendEmailVerification();
-                              return strings.verificationResent;
-                            }),
-                      child: Text(strings.resendEmail),
-                    ),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _run(() async {
-                              await auth.signOut();
-                              return null;
-                            }),
-                      child: Text(strings.signOut),
+                    _WebActionGroup(
+                      children: [
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => _run(() async {
+                                  await user.sendEmailVerification();
+                                  return strings.verificationResent;
+                                }),
+                          child: Text(strings.resendEmail),
+                        ),
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => _run(() async {
+                                  await auth.signOut();
+                                  return null;
+                                }),
+                          child: Text(strings.signOut),
+                        ),
+                      ],
                     ),
                   ] else ...[
                     _Heading(_register ? strings.signUp : strings.signIn),
@@ -248,50 +254,60 @@ class _WebSignInState extends State<_WebSignIn> {
                       decoration: InputDecoration(labelText: strings.password),
                     ),
                     const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _run(() async {
-                              if (_register) {
-                                final result = await auth
-                                    .createUserWithEmailAndPassword(
-                                      email: _email.text.trim(),
-                                      password: _password.text,
-                                    );
-                                await result.user?.sendEmailVerification();
-                              } else {
-                                await auth.signInWithEmailAndPassword(
-                                  email: _email.text.trim(),
-                                  password: _password.text,
-                                );
-                              }
-                              return null;
-                            }),
-                      child: Text(_register ? strings.signUp : strings.signIn),
+                    _WebAction(
+                      child: FilledButton(
+                        onPressed: _busy
+                            ? null
+                            : () => _run(() async {
+                                if (_register) {
+                                  final result = await auth
+                                      .createUserWithEmailAndPassword(
+                                        email: _email.text.trim(),
+                                        password: _password.text,
+                                      );
+                                  await result.user?.sendEmailVerification();
+                                } else {
+                                  await auth.signInWithEmailAndPassword(
+                                    email: _email.text.trim(),
+                                    password: _password.text,
+                                  );
+                                }
+                                return null;
+                              }),
+                        child: Text(
+                          _register ? strings.signUp : strings.signIn,
+                        ),
+                      ),
                     ),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => setState(() {
-                              _register = !_register;
-                              _message = null;
-                            }),
-                      child: Text(_register ? strings.signIn : strings.signUp),
-                    ),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => _run(() async {
-                              if (_email.text.trim().isEmpty) {
-                                return strings.enterEmailFirst;
-                              }
-                              await _requestPasswordReset(
-                                auth,
-                                _email.text.trim(),
-                              );
-                              return strings.passwordResetSent;
-                            }),
-                      child: Text(strings.forgotPassword),
+                    _WebActionGroup(
+                      children: [
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => setState(() {
+                                  _register = !_register;
+                                  _message = null;
+                                }),
+                          child: Text(
+                            _register ? strings.signIn : strings.signUp,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () => _run(() async {
+                                  if (_email.text.trim().isEmpty) {
+                                    return strings.enterEmailFirst;
+                                  }
+                                  await _requestPasswordReset(
+                                    auth,
+                                    _email.text.trim(),
+                                  );
+                                  return strings.passwordResetSent;
+                                }),
+                          child: Text(strings.forgotPassword),
+                        ),
+                      ],
                     ),
                   ],
                   if (_message != null)

@@ -23,6 +23,7 @@ import '../ai/openrouter_provider.dart';
 import 'cloud_repository.dart';
 import 'review_data.dart';
 
+part 'actions.dart';
 part 'live_session.dart';
 part 'live_workspace.dart';
 part 'live_chat.dart';
@@ -72,8 +73,14 @@ class _BrowserAppState extends State<_BrowserApp> {
   Widget build(BuildContext context) => MaterialApp(
     title: 'SmartSave',
     debugShowCheckedModeBanner: false,
-    theme: buildAppTheme(Brightness.light, 'Noto Sans'),
-    darkTheme: buildAppTheme(Brightness.dark, 'Noto Sans'),
+    theme: _workspaceTheme(
+      buildAppTheme(Brightness.light, 'Noto Sans'),
+      _usesDesktopActions(context),
+    ),
+    darkTheme: _workspaceTheme(
+      buildAppTheme(Brightness.dark, 'Noto Sans'),
+      _usesDesktopActions(context),
+    ),
     themeMode: AppearanceScope.of(context)?.value ?? ThemeMode.system,
     locale: _locale,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -568,10 +575,12 @@ class _Home extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 22),
-              OutlinedButton.icon(
-                onPressed: () => onNavigate(2),
-                icon: const Icon(Icons.auto_awesome, size: 18),
-                label: Text(context.l10n.askSmartSaveShort),
+              _WebAction(
+                child: OutlinedButton.icon(
+                  onPressed: () => onNavigate(2),
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: Text(context.l10n.askSmartSaveShort),
+                ),
               ),
             ],
           ),
@@ -633,10 +642,12 @@ class _Home extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              TextButton.icon(
-                onPressed: () => onNavigate(3),
-                icon: const Icon(Icons.arrow_outward, size: 16),
-                label: Text(context.l10n.investmentIntelligence),
+              _WebAction(
+                child: TextButton.icon(
+                  onPressed: () => onNavigate(3),
+                  icon: const Icon(Icons.arrow_outward, size: 16),
+                  label: Text(context.l10n.investmentIntelligence),
+                ),
               ),
             ],
           ),
@@ -728,10 +739,12 @@ class _Investment extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          OutlinedButton.icon(
-            onPressed: onAssistant,
-            icon: const Icon(Icons.auto_awesome, size: 18),
-            label: Text(context.l10n.askSmartSaveShort),
+          _WebAction(
+            child: OutlinedButton.icon(
+              onPressed: onAssistant,
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: Text(context.l10n.askSmartSaveShort),
+            ),
           ),
         ],
       ),
