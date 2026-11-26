@@ -10,6 +10,7 @@ import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
 import '../goals/goals_screen.dart';
 import '../invest/investment_intelligence_screen.dart';
+import '../profile/account_avatar.dart';
 import '../transactions/transactions_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -77,11 +78,7 @@ class DashboardScreen extends ConsumerWidget {
                         IconButton(
                           tooltip: context.l10n.openAccount,
                           onPressed: () => ref.read(selectedTabIndexProvider.notifier).state = 4,
-                          icon: const CircleAvatar(
-                            backgroundColor: AppColors.mintLight,
-                            foregroundColor: AppColors.firefly,
-                            child: Text('Y', style: TextStyle(fontWeight: FontWeight.w700)),
-                          ),
+                          icon: const AccountAvatar(diameter: 40),
                         ),
                       ],
                     ),

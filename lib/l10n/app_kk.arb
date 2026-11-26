@@ -673,5 +673,21 @@
   "goalMonth": "{number}-ай",
   "monthlyFreeCash": "Осы айдағы бос қаражат: {amount}",
   "aiConnecting": "Қосылып жатыр…",
-  "aiWakingNotice": "ЖИ проксиіне қосылып жатыр. Хостингтегі қызметтің іске қосылуына шамамен бір минут кетуі мүмкін."
+  "aiWakingNotice": "ЖИ проксиіне қосылып жатыр. Хостингтегі қызметтің іске қосылуына шамамен бір минут кетуі мүмкін.",
+  "chooseAvatar": "Аватарды таңдау",
+  "resetAvatar": "Әдепкі аватарға қайтару",
+  "defaultAvatar": "Әдепкі SmartSave аватары",
+  "avatarSaveFailed": "Аватар сақталмады. Қайта көріңіз.",
+  "avatarCredits": "Аватар авторлары",
+  "openMojiAttribution": "Жануар аватарларын OpenMoji жасаған. Лицензиясы — CC BY-SA 4.0.",
+  "avatarDog": "Ит",
+  "avatarCat": "Мысық",
+  "avatarRabbit": "Қоян",
+  "avatarBear": "Аю",
+  "avatarPanda": "Панда",
+  "avatarKoala": "Коала",
+  "avatarTiger": "Жолбарыс",
+  "avatarLion": "Арыстан",
+  "avatarPig": "Шошқа",
+  "avatarMonkey": "Маймыл"
 }

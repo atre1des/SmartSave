@@ -673,5 +673,21 @@
   "goalMonth": "Месяц {number}",
   "monthlyFreeCash": "Свободные средства в этом месяце: {amount}",
   "aiConnecting": "Подключение…",
-  "aiWakingNotice": "Подключаемся к прокси ИИ. Запуск сервиса на хостинге может занять около минуты."
+  "aiWakingNotice": "Подключаемся к прокси ИИ. Запуск сервиса на хостинге может занять около минуты.",
+  "chooseAvatar": "Выбрать аватар",
+  "resetAvatar": "Вернуть аватар по умолчанию",
+  "defaultAvatar": "Аватар SmartSave по умолчанию",
+  "avatarSaveFailed": "Не удалось сохранить аватар. Попробуйте ещё раз.",
+  "avatarCredits": "Авторы аватаров",
+  "openMojiAttribution": "Аватары животных созданы OpenMoji. Лицензия — CC BY-SA 4.0.",
+  "avatarDog": "Собака",
+  "avatarCat": "Кошка",
+  "avatarRabbit": "Кролик",
+  "avatarBear": "Медведь",
+  "avatarPanda": "Панда",
+  "avatarKoala": "Коала",
+  "avatarTiger": "Тигр",
+  "avatarLion": "Лев",
+  "avatarPig": "Свинья",
+  "avatarMonkey": "Обезьяна"
 }

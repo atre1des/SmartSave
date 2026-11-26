@@ -8,6 +8,7 @@ import '../../data/providers.dart';
 import '../../shared/theme.dart';
 import '../../shared/widgets.dart';
 import '../app/demo_flow_screens.dart';
+import 'account_avatar.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -21,11 +22,7 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const CircleAvatar(
-                  backgroundColor: AppColors.mintLight,
-                  foregroundColor: AppColors.firefly,
-                  child: Text('Y'),
-                ),
+                const AccountAvatar(editable: true),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,8 +126,8 @@ class _ProfileDetailsScreenState extends ConsumerState<ProfileDetailsScreen> {
   void dispose() { _name.dispose(); _contact.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(context.l10n.profile)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-    const Center(child: CircleAvatar(radius: 34, backgroundColor: AppColors.mintLight, child: Text('Y', style: TextStyle(fontSize: 24)))),
-    TextButton(onPressed: () => showMessage(context, context.l10n.noPhotoUpload), child: Text(context.l10n.changePhoto)),
+    const Center(child: AccountAvatar(diameter: 68, editable: true)),
+    const SizedBox(height: 12),
     TextField(controller: _name, decoration: InputDecoration(labelText: context.l10n.name)),
     const SizedBox(height: 14), TextField(controller: _contact, readOnly: true, decoration: InputDecoration(labelText: context.l10n.emailOrPhone)),
     const SizedBox(height: 14), _choice(context.l10n.country, _country, {'Kazakhstan': context.l10n.kazakhstan, 'Other': context.l10n.other}, (v) => setState(() => _country = v)),
@@ -405,6 +402,14 @@ class _HelpScreenState extends State<HelpScreen> {
       for (final faq in filtered) Card(color: Colors.white, child: ExpansionTile(title: Text(faq.$1, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), children: [Padding(padding: const EdgeInsets.all(16), child: Text(faq.$2, style: const TextStyle(fontSize: 12, color: AppColors.muted)))])),
       const SizedBox(height: 12), PrimaryAction(label: context.l10n.supportChat, onPressed: () => showMessage(context, context.l10n.noLiveSupport)),
       TextButton(onPressed: () => showMessage(context, context.l10n.privacyHelp), child: Text(context.l10n.privacyPolicy)),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.info_outline_rounded),
+        title: Text(context.l10n.avatarCredits),
+        subtitle: Text(context.l10n.openMojiAttribution),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => showLicensePage(context: context, applicationName: 'SmartSave'),
+      ),
     ])));
   }
 }

@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart'
+    show LicenseEntryWithLineBreaks, LicenseRegistry;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,6 +21,14 @@ import 'shared/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    final license = await rootBundle.loadString(
+      'assets/avatars/openmoji/LICENSE.txt',
+    );
+    yield LicenseEntryWithLineBreaks([
+      'OpenMoji · https://openmoji.org/',
+    ], license);
+  });
 
   if (!await firebaseService.initialize()) {
     runApp(const _SessionApp(_SessionProblem.authentication));

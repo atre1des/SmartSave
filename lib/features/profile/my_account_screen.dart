@@ -13,6 +13,7 @@ import '../app/demo_flow_screens.dart';
 import '../goals/goals_screen.dart';
 import '../invest/investment_intelligence_screen.dart';
 import '../invest/invest_screen.dart';
+import 'account_avatar.dart';
 import 'profile_screen.dart';
 
 class MyAccountScreen extends ConsumerWidget {
@@ -121,15 +122,7 @@ class _UserIdentitySection extends ConsumerWidget {
 
     return Row(
       children: [
-        CircleAvatar(
-          backgroundColor: AppColors.mintLight,
-          foregroundColor: AppColors.firefly,
-          radius: 28,
-          child: Text(
-            name.isNotEmpty ? name[0].toUpperCase() : 'Y',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-          ),
-        ),
+        const AccountAvatar(diameter: 56, editable: true),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
