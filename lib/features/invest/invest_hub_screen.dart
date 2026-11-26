@@ -56,36 +56,39 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 22),
-                    Row(
-                      children: [
-                        for (final (research, label) in [
-                          (false, context.l10n.stocksForYou),
-                          (true, context.l10n.explore),
-                        ])
-                          Expanded(
-                            child: Semantics(
-                              selected: _research == research,
-                              child: TextButton(
-                                onPressed: () =>
-                                    setState(() => _research = research),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: _research == research
-                                      ? context.colors.text
-                                      : context.colors.muted,
-                                  backgroundColor: _research == research
-                                      ? context.colors.action.withValues(
-                                          alpha: .12,
-                                        )
-                                      : null,
-                                  minimumSize: const Size(48, 48),
+                    RecordGroup(
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        children: [
+                          for (final (research, label) in [
+                            (false, context.l10n.stocksForYou),
+                            (true, context.l10n.explore),
+                          ])
+                            Expanded(
+                              child: Semantics(
+                                selected: _research == research,
+                                child: TextButton(
+                                  onPressed: () =>
+                                      setState(() => _research = research),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: _research == research
+                                        ? context.colors.onSelection
+                                        : context.colors.muted,
+                                    backgroundColor: _research == research
+                                        ? context.colors.selection
+                                        : null,
+                                    minimumSize: const Size(44, 44),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
-                                child: Text(label, textAlign: TextAlign.center),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const Divider(height: 1),
                     const SizedBox(height: 20),
                     if (!_research)
                       _StocksPreview(
@@ -120,23 +123,23 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                           context.l10n.macroImpactIntro,
                         ),
                       ])
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(icon, color: context.colors.action),
-                          title: Text(
-                            title,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          subtitle: Text(
-                            detail,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          trailing: Icon(
-                            Icons.chevron_right,
-                            color: context.colors.muted,
-                          ),
-                          onTap: () => _openFeature(
-                            InvestmentIntelligenceScreen(initialTab: index),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: RecordGroup(
+                            padding: EdgeInsets.zero,
+                            color: context.colors.accentSurface(
+                              index.isEven
+                                  ? context.colors.highlight
+                                  : context.colors.premium,
+                            ),
+                            child: NavigationCell(
+                              icon: icon,
+                              title: title,
+                              detail: detail,
+                              onTap: () => _openFeature(
+                                InvestmentIntelligenceScreen(initialTab: index),
+                              ),
+                            ),
                           ),
                         ),
                     const SizedBox(height: 20),
@@ -291,27 +294,34 @@ class _StocksPreview extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          context.l10n.sampleStockNotice,
-          style: Theme.of(context).textTheme.bodySmall,
+        RecordGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                context.l10n.sampleStockNotice,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                context.l10n.stockPriceChange,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              for (final stock in _stocks) ...[
+                _StockMovement(ticker: stock.$2, change: stock.$5),
+                const SizedBox(height: 8),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: 14),
-        Text(
-          context.l10n.stockPriceChange,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 12),
-        for (final stock in _stocks) ...[
-          _StockMovement(ticker: stock.$2, change: stock.$5),
-          const SizedBox(height: 8),
-        ],
         const SizedBox(height: 14),
         Align(
           alignment: AlignmentDirectional.centerStart,
-          child: TextButton.icon(
+          child: CompactAction(
             onPressed: onAssistant,
-            icon: const Icon(Icons.auto_awesome, size: 17),
-            label: Text(context.l10n.aiBeginners),
+            icon: Icons.auto_awesome,
+            label: context.l10n.aiBeginners,
           ),
         ),
         const SizedBox(height: 10),
@@ -329,9 +339,9 @@ class _StocksPreview extends ConsumerWidget {
         ],
         Align(
           alignment: AlignmentDirectional.centerStart,
-          child: TextButton(
+          child: CompactAction(
             onPressed: onTap,
-            child: Text(context.l10n.viewAllStocks),
+            label: context.l10n.viewAllStocks,
           ),
         ),
       ],
@@ -378,7 +388,7 @@ class _StockMovement extends StatelessWidget {
                         height: 12,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: gain ? colors.action : colors.warning,
+                            color: gain ? colors.action : colors.error,
                             borderRadius: BorderRadius.circular(3),
                           ),
                         ),
@@ -395,7 +405,7 @@ class _StockMovement extends StatelessWidget {
           child: Text(
             change,
             style: numberStyle?.copyWith(
-              color: gain ? colors.positive : colors.warning,
+              color: gain ? colors.positive : colors.error,
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.end,

@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 
 abstract final class _Brand {
   static const mint = Color(0xFF8FD1B1);
-  static const seafoam = Color(0xFF6DB5A7);
-  static const turquoise = Color(0xFF549999);
-  static const blueTeal = Color(0xFF437D87);
-  static const slateTeal = Color(0xFF386271);
-  static const slate = Color(0xFF2F4858);
   static const black = Color(0xFF020202);
   static const ice = Color(0xFFEDF5F5);
   static const sage = Color(0xFFB9CAB4);
@@ -18,6 +13,7 @@ abstract final class _Brand {
   static const white = Color(0xFFFFFFFF);
   static const green = Color(0xFF73BEA5);
 
+  // The soft charcoal canvas is 10.5% ice white over near black.
   static final charcoal = Color.lerp(black, ice, .105)!;
 }
 
@@ -29,16 +25,18 @@ class AppColors {
   Color get canvas => isDark ? _Brand.charcoal : _Brand.ice;
   Color get surface => isDark ? _Brand.deep : _Brand.white;
   Color get subtleSurface => isDark ? _Brand.deepTeal : _Brand.ice;
-  Color get mutedSurface => isDark ? _Brand.slate : _Brand.sage;
-  Color get noticeSurface => isDark ? _Brand.slate : _Brand.sand;
+  Color get mutedSurface => isDark ? _Brand.deepTeal : _Brand.sage;
+  Color get noticeSurface => isDark ? _Brand.deepTeal : _Brand.sand;
   Color get text => isDark ? _Brand.white : _Brand.deep;
-  Color get muted => isDark ? _Brand.sage : _Brand.slateTeal;
-  Color get outline => isDark ? _Brand.blueTeal : _Brand.sage;
-  Color get fieldOutline => isDark ? _Brand.seafoam : _Brand.slateTeal;
+  Color get muted => isDark ? _Brand.sage : _Brand.deepTeal;
+  Color get outline => isDark ? _Brand.teal : _Brand.sage;
+  Color get fieldOutline => isDark ? _Brand.mint : _Brand.deepTeal;
   Color get action => isDark ? _Brand.mint : _Brand.teal;
   Color get primary => isDark ? _Brand.mint : _Brand.deep;
   Color get onPrimary => isDark ? _Brand.black : _Brand.white;
   Color get emphasis => _Brand.deep;
+  Color get groupedSurface =>
+      isDark ? Color.lerp(canvas, _Brand.ice, .065)! : _Brand.white;
   Color get financeGlow => _Brand.teal;
 
   Color accentSurface(Color accent) =>
@@ -46,11 +44,12 @@ class AppColors {
 
   Color get onEmphasis => _Brand.white;
   Color get emphasisMuted => _Brand.mint;
-  Color get progress => isDark ? _Brand.green : _Brand.seafoam;
+  Color get progress => isDark ? _Brand.green : _Brand.mint;
   Color get highlight => _Brand.green;
   Color get positive => action;
-  Color get warning => isDark ? _Brand.sand : _Brand.slate;
-  Color get error => isDark ? _Brand.sand : _Brand.deep;
+  Color get warning => isDark ? _Brand.sand : _Brand.deepTeal;
+  // Semantic loss and destructive-action colors.
+  Color get error => isDark ? const Color(0xFFFFB4AB) : const Color(0xFF922A31);
   Color get premium => _Brand.amber;
   Color get onPremium => _Brand.black;
   Color get selection => isDark ? _Brand.mint : _Brand.deep;
@@ -58,17 +57,17 @@ class AppColors {
   List<Color> get chartSeries => isDark
       ? const [
           _Brand.mint,
-          _Brand.seafoam,
-          _Brand.blueTeal,
+          _Brand.amber,
+          _Brand.teal,
           _Brand.green,
           _Brand.sand,
         ]
       : const [
           _Brand.deep,
           _Brand.teal,
-          _Brand.turquoise,
-          _Brand.seafoam,
-          _Brand.slate,
+          _Brand.green,
+          _Brand.mint,
+          _Brand.deepTeal,
         ];
 }
 
@@ -95,7 +94,7 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
     outline: colors.fieldOutline,
     outlineVariant: colors.outline,
     error: colors.error,
-    onError: colors.canvas,
+    onError: colors.isDark ? _Brand.black : _Brand.white,
     errorContainer: colors.noticeSurface,
     onErrorContainer: colors.text,
     inverseSurface: colors.emphasis,
@@ -165,7 +164,13 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
     ),
     drawerTheme: DrawerThemeData(backgroundColor: colors.surface),
     dialogTheme: DialogThemeData(backgroundColor: colors.surface),
-    bottomSheetTheme: BottomSheetThemeData(backgroundColor: colors.surface),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: colors.groupedSurface,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+    ),
     chipTheme: ChipThemeData(
       backgroundColor: colors.surface,
       selectedColor: colors.subtleSurface,
@@ -203,7 +208,11 @@ ThemeData buildAppTheme([Brightness brightness = Brightness.light]) {
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: colors.action),
+      style: TextButton.styleFrom(
+        foregroundColor: colors.action,
+        shape: const StadiumBorder(),
+        minimumSize: const Size(44, 44),
+      ),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,

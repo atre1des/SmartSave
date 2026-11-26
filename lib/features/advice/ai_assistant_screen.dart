@@ -17,6 +17,7 @@ import '../../ai/streaming_markdown.dart';
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
 import '../../shared/glass.dart';
+import '../../shared/widgets.dart' show RecordGroup;
 import '../invest/investment_intelligence_screen.dart';
 import 'advice_screens.dart';
 import 'assistant_session.dart';
@@ -788,26 +789,36 @@ class _ModeCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(16),
-    child: Container(
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    button: true,
+    child: RecordGroup(
+      onTap: onTap,
+      color: selected
+          ? context.colors.emphasis
+          : context.colors.accentSurface(context.colors.highlight),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: selected ? context.colors.emphasis : context.colors.surface,
-        border: Border.all(
-          color: selected ? context.colors.text : context.colors.outline,
-          width: selected ? 2 : 1,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 28,
-            color: selected ? context.colors.onEmphasis : context.colors.text,
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: selected
+                    ? context.colors.emphasisMuted
+                    : context.colors.action,
+              ),
+              if (selected) ...[
+                const Spacer(),
+                Icon(
+                  Icons.check_circle,
+                  size: 17,
+                  color: context.colors.emphasisMuted,
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 12),
           Text(

@@ -45,21 +45,27 @@ class MyAccountScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
 
                   // Connected Accounts
-                  _SettingRow(
-                    title: context.l10n.connectedAccounts,
-                    subtitle: context.l10n.demoCards,
-                    icon: Icons.credit_card_outlined,
-                    onTap: () =>
-                        _push(context, const ConnectedAccountsScreen()),
+                  RecordGroup(
+                    padding: EdgeInsets.zero,
+                    child: _SettingRow(
+                      title: context.l10n.connectedAccounts,
+                      subtitle: context.l10n.demoCards,
+                      icon: Icons.credit_card_outlined,
+                      onTap: () =>
+                          _push(context, const ConnectedAccountsScreen()),
+                    ),
                   ),
                   const SizedBox(height: 12),
 
                   // Advice History
-                  _SettingRow(
-                    title: context.l10n.adviceHistory,
-                    subtitle: context.l10n.pastAdvice,
-                    icon: Icons.history,
-                    onTap: () => _push(context, const AdviceHistoryScreen()),
+                  RecordGroup(
+                    padding: EdgeInsets.zero,
+                    child: _SettingRow(
+                      title: context.l10n.adviceHistory,
+                      subtitle: context.l10n.pastAdvice,
+                      icon: Icons.history,
+                      onTap: () => _push(context, const AdviceHistoryScreen()),
+                    ),
                   ),
                   const SizedBox(height: 12),
 
@@ -244,28 +250,10 @@ class _GoalsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              context.l10n.myGoals,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: context.colors.text,
-              ),
-            ),
-            TextButton(
-              onPressed: () => _push(context, const GoalsScreen()),
-              child: Text(
-                context.l10n.viewAll,
-                style: TextStyle(
-                  color: context.colors.action,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+        SectionHeading(
+          context.l10n.myGoals,
+          trailing: context.l10n.viewAll,
+          onTrailing: () => _push(context, const GoalsScreen()),
         ),
         const SizedBox(height: 12),
         if (finance.goals.isEmpty)
@@ -466,20 +454,8 @@ class _SettingRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(vertical: 3),
-    leading: Icon(icon, color: context.colors.action),
-    title: Text(
-      title,
-      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-    ),
-    subtitle: Text(
-      subtitle,
-      style: TextStyle(color: context.colors.muted, fontSize: 11),
-    ),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: onTap,
-  );
+  Widget build(BuildContext context) =>
+      NavigationCell(title: title, detail: subtitle, icon: icon, onTap: onTap);
 }
 
 void _push(BuildContext context, Widget page) =>

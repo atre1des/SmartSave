@@ -203,7 +203,7 @@ class _SuggestionChipsRow extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ActionChip(
-              avatar: const Icon(Icons.arrow_outward_rounded, size: 15),
+              avatar: const Icon(Icons.chat_bubble_outline_rounded, size: 15),
               label: Text(
                 suggestion,
                 style: Theme.of(context).textTheme.labelMedium,

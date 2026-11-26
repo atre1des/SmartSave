@@ -105,7 +105,9 @@ class DashboardScreen extends ConsumerWidget {
                                       .state =
                                   4,
                           icon: CircleAvatar(
-                            backgroundColor: context.colors.subtleSurface,
+                            backgroundColor: context.colors.accentSurface(
+                              context.colors.highlight,
+                            ),
                             foregroundColor: context.colors.text,
                             child: const Icon(Icons.person_outline_rounded),
                           ),
@@ -136,15 +138,8 @@ class DashboardScreen extends ConsumerWidget {
                           _push(context, const TransactionsScreen()),
                     ),
                     if (finance.transactions.isNotEmpty)
-                      Material(
-                        color: context.colors.isDark
-                            ? Color.alphaBlend(
-                                context.colors.text.withValues(alpha: .07),
-                                context.colors.canvas,
-                              )
-                            : context.colors.surface,
-                        borderRadius: BorderRadius.circular(28),
-                        clipBehavior: Clip.antiAlias,
+                      RecordGroup(
+                        padding: EdgeInsets.zero,
                         child: Column(
                           children: [
                             for (final (index, transaction)
@@ -301,10 +296,19 @@ class _BalanceOverview extends StatelessWidget {
                                 ?.copyWith(color: colors.onEmphasis),
                           ),
                         ),
-                        Icon(
-                          Icons.arrow_outward_rounded,
-                          size: 20,
-                          color: colors.emphasisMuted,
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: colors.emphasisMuted.withValues(alpha: .19),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(7),
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: colors.onEmphasis,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -323,36 +327,31 @@ class _BalanceOverview extends StatelessWidget {
             ),
           ),
         ),
-        const Divider(height: 1),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(context.l10n.spentMonth),
-          subtitle: budget == null
-              ? null
-              : Text(
-                  '${budget.key} · ${context.l10n.budgetSpent(context.formatTenge(spending[budget.key] ?? 0), context.formatTenge(budget.value))}',
-                ),
-          trailing: Text(
-            context.formatTenge(monthlySpend),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+        const SizedBox(height: 10),
+        RecordGroup(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              NavigationCell(
+                icon: Icons.pie_chart_outline_rounded,
+                title: context.l10n.spentMonth,
+                value: context.formatTenge(monthlySpend),
+                detail: budget == null
+                    ? null
+                    : '${budget.key} · ${context.l10n.budgetSpent(context.formatTenge(spending[budget.key] ?? 0), context.formatTenge(budget.value))}',
+                onTap: onSpending,
+              ),
+              const Divider(height: 1, indent: 62),
+              NavigationCell(
+                icon: Icons.show_chart_rounded,
+                title: context.l10n.investmentIntelligence,
+                detail: context.l10n.stocksBondsOpportunities,
+                accent: colors.premium,
+                onTap: onInvest,
+              ),
+            ],
           ),
-          onTap: onSpending,
         ),
-        const Divider(height: 1),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(context.l10n.investmentIntelligence),
-          subtitle: Text(context.l10n.stocksBondsOpportunities),
-          trailing: Icon(
-            Icons.arrow_outward_rounded,
-            size: 18,
-            color: colors.action,
-          ),
-          onTap: onInvest,
-        ),
-        const Divider(height: 1),
       ],
     );
   }
@@ -441,8 +440,11 @@ class _QuickActionsGrid extends ConsumerWidget {
             final colors = context.colors;
             final accents = [
               colors.highlight,
-              colors.chartSeries[1],
-              colors.chartSeries[0],
+              colors.premium,
+              colors.action,
+              colors.outline,
+              colors.progress,
+              colors.emphasisMuted,
             ];
             return Wrap(
               spacing: gap,
@@ -452,10 +454,8 @@ class _QuickActionsGrid extends ConsumerWidget {
                   SizedBox(
                     width: width,
                     child: Material(
-                      color: colors.accentSurface(
-                        accents[index % accents.length],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
+                      color: colors.accentSurface(accents[index]),
+                      borderRadius: BorderRadius.circular(19),
                       clipBehavior: Clip.antiAlias,
                       child: action,
                     ),
@@ -492,18 +492,32 @@ class _QuickActionItem extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 62),
+          constraints: const BoxConstraints(minHeight: 72),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
             child: Row(
               children: [
-                Icon(icon, size: 19, color: context.colors.action),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: context.colors.groupedSurface,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(icon, size: 18, color: context.colors.action),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     label,
-                    style: Theme.of(context).textTheme.labelLarge,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 14,
+                  color: context.colors.muted,
                 ),
               ],
             ),
@@ -520,10 +534,9 @@ class _GoalProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: context.colors.surface,
-      borderRadius: BorderRadius.circular(27),
-      clipBehavior: Clip.antiAlias,
+    return RecordGroup(
+      padding: EdgeInsets.zero,
+      color: context.colors.accentSurface(context.colors.highlight),
       child: Column(
         children: [
           for (var i = 0; i < goals.length; i++) ...[
@@ -590,7 +603,14 @@ class _SingleGoalCard extends StatelessWidget {
                   '${goal.progressPercent}%',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: context.colors.positive,
                   ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 17,
+                  color: context.colors.muted,
                 ),
               ],
             ),
@@ -720,16 +740,27 @@ class _ActivityRow extends StatelessWidget {
               ],
             ),
           ),
-          Text(
-            context.formatSignedTenge(
-              transaction.amount,
-              income: transaction.isIncome,
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              context.formatSignedTenge(
+                transaction.amount,
+                income: transaction.isIncome,
+              ),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: transaction.isIncome
+                    ? context.colors.positive
+                    : context.colors.text,
+              ),
             ),
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: context.colors.text,
-            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 16,
+            color: context.colors.muted,
           ),
         ],
       ),

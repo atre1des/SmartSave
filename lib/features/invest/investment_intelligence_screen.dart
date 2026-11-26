@@ -204,31 +204,13 @@ class _TopicCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => RecordGroup(
-    onTap: onTap,
-    padding: const EdgeInsets.all(16),
-    child: Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: context.colors.subtleSurface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: context.colors.text, size: 24),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-              const SizedBox(height: 4),
-              Text(description, style: TextStyle(color: context.colors.muted, fontSize: 12)),
-            ],
-          ),
-        ),
-        Icon(Icons.chevron_right, color: context.colors.muted),
-      ],
+    padding: EdgeInsets.zero,
+    child: NavigationCell(
+      icon: icon,
+      title: title,
+      detail: description,
+      accent: context.colors.premium,
+      onTap: onTap,
     ),
   );
 }

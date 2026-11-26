@@ -33,19 +33,47 @@ class SectionHeading extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: heading),
-        TextButton(
-          onPressed: onTrailing,
-          child: Text(
-            action,
-            style: TextStyle(
-              color: context.colors.action,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: CompactAction(label: action, onPressed: onTrailing),
         ),
       ],
     );
+  }
+}
+
+class CompactAction extends StatelessWidget {
+  const CompactAction({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final style = FilledButton.styleFrom(
+      backgroundColor: colors.accentSurface(colors.highlight),
+      foregroundColor: colors.text,
+      minimumSize: const Size(44, 44),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      textStyle: Theme.of(context).textTheme.labelMedium,
+    );
+    final text = Text(label, textAlign: TextAlign.center);
+    final glyph = icon;
+    return glyph == null
+        ? FilledButton.tonal(onPressed: onPressed, style: style, child: text)
+        : FilledButton.tonalIcon(
+            onPressed: onPressed,
+            style: style,
+            icon: Icon(glyph, size: 17),
+            label: text,
+          );
   }
 }
 
@@ -469,9 +497,6 @@ class RecordGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final neutral = colors.isDark
-        ? Color.alphaBlend(colors.text.withValues(alpha: .055), colors.canvas)
-        : colors.surface;
     final content = Padding(
       padding: padding,
       child: SizedBox(width: double.infinity, child: child),
@@ -481,11 +506,94 @@ class RecordGroup extends StatelessWidget {
           color == null ||
               color == colors.surface ||
               color == colors.subtleSurface
-          ? neutral
+          ? colors.groupedSurface
           : color,
       borderRadius: BorderRadius.circular(26),
       clipBehavior: Clip.antiAlias,
       child: onTap == null ? content : InkWell(onTap: onTap, child: content),
+    );
+  }
+}
+
+/// A complete navigation target that wraps its content at large text sizes.
+class NavigationCell extends StatelessWidget {
+  const NavigationCell({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.onTap,
+    this.detail,
+    this.value,
+    this.accent,
+  });
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? detail;
+  final String? value;
+  final Color? accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final type = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) {
+            return colors.action.withValues(alpha: .16);
+          }
+          if (states.contains(WidgetState.focused) ||
+              states.contains(WidgetState.hovered)) {
+            return colors.action.withValues(alpha: .10);
+          }
+          return null;
+        }),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 60),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colors.accentSurface(accent ?? colors.highlight),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(9),
+                    child: Icon(icon, size: 20, color: colors.action),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: type.titleMedium),
+                      if (value case final amount?)
+                        Text(amount, style: type.titleLarge),
+                      if (detail case final subtitle?) ...[
+                        const SizedBox(height: 2),
+                        Text(subtitle, style: type.bodySmall),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 19,
+                  color: colors.muted,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
