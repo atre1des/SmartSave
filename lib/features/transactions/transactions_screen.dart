@@ -69,7 +69,7 @@ class TransactionTile extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => InkWell(onTap: onTap, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), child: Row(children: [
-        CircleAvatar(radius: 16, backgroundColor: context.colors.subtleSurface, child: Icon(Icons.receipt_long_outlined, size: 17, color: context.colors.muted)),
+        CircleAvatar(radius: 16, backgroundColor: context.colors.accentSurface(item.isIncome ? context.colors.highlight : context.colors.chartSeries[1]), child: Icon(Icons.receipt_long_outlined, size: 17, color: item.isIncome ? context.colors.action : context.colors.muted)),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item.merchant, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), Text('${context.transactionCategory(item.category)} · ${_time(item.occurredAt)}', style: TextStyle(fontSize: 11, color: context.colors.muted))])),
         Text(context.formatSignedTenge(item.amount, income: item.isIncome), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: item.isIncome ? context.colors.positive : context.colors.text)),
@@ -210,7 +210,7 @@ class CategoryDetailsScreen extends ConsumerWidget {
     return Scaffold(appBar: EditorialHeader(title: Text(context.transactionCategory(category))), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
       Text(context.l10n.thisMonth, style: TextStyle(color: context.colors.muted)), const SizedBox(height: 5), Text(context.formatTenge(amount), style: Theme.of(context).textTheme.headlineLarge),
       const SizedBox(height: 15),
-      RecordGroup(color: amount > budget ? context.colors.noticeSurface : context.colors.subtleSurface, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Monthly budget ${context.formatTenge(budget)}', style: const TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 8), ProgressTrack(value: budget == 0 ? 0 : amount / budget, color: amount > budget ? context.colors.error : context.colors.progress), const SizedBox(height: 8), Text(amount > budget ? '${context.formatTenge(amount - budget)} over' : '${context.formatTenge(budget - amount)} left'), TextButton(onPressed: () => _editBudget(context, ref, budget), child: Text(context.l10n.editBudget))])),
+      RecordGroup(color: amount > budget ? context.colors.noticeSurface : context.colors.accentSurface(context.colors.highlight), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Monthly budget ${context.formatTenge(budget)}', style: const TextStyle(fontWeight: FontWeight.w600)), const SizedBox(height: 8), ProgressTrack(value: budget == 0 ? 0 : amount / budget, color: amount > budget ? context.colors.error : context.colors.progress), const SizedBox(height: 8), Text(amount > budget ? '${context.formatTenge(amount - budget)} over' : '${context.formatTenge(budget - amount)} left'), TextButton(onPressed: () => _editBudget(context, ref, budget), child: Text(context.l10n.editBudget))])),
       const SizedBox(height: 20), SectionHeading(context.l10n.topSpends),
       for (final item in transactions) ListTile(contentPadding: EdgeInsets.zero, title: Text(item.merchant), trailing: Text(context.formatTenge(item.amount))),
       RecordGroup(color: context.colors.noticeSurface, child: Text(context.l10n.recurringSampleNotice, style: TextStyle(fontSize: 12))),

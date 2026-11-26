@@ -39,6 +39,11 @@ class AppColors {
   Color get primary => isDark ? _Brand.mint : _Brand.deep;
   Color get onPrimary => isDark ? _Brand.black : _Brand.white;
   Color get emphasis => _Brand.deep;
+  Color get financeGlow => _Brand.teal;
+
+  Color accentSurface(Color accent) =>
+      Color.alphaBlend(accent.withValues(alpha: isDark ? .20 : .23), canvas);
+
   Color get onEmphasis => _Brand.white;
   Color get emphasisMuted => _Brand.mint;
   Color get progress => isDark ? _Brand.green : _Brand.seafoam;

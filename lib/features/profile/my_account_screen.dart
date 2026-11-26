@@ -468,7 +468,7 @@ class _SettingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListTile(
     contentPadding: const EdgeInsets.symmetric(vertical: 3),
-    leading: Icon(icon, color: context.colors.text),
+    leading: Icon(icon, color: context.colors.action),
     title: Text(
       title,
       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),

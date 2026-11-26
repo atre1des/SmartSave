@@ -126,6 +126,8 @@ class DashboardScreen extends ConsumerWidget {
                       onInvest: () =>
                           ref.read(selectedTabIndexProvider.notifier).state = 3,
                     ),
+                    const SizedBox(height: 24),
+                    const _QuickActionsGrid(),
                     const SizedBox(height: 30),
                     SectionHeading(
                       context.l10n.recent,
@@ -230,8 +232,6 @@ class DashboardScreen extends ConsumerWidget {
                           amount: entry.value,
                           max: topSpending.first.value,
                         ),
-                    const SizedBox(height: 28),
-                    _QuickActionsGrid(),
                   ],
                 ),
               ),
@@ -273,47 +273,52 @@ class _BalanceOverview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: const Alignment(.42, .05),
-              radius: .72,
-              colors: [
-                colors.progress.withValues(alpha: colors.isDark ? .18 : .17),
-                colors.canvas.withValues(alpha: 0),
-              ],
+        Material(
+          borderRadius: BorderRadius.circular(26),
+          clipBehavior: Clip.antiAlias,
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.topRight,
+                radius: 1.15,
+                colors: [colors.financeGlow, colors.emphasis],
+              ),
             ),
-          ),
-          child: InkWell(
-            onTap: onBalance,
-            borderRadius: BorderRadius.circular(24),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(0, 29, 0, 27),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          context.l10n.totalBalance,
-                          style: Theme.of(context).textTheme.titleMedium,
+            child: InkWell(
+              onTap: onBalance,
+              borderRadius: BorderRadius.circular(24),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(19, 21, 19, 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            context.l10n.totalBalance,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(color: colors.onEmphasis),
+                          ),
                         ),
+                        Icon(
+                          Icons.arrow_outward_rounded,
+                          size: 20,
+                          color: colors.emphasisMuted,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text(
+                        context.formatTenge(balance),
+                        style: numerals.copyWith(color: colors.onEmphasis),
                       ),
-                      Icon(
-                        Icons.arrow_outward_rounded,
-                        size: 20,
-                        color: colors.action,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(context.formatTenge(balance), style: numerals),
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -424,7 +429,41 @@ class _QuickActionsGrid extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
-        for (final action in actions) action,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const gap = 8.0;
+            final twoColumns =
+                constraints.maxWidth >= 270 &&
+                MediaQuery.textScalerOf(context).scale(14) <= 21;
+            final width = twoColumns
+                ? (constraints.maxWidth - gap) / 2
+                : constraints.maxWidth;
+            final colors = context.colors;
+            final accents = [
+              colors.highlight,
+              colors.chartSeries[1],
+              colors.chartSeries[0],
+            ];
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final (index, action) in actions.indexed)
+                  SizedBox(
+                    width: width,
+                    child: Material(
+                      color: colors.accentSurface(
+                        accents[index % accents.length],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      clipBehavior: Clip.antiAlias,
+                      child: action,
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
@@ -444,13 +483,34 @@ class _QuickActionItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: Icon(icon, color: context.colors.action),
-    title: Text(label, style: Theme.of(context).textTheme.titleMedium),
-    subtitle: Text(description, style: Theme.of(context).textTheme.bodySmall),
-    trailing: Icon(Icons.chevron_right, color: context.colors.muted),
-    onTap: onTap,
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    hint: description,
+    child: Tooltip(
+      message: description,
+      excludeFromSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 62),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                Icon(icon, size: 19, color: context.colors.action),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }
 

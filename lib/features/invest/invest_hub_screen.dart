@@ -371,7 +371,7 @@ class _StockMovement extends StatelessWidget {
                     alignment: Alignment.center,
                     children: [
                       Container(height: 1, color: colors.outline),
-                      Container(width: 1, color: colors.muted),
+                      Container(width: 1, color: colors.text),
                       Positioned(
                         left: gain ? midpoint : midpoint - width,
                         width: width,
@@ -392,7 +392,14 @@ class _StockMovement extends StatelessWidget {
         ),
         SizedBox(
           width: 64,
-          child: Text(change, style: numberStyle, textAlign: TextAlign.end),
+          child: Text(
+            change,
+            style: numberStyle?.copyWith(
+              color: gain ? colors.positive : colors.warning,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.end,
+          ),
         ),
       ],
     );

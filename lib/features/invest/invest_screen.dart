@@ -173,7 +173,7 @@ class _DepositRow extends StatelessWidget {
           Checkbox(value: selected, onChanged: (_) => onTap())
         else
           CircleAvatar(
-            backgroundColor: context.colors.subtleSurface,
+            backgroundColor: context.colors.accentSurface(context.colors.highlight),
             child: Text(
               product.bank.substring(0, 2).toUpperCase(),
               style: TextStyle(
@@ -240,7 +240,7 @@ class DepositDetailsScreen extends StatelessWidget {
               children: [
                 Text(
                   '${product.bank} · ${product.product}',
-                  style: TextStyle(color: context.colors.subtleSurface),
+                  style: TextStyle(color: context.colors.emphasisMuted),
                 ),
                 const SizedBox(height: 8),
                 Text(

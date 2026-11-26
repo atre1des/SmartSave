@@ -307,6 +307,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
+      backgroundColor: context.colors.accentSurface(context.colors.highlight),
       builder: (sheetContext) => FractionallySizedBox(
         heightFactor: .78,
         child: Consumer(
@@ -464,17 +465,35 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
               maxLines: 2,
             ),
             const SizedBox(height: 5),
-            Text(
-              isChecking
-                  ? context.l10n.aiConnecting
-                  : isConnected
-                  ? context.l10n.proxyReachable
-                  : context.l10n.offlineMode,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: isConnected
-                    ? context.colors.action
-                    : context.colors.muted,
-              ),
+            Row(
+              children: [
+                Icon(
+                  isChecking
+                      ? Icons.more_horiz
+                      : isConnected
+                      ? Icons.circle
+                      : Icons.cloud_off_outlined,
+                  size: isConnected ? 7 : 13,
+                  color: isConnected
+                      ? context.colors.action
+                      : context.colors.muted,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    isChecking
+                        ? context.l10n.aiConnecting
+                        : isConnected
+                        ? context.l10n.proxyReachable
+                        : context.l10n.offlineMode,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isConnected
+                          ? context.colors.action
+                          : context.colors.muted,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -856,10 +875,14 @@ class _QuickActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ActionChip(
-    avatar: Icon(_iconForAction(action.type), size: 16),
+    avatar: Icon(
+      _iconForAction(action.type),
+      size: 16,
+      color: context.colors.action,
+    ),
     label: Text(action.title, style: const TextStyle(fontSize: 12)),
     onPressed: onTap,
-    backgroundColor: context.colors.subtleSurface,
+    backgroundColor: context.colors.accentSurface(context.colors.highlight),
     side: BorderSide.none,
     shape: const StadiumBorder(),
   );
@@ -1206,6 +1229,11 @@ class _Composer extends StatelessWidget {
                 ? '${context.l10n.switchMode} · ${context.l10n.beginnerMode}'
                 : '${context.l10n.switchMode} · ${context.l10n.experiencedMode}',
             onPressed: onModeToggle,
+            style: IconButton.styleFrom(
+              backgroundColor: context.colors.accentSurface(
+                context.colors.highlight,
+              ),
+            ),
             icon: Icon(
               mode == AssistantMode.beginner
                   ? Icons.school_outlined

@@ -153,15 +153,24 @@ class ProgressTrack extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(height / 2),
-    child: LinearProgressIndicator(
-      value: value.clamp(0, 1),
-      minHeight: height,
-      backgroundColor: context.colors.mutedSurface,
-      color: color ?? context.colors.progress,
-    ),
-  );
+  Widget build(BuildContext context) {
+    final target = value.clamp(0.0, 1.0);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: target, end: target),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 240),
+      builder: (context, progress, _) => ClipRRect(
+        borderRadius: BorderRadius.circular(height / 2),
+        child: LinearProgressIndicator(
+          value: progress,
+          minHeight: height,
+          backgroundColor: context.colors.accentSurface(context.colors.outline),
+          color: color ?? context.colors.progress,
+        ),
+      ),
+    );
+  }
 }
 
 class LabeledValue extends StatelessWidget {

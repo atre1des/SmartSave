@@ -381,8 +381,10 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
             style: TextStyle(color: context.colors.muted, fontSize: 10),
           ),
           const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
               SectionHeading(context.l10n.yourTheses),
               TextButton.icon(
@@ -1584,8 +1586,10 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
             style: TextStyle(color: context.colors.muted, fontSize: 11),
           ),
           const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
               SectionHeading(context.l10n.portfolioHoldings),
               TextButton.icon(
@@ -1647,20 +1651,30 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
               ),
           const SizedBox(height: 10),
           DropdownButtonFormField<EconomicScenario>(
+            isExpanded: true,
             initialValue: _scenario,
             decoration: InputDecoration(labelText: context.l10n.scenario),
             items: [
               DropdownMenuItem(
                 value: EconomicScenario.tengeDepreciation,
-                child: Text(context.l10n.tengeDepreciation),
+                child: Text(
+                  context.l10n.tengeDepreciation,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               DropdownMenuItem(
                 value: EconomicScenario.oilPriceDecrease,
-                child: Text(context.l10n.oilPriceDrop),
+                child: Text(
+                  context.l10n.oilPriceDrop,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               DropdownMenuItem(
                 value: EconomicScenario.interestRateIncrease,
-                child: Text(context.l10n.interestIncrease),
+                child: Text(
+                  context.l10n.interestIncrease,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
             onChanged: (value) {

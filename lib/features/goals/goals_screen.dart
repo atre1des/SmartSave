@@ -40,10 +40,17 @@ class GoalCard extends StatelessWidget {
   final SavingsGoal goal;
   final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => RecordGroup(padding: const EdgeInsets.all(15), onTap: onTap, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget build(BuildContext context) => RecordGroup(
+    color: context.colors.accentSurface(
+      goal.progressPercent >= 100 ? context.colors.premium : context.colors.highlight,
+    ),
+    padding: const EdgeInsets.all(15), onTap: onTap, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [Expanded(child: Text(goal.name, style: Theme.of(context).textTheme.titleMedium)), Text(context.formatPercent(goal.progressPercent), style: Theme.of(context).textTheme.titleMedium)]),
         const SizedBox(height: 9),
-        ProgressTrack(value: goal.target == 0 ? 0 : goal.saved / goal.target),
+        ProgressTrack(
+          value: goal.target == 0 ? 0 : goal.saved / goal.target,
+          color: goal.progressPercent >= 100 ? context.colors.premium : context.colors.positive,
+        ),
         const SizedBox(height: 8),
         Text('${context.formatTenge(goal.saved)} / ${context.formatTenge(goal.target)} · ${context.l10n.monthsLeft(_monthsLeft(goal.deadline))}', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 2),
