@@ -137,7 +137,8 @@ class DashboardScreen extends ConsumerWidget {
                       onTrailing: () =>
                           _push(context, const TransactionsScreen()),
                     ),
-                    if (finance.transactions.isNotEmpty)
+                    if (finance.transactions.isNotEmpty) ...[
+                      const SizedBox(height: 14),
                       RecordGroup(
                         padding: EdgeInsets.zero,
                         child: Column(
@@ -163,6 +164,7 @@ class DashboardScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
+                    ],
                     const SizedBox(height: 28),
                     // Goal Progress Section (preserved from original)
                     if (goals.isNotEmpty) ...[
@@ -721,61 +723,65 @@ class _ActivityRow extends StatelessWidget {
     onTap: onTap,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 17,
-            backgroundColor: context.colors.action.withValues(alpha: .10),
-            foregroundColor: context.colors.action,
-            child: Icon(
-              transaction.isIncome
-                  ? Icons.south_west_rounded
-                  : Icons.north_east_rounded,
-              size: 16,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            CircleAvatar(
+              radius: 17,
+              backgroundColor: context.colors.action.withValues(alpha: .10),
+              foregroundColor: context.colors.action,
+              child: Icon(
+                transaction.isIncome
+                    ? Icons.south_west_rounded
+                    : Icons.north_east_rounded,
+                size: 16,
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction.merchant,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    transaction.merchant,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                Text(
-                  '${transaction.category} · ${_time(transaction.occurredAt)}',
-                  style: TextStyle(fontSize: 11, color: context.colors.muted),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              context.formatSignedTenge(
-                transaction.amount,
-                income: transaction.isIncome,
-              ),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: transaction.isIncome
-                    ? context.colors.positive
-                    : context.colors.text,
+                  Text(
+                    '${transaction.category} · ${_time(transaction.occurredAt)}',
+                    style: TextStyle(fontSize: 11, color: context.colors.muted),
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 4),
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 16,
-            color: context.colors.muted,
-          ),
-        ],
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * .48),
+              child: Text(
+                context.formatSignedTenge(
+                  transaction.amount,
+                  income: transaction.isIncome,
+                ),
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: transaction.isIncome
+                      ? context.colors.positive
+                      : context.colors.text,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 16,
+              color: context.colors.muted,
+            ),
+          ],
+        ),
       ),
     ),
   );
