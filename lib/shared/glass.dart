@@ -40,11 +40,9 @@ class GlassSurface extends StatelessWidget {
                 colors.canvas.withValues(alpha: opaque ? 1 : .74),
               ],
             ),
-            border: Border.all(
-              color: colors.outline.withValues(
-                alpha: colors.isDark ? .76 : .65,
-              ),
-            ),
+            border: colors.isDark && !opaque
+                ? null
+                : Border.all(color: colors.outline.withValues(alpha: .65)),
           ),
           child: Padding(padding: padding, child: child),
         ),

@@ -148,6 +148,25 @@ void main() {
     },
   );
 
+  testWidgets('dark glass omits the colored rim in standard contrast', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(Brightness.dark),
+        home: const Scaffold(body: GlassSurface(child: Text('Glass'))),
+      ),
+    );
+    final box = find.descendant(
+      of: find.byType(GlassSurface),
+      matching: find.byType(DecoratedBox),
+    );
+    expect(
+      (tester.widget<DecoratedBox>(box).decoration as BoxDecoration).border,
+      isNull,
+    );
+  });
+
   testWidgets('high contrast disables the glass blur', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
