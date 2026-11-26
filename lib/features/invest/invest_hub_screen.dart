@@ -127,13 +127,14 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: RecordGroup(
                             padding: EdgeInsets.zero,
-                            color: context.colors.accentSurface(
-                              index.isEven
-                                  ? context.colors.highlight
-                                  : context.colors.premium,
-                            ),
+                            color: index.isOdd
+                                ? context.colors.warmSurface
+                                : context.colors.accentSurface(
+                                    context.colors.highlight,
+                                  ),
                             child: NavigationCell(
                               icon: icon,
+                              warm: index.isOdd,
                               title: title,
                               detail: detail,
                               onTap: () => _openFeature(
@@ -208,52 +209,15 @@ class _InvestHubScreenState extends ConsumerState<InvestHubScreen> {
                       onTrailing: () => _openFeature(const AutoInvestScreen()),
                     ),
                     const SizedBox(height: 12),
-                    SurfaceCard(
-                      color: context.colors.noticeSurface,
-                      onTap: () => _openFeature(const AutoInvestScreen()),
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: context.colors.surface,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.autorenew_outlined,
-                              color: context.colors.warning,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  context.l10n.recurringInvestment,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  context.l10n.createAllocation,
-                                  style: TextStyle(
-                                    color: context.colors.muted,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.chevron_right,
-                            color: context.colors.muted,
-                          ),
-                        ],
+                    RecordGroup(
+                      color: context.colors.warmSurface,
+                      padding: EdgeInsets.zero,
+                      child: NavigationCell(
+                        icon: Icons.autorenew_outlined,
+                        warm: true,
+                        title: context.l10n.recurringInvestment,
+                        detail: context.l10n.createAllocation,
+                        onTap: () => _openFeature(const AutoInvestScreen()),
                       ),
                     ),
                     const SizedBox(height: 12),

@@ -374,7 +374,7 @@ class _AISuggestionCard extends ConsumerWidget {
     );
 
     return RecordGroup(
-      color: context.colors.noticeSurface,
+      color: context.colors.warmSurface,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,7 +391,8 @@ class _AISuggestionCard extends ConsumerWidget {
               Expanded(
                 child: Text(
                   context.l10n.recommendationSmartSave,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: context.colors.onWarmSurface,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
@@ -405,7 +406,7 @@ class _AISuggestionCard extends ConsumerWidget {
               goal.name,
               context.formatTenge(monthly),
             ),
-            style: TextStyle(fontSize: 12, color: context.colors.text),
+            style: TextStyle(fontSize: 12, color: context.colors.onWarmSurface),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -413,10 +414,18 @@ class _AISuggestionCard extends ConsumerWidget {
             runSpacing: 12,
             children: [
               OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: context.colors.onWarmSurface,
+                  side: BorderSide(color: context.colors.onWarmSurface),
+                ),
                 onPressed: () => _push(context, const DepositRatesScreen()),
                 child: Text(context.l10n.exploreDeposits),
               ),
               OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: context.colors.onWarmSurface,
+                  side: BorderSide(color: context.colors.onWarmSurface),
+                ),
                 onPressed: () =>
                     _push(context, const InvestmentIntelligenceScreen()),
                 child: Text(context.l10n.investScenarios),
@@ -426,7 +435,7 @@ class _AISuggestionCard extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             context.l10n.accountInvestmentDisclaimer,
-            style: TextStyle(color: context.colors.muted, fontSize: 10),
+            style: TextStyle(color: context.colors.onWarmSurface, fontSize: 10),
           ),
         ],
       ),

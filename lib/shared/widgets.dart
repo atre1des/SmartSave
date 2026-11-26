@@ -35,7 +35,11 @@ class SectionHeading extends StatelessWidget {
         Expanded(child: heading),
         const SizedBox(width: 8),
         Flexible(
-          child: CompactAction(label: action, onPressed: onTrailing),
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            heightFactor: 1,
+            child: CompactAction(label: action, onPressed: onTrailing),
+          ),
         ),
       ],
     );
@@ -525,6 +529,8 @@ class NavigationCell extends StatelessWidget {
     this.detail,
     this.value,
     this.accent,
+    this.warm = false,
+    this.warmIcon = false,
   });
 
   final String title;
@@ -533,22 +539,27 @@ class NavigationCell extends StatelessWidget {
   final String? detail;
   final String? value;
   final Color? accent;
+  final bool warm;
+  final bool warmIcon;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final type = Theme.of(context).textTheme;
+    final foreground = warm ? colors.onWarmSurface : colors.text;
+    final secondary = warm ? colors.onWarmSurface : colors.muted;
+    final highlightedIcon = warm || warmIcon;
     return Semantics(
       button: true,
       child: InkWell(
         onTap: onTap,
         overlayColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.pressed)) {
-            return colors.action.withValues(alpha: .16);
+            return (warm ? foreground : colors.action).withValues(alpha: .16);
           }
           if (states.contains(WidgetState.focused) ||
               states.contains(WidgetState.hovered)) {
-            return colors.action.withValues(alpha: .10);
+            return (warm ? foreground : colors.action).withValues(alpha: .10);
           }
           return null;
         }),
@@ -560,12 +571,22 @@ class NavigationCell extends StatelessWidget {
               children: [
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    color: colors.accentSurface(accent ?? colors.highlight),
+                    color: warm
+                        ? colors.premium
+                        : warmIcon
+                        ? colors.warmSurface
+                        : colors.accentSurface(accent ?? colors.highlight),
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(9),
-                    child: Icon(icon, size: 20, color: colors.action),
+                    child: Icon(
+                      icon,
+                      size: 20,
+                      color: highlightedIcon
+                          ? colors.onWarmSurface
+                          : colors.action,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -573,22 +594,27 @@ class NavigationCell extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: type.titleMedium),
+                      Text(
+                        title,
+                        style: type.titleMedium?.copyWith(color: foreground),
+                      ),
                       if (value case final amount?)
-                        Text(amount, style: type.titleLarge),
+                        Text(
+                          amount,
+                          style: type.titleLarge?.copyWith(color: foreground),
+                        ),
                       if (detail case final subtitle?) ...[
                         const SizedBox(height: 2),
-                        Text(subtitle, style: type.bodySmall),
+                        Text(
+                          subtitle,
+                          style: type.bodySmall?.copyWith(color: secondary),
+                        ),
                       ],
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 19,
-                  color: colors.muted,
-                ),
+                Icon(Icons.chevron_right_rounded, size: 19, color: secondary),
               ],
             ),
           ),

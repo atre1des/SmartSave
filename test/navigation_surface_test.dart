@@ -57,6 +57,10 @@ void main() {
           tester.getSize(find.byType(CompactAction)).height,
           greaterThanOrEqualTo(44),
         );
+        expect(
+          tester.getTopRight(find.byType(CompactAction)).dx,
+          closeTo(tester.getTopRight(find.byType(SectionHeading)).dx, .01),
+        );
         await tester.tap(chevron);
         await tester.pumpAndSettle();
         expect(rowTaps, 1);

@@ -346,7 +346,7 @@ class _BalanceOverview extends StatelessWidget {
                 icon: Icons.show_chart_rounded,
                 title: context.l10n.investmentIntelligence,
                 detail: context.l10n.stocksBondsOpportunities,
-                accent: colors.premium,
+                warmIcon: true,
                 onTap: onInvest,
               ),
             ],
@@ -387,30 +387,35 @@ class _QuickActionsGrid extends ConsumerWidget {
       _QuickActionItem(
         icon: Icons.savings_outlined,
         label: context.l10n.deposit,
+        warm: true,
         description: context.l10n.openOrAddDeposit,
         onTap: () => ref.read(selectedTabIndexProvider.notifier).state = 1,
       ),
       _QuickActionItem(
         icon: Icons.trending_up,
         label: context.l10n.opportunities,
+        accent: context.colors.action,
         description: context.l10n.stocksBondsOpportunities,
         onTap: () => ref.read(selectedTabIndexProvider.notifier).state = 3,
       ),
       _QuickActionItem(
         icon: Icons.description_outlined,
         label: context.l10n.thesisReview,
+        warm: true,
         description: context.l10n.reviewInvestDecisions,
         onTap: () => _openThesisAutopsy(context),
       ),
       _QuickActionItem(
         icon: Icons.swap_vert,
         label: context.l10n.liquidityAnalysis,
+        accent: context.colors.progress,
         description: context.l10n.cashConversion,
         onTap: () => _openLiquidityAnalysis(context),
       ),
       _QuickActionItem(
         icon: Icons.timeline_outlined,
         label: context.l10n.economicRipple,
+        warm: true,
         description: context.l10n.economicChanges,
         onTap: () => _openEconomicRipple(context),
       ),
@@ -437,29 +442,12 @@ class _QuickActionsGrid extends ConsumerWidget {
             final width = twoColumns
                 ? (constraints.maxWidth - gap) / 2
                 : constraints.maxWidth;
-            final colors = context.colors;
-            final accents = [
-              colors.highlight,
-              colors.premium,
-              colors.action,
-              colors.outline,
-              colors.progress,
-              colors.emphasisMuted,
-            ];
             return Wrap(
               spacing: gap,
               runSpacing: gap,
               children: [
-                for (final (index, action) in actions.indexed)
-                  SizedBox(
-                    width: width,
-                    child: Material(
-                      color: colors.accentSurface(accents[index]),
-                      borderRadius: BorderRadius.circular(19),
-                      clipBehavior: Clip.antiAlias,
-                      child: action,
-                    ),
-                  ),
+                for (final action in actions)
+                  SizedBox(width: width, child: action),
               ],
             );
           },
@@ -475,51 +463,76 @@ class _QuickActionItem extends StatelessWidget {
     required this.label,
     required this.description,
     required this.onTap,
+    this.warm = false,
+    this.accent,
   });
 
   final IconData icon;
   final String label;
   final String description;
   final VoidCallback onTap;
+  final bool warm;
+  final Color? accent;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    hint: description,
-    child: Tooltip(
-      message: description,
-      excludeFromSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 72),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-            child: Row(
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: context.colors.groupedSurface,
-                    borderRadius: BorderRadius.circular(10),
+  Widget build(BuildContext context) => Material(
+    color: warm
+        ? context.colors.warmSurface
+        : context.colors.accentSurface(accent ?? context.colors.highlight),
+    borderRadius: BorderRadius.circular(19),
+    clipBehavior: Clip.antiAlias,
+    child: Semantics(
+      button: true,
+      hint: description,
+      child: Tooltip(
+        message: description,
+        excludeFromSemantics: true,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 72),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              child: Row(
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: warm
+                          ? context.colors.premium
+                          : context.colors.groupedSurface,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        icon,
+                        size: 18,
+                        color: warm
+                            ? context.colors.onWarmSurface
+                            : context.colors.action,
+                      ),
+                    ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Icon(icon, size: 18, color: context.colors.action),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: warm
+                            ? context.colors.onWarmSurface
+                            : context.colors.text,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 14,
+                    color: warm
+                        ? context.colors.onWarmSurface
+                        : context.colors.muted,
                   ),
-                ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 14,
-                  color: context.colors.muted,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

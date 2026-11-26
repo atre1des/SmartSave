@@ -28,6 +28,8 @@ void main() {
         (colors.error, colors.noticeSurface),
         (colors.warning, colors.noticeSurface),
         (colors.onPremium, colors.premium),
+        (colors.onWarmSurface, colors.warmSurface),
+        (colors.onWarmSurface, colors.premium),
       ]) {
         expect(contrast(text, surface), greaterThanOrEqualTo(4.5));
       }
