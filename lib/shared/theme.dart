@@ -51,8 +51,8 @@ class AppColors {
   // Semantic loss and destructive-action colors.
   Color get error => isDark ? const Color(0xFFFFB4AB) : const Color(0xFF922A31);
   Color get premium => _Brand.amber;
-  // Blend amber with white for a clear yellow that stays warm in both themes.
-  Color get warmSurface => Color.lerp(_Brand.white, _Brand.amber, .38)!;
+  Color get warmSurface => const Color(0xFFF6EDBF);
+  Color get warmAccent => const Color(0xFFCBAF2B);
   Color get onWarmSurface => _Brand.deep;
   Color get onPremium => _Brand.black;
   Color get selection => isDark ? _Brand.mint : _Brand.deep;

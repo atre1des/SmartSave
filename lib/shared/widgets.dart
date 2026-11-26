@@ -572,7 +572,7 @@ class NavigationCell extends StatelessWidget {
                 DecoratedBox(
                   decoration: BoxDecoration(
                     color: warm
-                        ? colors.premium
+                        ? colors.warmAccent
                         : warmIcon
                         ? colors.warmSurface
                         : colors.accentSurface(accent ?? colors.highlight),

@@ -498,7 +498,7 @@ class _QuickActionItem extends StatelessWidget {
                   DecoratedBox(
                     decoration: BoxDecoration(
                       color: warm
-                          ? context.colors.premium
+                          ? context.colors.warmAccent
                           : context.colors.groupedSurface,
                       borderRadius: BorderRadius.circular(10),
                     ),

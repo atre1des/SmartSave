@@ -807,5 +807,14 @@
         "type": "String"
       }
     }
-  }
+  },
+  "authWelcomeBack": "Welcome back",
+  "authSignInSubtitle": "Sign in to pick up where you left off.",
+  "authSignUpSubtitle": "Create an account to start building better money habits.",
+  "authExistingAccount": "Already have an account?",
+  "authNoAccount": "New to SmartSave?",
+  "authResetSubtitle": "Enter your email and we’ll send you a reset link.",
+  "authSendReset": "Send reset link",
+  "authShowPassword": "Show password",
+  "authHidePassword": "Hide password"
 }

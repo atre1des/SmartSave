@@ -383,7 +383,7 @@ class _AISuggestionCard extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: context.colors.premium,
+                backgroundColor: context.colors.warmAccent,
                 foregroundColor: context.colors.onPremium,
                 child: const Icon(Icons.lightbulb_outline, size: 17),
               ),

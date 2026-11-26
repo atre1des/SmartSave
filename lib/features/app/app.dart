@@ -16,6 +16,7 @@ import '../profile/my_account_screen.dart';
 import '../../services/auth_service.dart';
 import '../../shared/widgets.dart';
 import 'demo_flow_screens.dart';
+import 'auth_presentation.dart';
 
 class AppEntry extends ConsumerWidget {
   const AppEntry({super.key});
@@ -75,103 +76,74 @@ class EmailVerificationScreen extends ConsumerWidget {
   const EmailVerificationScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      body: SafeArea(
-        child: _ScrollWhenNeeded(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-          child: Column(
-            children: [
-              const Spacer(flex: 2),
-              const _EntryMotif(icon: Icons.mark_email_unread_outlined),
-              const SizedBox(height: 28),
-              Text(
-                context.l10n.verifyEmail,
-                style: glassTitle(context),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                context.l10n.emailVerificationNotice,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: context.colors.muted, fontSize: 16),
-              ),
-              const SizedBox(height: 24),
-              PrimaryAction(
-                label: context.l10n.verifiedEmail,
-                onPressed: () async {
-                  final authService = ref.read(authServiceProvider);
-                  await authService.auth.currentUser?.reload();
-                  if (context.mounted && !authService.isEmailVerified) {
-                    showMessage(context, context.l10n.emailUnverified);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              SecondaryAction(
-                label: context.l10n.resendEmail,
-                onPressed: () async {
-                  final authService = ref.read(authServiceProvider);
-                  await authService.sendEmailVerification();
-                  if (context.mounted) {
-                    showMessage(context, context.l10n.verificationResent);
-                  }
-                },
-              ),
-              const SizedBox(height: 24),
-              OutlinedButton(
-                onPressed: () async {
-                  final authService = ref.read(authServiceProvider);
-                  await authService.signOut();
-                },
-                child: Text(context.l10n.signOut),
-              ),
-              const Spacer(flex: 3),
-            ],
-          ),
-        ),
+  Widget build(BuildContext context, WidgetRef ref) => AuthPage(
+    centered: true,
+    children: [
+      AuthHeading(
+        title: context.l10n.verifyEmail,
+        subtitle: context.l10n.emailVerificationNotice,
       ),
-    );
-  }
+      const SizedBox(height: 26),
+      AuthButton(
+        label: context.l10n.verifiedEmail,
+        onPressed: () async {
+          final authService = ref.read(authServiceProvider);
+          await authService.auth.currentUser?.reload();
+          if (context.mounted && !authService.isEmailVerified) {
+            showMessage(context, context.l10n.emailUnverified);
+          }
+        },
+      ),
+      const SizedBox(height: 10),
+      AuthButton(
+        secondary: true,
+        label: context.l10n.resendEmail,
+        onPressed: () async {
+          final authService = ref.read(authServiceProvider);
+          await authService.sendEmailVerification();
+          if (context.mounted) {
+            showMessage(context, context.l10n.verificationResent);
+          }
+        },
+      ),
+      TextButton(
+        onPressed: () async {
+          await ref.read(authServiceProvider).signOut();
+        },
+        child: Text(context.l10n.signOut),
+      ),
+    ],
+  );
 }
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: _ScrollWhenNeeded(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-        child: Column(
-          children: [
-            const Spacer(flex: 2),
-            const _EntryMotif(icon: Icons.account_balance_wallet_outlined),
-            const SizedBox(height: 24),
-            Text('SmartSave', style: glassTitle(context).copyWith(fontSize: 48)),
-            const SizedBox(height: 8),
-            Text(
-              context.l10n.welcomeSubtitle,
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: context.colors.muted),
-            ),
-            const Spacer(flex: 3),
-            PrimaryAction(
-              label: context.l10n.getStarted,
-              onPressed: () => _open(context, const AuthScreen(signUp: true)),
-            ),
-            const SizedBox(height: 12),
-            SecondaryAction(
-              label: context.l10n.haveAccount,
-              onPressed: () => _open(context, const AuthScreen(signUp: false)),
-            ),
-            const SizedBox(height: 64),
-          ],
+  Widget build(BuildContext context) => AuthPage(
+    centered: true,
+    footer: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AuthButton(
+          label: context.l10n.getStarted,
+          onPressed: () => _open(context, const AuthScreen(signUp: true)),
         ),
-      ),
+        const SizedBox(height: 10),
+        AuthButton(
+          secondary: true,
+          label: context.l10n.haveAccount,
+          onPressed: () => _open(context, const AuthScreen(signUp: false)),
+        ),
+      ],
     ),
+    children: [
+      AuthHeading(
+        title: 'SmartSave',
+        subtitle: context.l10n.welcomeSubtitle,
+        hero: true,
+      ),
+    ],
   );
 }
 
@@ -228,161 +200,229 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     setState(() => _busy = false);
 
     if (!result.success) {
-      showMessage(
-        context,
-        _authError(result.errorCode),
-      );
+      showMessage(context, _authError(context, result.errorCode));
     }
   }
 
-  String _authError(AuthExceptionCode? code) {
+  @override
+  Widget build(BuildContext context) {
     final strings = context.l10n;
-    return switch (code) {
-      AuthExceptionCode.emailAlreadyInUse => strings.emailTaken,
-      AuthExceptionCode.invalidEmail => strings.invalidEmail,
-      AuthExceptionCode.weakPassword => strings.passwordMin,
-      AuthExceptionCode.userNotFound ||
-      AuthExceptionCode.wrongPassword ||
-      AuthExceptionCode.invalidCredential => strings.invalidCredentials,
-      AuthExceptionCode.tooManyRequests => strings.authRateLimit,
-      AuthExceptionCode.networkError => strings.authNetwork,
-      AuthExceptionCode.emailNotVerified => strings.emailUnverified,
-      AuthExceptionCode.requiresRecentLogin => strings.signInAgain,
-      AuthExceptionCode.userDisabled => strings.disabledAccount,
-      AuthExceptionCode.operationNotAllowed => strings.authUnavailable,
-      _ => strings.authFailed,
-    };
+    return AuthPage(
+      back: true,
+      footer: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            widget.signUp ? strings.authExistingAccount : strings.authNoAccount,
+          ),
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AuthScreen(signUp: !widget.signUp),
+                    ),
+                  ),
+            child: Text(widget.signUp ? strings.signIn : strings.signUp),
+          ),
+        ],
+      ),
+      children: [
+        const SizedBox(height: 4),
+        AuthHeading(
+          title: widget.signUp ? strings.signUp : strings.authWelcomeBack,
+          subtitle: widget.signUp
+              ? strings.authSignUpSubtitle
+              : strings.authSignInSubtitle,
+        ),
+        const SizedBox(height: 25),
+        AutofillGroup(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AuthInput(
+                  label: strings.email,
+                  hint: 'name@example.com',
+                  controller: _contact,
+                  email: true,
+                  autofillHints: const [AutofillHints.email],
+                  validator: (value) => _validateAuthEmail(context, value),
+                ),
+                const SizedBox(height: 14),
+                AuthInput(
+                  label: strings.password,
+                  hint: strings.passwordLength,
+                  controller: _password,
+                  secret: true,
+                  last: !widget.signUp,
+                  autofillHints: [
+                    widget.signUp
+                        ? AutofillHints.newPassword
+                        : AutofillHints.password,
+                  ],
+                  validator: (value) => value == null || value.length < 8
+                      ? strings.passwordMin
+                      : null,
+                ),
+                if (widget.signUp) ...[
+                  const SizedBox(height: 14),
+                  AuthInput(
+                    label: strings.confirmPassword,
+                    controller: _confirm,
+                    secret: true,
+                    last: true,
+                    validator: (value) => value != _password.text
+                        ? strings.passwordMismatch
+                        : null,
+                  ),
+                  const SizedBox(height: 5),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: _acceptedTerms,
+                    onChanged: (value) =>
+                        setState(() => _acceptedTerms = value ?? false),
+                    title: Text(strings.acceptTerms),
+                  ),
+                ] else
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => _open(
+                              context,
+                              _PasswordResetScreen(email: _contact.text.trim()),
+                            ),
+                      child: Text(strings.forgotPassword),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                AuthButton(
+                  label: widget.signUp ? strings.createAccount : strings.signIn,
+                  busy: _busy,
+                  onPressed: _continue,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PasswordResetScreen extends ConsumerStatefulWidget {
+  const _PasswordResetScreen({required this.email});
+
+  final String email;
+
+  @override
+  ConsumerState<_PasswordResetScreen> createState() =>
+      _PasswordResetScreenState();
+}
+
+class _PasswordResetScreenState extends ConsumerState<_PasswordResetScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final _email = TextEditingController(text: widget.email);
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
   }
 
-  Future<void> _forgotPassword() async {
-    final email = _contact.text.trim();
-    if (email.isEmpty) {
-      showMessage(context, context.l10n.enterEmailFirst);
-      return;
-    }
-
-    final authService = ref.read(authServiceProvider);
+  Future<void> _send() async {
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
-    final result = await authService.sendPasswordResetEmail(email);
+    final result = await ref
+        .read(authServiceProvider)
+        .sendPasswordResetEmail(_email.text.trim());
     if (!mounted) return;
     setState(() => _busy = false);
-
     if (result.success) {
-      showMessage(context, context.l10n.passwordResetSent);
+      final messenger = ScaffoldMessenger.of(context);
+      final message = context.l10n.passwordResetSent;
+      Navigator.pop(context);
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     } else {
       showMessage(
         context,
-        result.errorCode == null ? context.l10n.passwordResetFailed : _authError(result.errorCode),
+        result.errorCode == null
+            ? context.l10n.passwordResetFailed
+            : _authError(context, result.errorCode),
       );
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: EditorialHeader(
-      leading: IconButton(
-        onPressed: () => Navigator.maybePop(context),
-        icon: const Icon(Icons.arrow_back),
+  Widget build(BuildContext context) => AuthPage(
+    back: true,
+    children: [
+      const SizedBox(height: 22),
+      AuthHeading(
+        title: context.l10n.forgotPassword,
+        subtitle: context.l10n.authResetSubtitle,
       ),
-      title: Text(widget.signUp ? context.l10n.signUp : context.l10n.signIn),
-    ),
-    body: SafeArea(
-      child: Form(
+      const SizedBox(height: 27),
+      Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SegmentedButton<bool>(
-              segments: [
-                ButtonSegment(value: true, label: Text(context.l10n.signUp)),
-                ButtonSegment(value: false, label: Text(context.l10n.signIn)),
-              ],
-              selected: {widget.signUp},
-              onSelectionChanged: (value) => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AuthScreen(signUp: value.first),
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-            TextFormField(
-              controller: _contact,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: context.l10n.email,
-                hintText: 'name@example.com',
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return context.l10n.enterEmail;
-                }
-                if (!value.contains('@') || !value.contains('.')) {
-                  return context.l10n.invalidEmail;
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _password,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: context.l10n.password,
-                hintText: context.l10n.passwordLength,
-              ),
-              validator: (value) => value == null || value.length < 8
-                  ? context.l10n.passwordMin
-                  : null,
-            ),
-            if (widget.signUp) ...[
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _confirm,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: context.l10n.confirmPassword,
-                ),
-                validator: (value) =>
-                    value != _password.text ? context.l10n.passwordMismatch : null,
-              ),
-              const SizedBox(height: 8),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: _acceptedTerms,
-                onChanged: (value) =>
-                    setState(() => _acceptedTerms = value ?? false),
-                title: Text(
-                  context.l10n.acceptTerms,
-                  style: TextStyle(fontSize: 13),
-                ),
-              ),
-            ] else
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _forgotPassword,
-                  child: Text(context.l10n.forgotPassword),
-                ),
-              ),
-            const SizedBox(height: 22),
-            PrimaryAction(
-              label: widget.signUp ? context.l10n.createAccount : context.l10n.signIn,
-              busy: _busy,
-              onPressed: _continue,
+            AuthInput(
+              label: context.l10n.email,
+              hint: 'name@example.com',
+              controller: _email,
+              email: true,
+              last: true,
+              autofillHints: const [AutofillHints.email],
+              validator: (value) => _validateAuthEmail(context, value),
             ),
             const SizedBox(height: 20),
-            Text(
-              context.l10n.firebaseCredentials,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: context.colors.muted, fontSize: 11),
+            AuthButton(
+              label: context.l10n.authSendReset,
+              onPressed: _send,
+              busy: _busy,
             ),
           ],
         ),
       ),
-    ),
+    ],
   );
+}
+
+String? _validateAuthEmail(BuildContext context, String? value) {
+  final email = value?.trim() ?? '';
+  if (email.isEmpty) return context.l10n.enterEmail;
+  if (!email.contains('@') || !email.contains('.')) {
+    return context.l10n.invalidEmail;
+  }
+  return null;
+}
+
+String _authError(BuildContext context, AuthExceptionCode? code) {
+  final strings = context.l10n;
+  return switch (code) {
+    AuthExceptionCode.emailAlreadyInUse => strings.emailTaken,
+    AuthExceptionCode.invalidEmail => strings.invalidEmail,
+    AuthExceptionCode.weakPassword => strings.passwordMin,
+    AuthExceptionCode.userNotFound ||
+    AuthExceptionCode.wrongPassword ||
+    AuthExceptionCode.invalidCredential => strings.invalidCredentials,
+    AuthExceptionCode.tooManyRequests => strings.authRateLimit,
+    AuthExceptionCode.networkError => strings.authNetwork,
+    AuthExceptionCode.emailNotVerified => strings.emailUnverified,
+    AuthExceptionCode.requiresRecentLogin => strings.signInAgain,
+    AuthExceptionCode.userDisabled => strings.disabledAccount,
+    AuthExceptionCode.operationNotAllowed => strings.authUnavailable,
+    _ => strings.authFailed,
+  };
 }
 
 class OnboardingScreen extends ConsumerStatefulWidget {
