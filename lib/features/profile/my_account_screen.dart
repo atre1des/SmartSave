@@ -23,10 +23,12 @@ class MyAccountScreen extends ConsumerWidget {
     final finance = ref.watch(financeControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.myAccount)),
+      appBar: EditorialHeader(title: Text(context.l10n.myAccount)),
       body: SafeArea(
         child: finance.isLoading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.firefly))
+            ? Center(
+                child: CircularProgressIndicator(color: context.colors.text),
+              )
             : ListView(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 children: [
@@ -43,72 +45,109 @@ class MyAccountScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
 
                   // Connected Accounts
-                  _SettingRow(
-                    title: context.l10n.connectedAccounts,
-                    subtitle: context.l10n.demoCards,
-                    icon: Icons.credit_card_outlined,
-                    onTap: () => _push(context, const ConnectedAccountsScreen()),
+                  RecordGroup(
+                    padding: EdgeInsets.zero,
+                    child: _SettingRow(
+                      title: context.l10n.connectedAccounts,
+                      subtitle: context.l10n.demoCards,
+                      icon: Icons.credit_card_outlined,
+                      onTap: () =>
+                          _push(context, const ConnectedAccountsScreen()),
+                    ),
                   ),
                   const SizedBox(height: 12),
 
                   // Advice History
-                  _SettingRow(
-                    title: context.l10n.adviceHistory,
-                    subtitle: context.l10n.pastAdvice,
-                    icon: Icons.history,
-                    onTap: () => _push(context, const AdviceHistoryScreen()),
+                  RecordGroup(
+                    padding: EdgeInsets.zero,
+                    child: _SettingRow(
+                      title: context.l10n.adviceHistory,
+                      subtitle: context.l10n.pastAdvice,
+                      icon: Icons.history,
+                      onTap: () => _push(context, const AdviceHistoryScreen()),
+                    ),
                   ),
                   const SizedBox(height: 12),
 
                   // Settings section
-                  Text(context.l10n.settings, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
+                  Text(
+                    context.l10n.settings,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: context.colors.text,
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  _SettingRow(
-                    title: context.l10n.profile,
-                    subtitle: context.l10n.nameCountryCurrency,
-                    icon: Icons.person_outline,
-                    onTap: () => _push(context, const ProfileDetailsScreen()),
-                  ),
-                  _SettingRow(
-                    title: context.l10n.notifications,
-                    subtitle: context.l10n.alerts,
-                    icon: Icons.notifications_none,
-                    onTap: () => _push(context, const NotificationsScreen()),
-                  ),
-                  _SettingRow(
-                    title: context.l10n.privacyData,
-                    subtitle: context.l10n.consentExportDelete,
-                    icon: Icons.lock_outline,
-                    onTap: () => _push(context, const PrivacyDataScreen()),
-                  ),
-                  _SettingRow(
-                    title: context.l10n.subscription,
-                    subtitle: context.l10n.freeDemoPlan,
-                    icon: Icons.workspace_premium_outlined,
-                    onTap: () => _push(context, const SubscriptionScreen()),
-                  ),
-                  _SettingRow(
-                    title: context.l10n.helpSupport,
-                    subtitle: context.l10n.supportFaq,
-                    icon: Icons.help_outline,
-                    onTap: () => _push(context, const HelpScreen()),
+                  RecordGroup(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 4,
+                    ),
+                    child: Column(
+                      children: [
+                        _SettingRow(
+                          title: context.l10n.profile,
+                          subtitle: context.l10n.nameCountryCurrency,
+                          icon: Icons.person_outline,
+                          onTap: () =>
+                              _push(context, const ProfileDetailsScreen()),
+                        ),
+                        const Divider(height: 1),
+                        _SettingRow(
+                          title: context.l10n.notifications,
+                          subtitle: context.l10n.alerts,
+                          icon: Icons.notifications_none,
+                          onTap: () =>
+                              _push(context, const NotificationsScreen()),
+                        ),
+                        const Divider(height: 1),
+                        _SettingRow(
+                          title: context.l10n.privacyData,
+                          subtitle: context.l10n.consentExportDelete,
+                          icon: Icons.lock_outline,
+                          onTap: () =>
+                              _push(context, const PrivacyDataScreen()),
+                        ),
+                        const Divider(height: 1),
+                        _SettingRow(
+                          title: context.l10n.subscription,
+                          subtitle: context.l10n.freeDemoPlan,
+                          icon: Icons.workspace_premium_outlined,
+                          onTap: () =>
+                              _push(context, const SubscriptionScreen()),
+                        ),
+                        const Divider(height: 1),
+                        _SettingRow(
+                          title: context.l10n.helpSupport,
+                          subtitle: context.l10n.supportFaq,
+                          icon: Icons.help_outline,
+                          onTap: () => _push(context, const HelpScreen()),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 20),
 
                   // Log out
                   TextButton(
                     onPressed: () async {
-                      final result = await ref.read(authServiceProvider).signOut();
+                      final result = await ref
+                          .read(authServiceProvider)
+                          .signOut();
                       if (context.mounted && !result.success) {
-                        showMessage(context, result.errorMessage ?? 'Sign out failed.');
+                        showMessage(
+                          context,
+                          result.errorMessage ?? 'Sign out failed.',
+                        );
                       }
                     },
                     child: Text(context.l10n.logOut),
                   ),
                 ],
               ),
-            ),
-      );
+      ),
+    );
   }
 }
 
@@ -117,13 +156,15 @@ class _UserIdentitySection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final name = ref.watch(authStateProvider).valueOrNull?.displayName ?? 'Your name';
+    final name =
+        ref.watch(authStateProvider).valueOrNull?.displayName ??
+        context.l10n.yourName;
 
     return Row(
       children: [
         CircleAvatar(
-          backgroundColor: AppColors.mintLight,
-          foregroundColor: AppColors.firefly,
+          backgroundColor: context.colors.subtleSurface,
+          foregroundColor: context.colors.text,
           radius: 28,
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : 'Y',
@@ -139,7 +180,7 @@ class _UserIdentitySection extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 context.l10n.kazakhstan,
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: context.colors.muted, fontSize: 12),
               ),
             ],
           ),
@@ -155,10 +196,11 @@ class _RiskProfileCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final riskProfile = ref.watch(authServiceProvider).getRiskProfile() ?? 'moderate';
+    final riskProfile =
+        ref.watch(authServiceProvider).getRiskProfile() ?? 'moderate';
     final riskLabel = riskProfile[0].toUpperCase() + riskProfile.substring(1);
 
-    return SurfaceCard(
+    return RecordGroup(
       onTap: () => _push(context, const RiskQuizScreen()),
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -166,10 +208,14 @@ class _RiskProfileCard extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.mintLight,
+              color: context.colors.subtleSurface,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.shield_outlined, color: AppColors.firefly, size: 24),
+            child: Icon(
+              Icons.shield_outlined,
+              color: context.colors.text,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -183,12 +229,12 @@ class _RiskProfileCard extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   '$riskLabel investor · Tap to retake quiz',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: context.colors.muted, fontSize: 12),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.muted),
+          Icon(Icons.chevron_right, color: context.colors.muted),
         ],
       ),
     );
@@ -204,26 +250,27 @@ class _GoalsSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(context.l10n.myGoals, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.firefly)),
-            TextButton(
-              onPressed: () => _push(context, const GoalsScreen()),
-              child: Text(context.l10n.viewAll, style: TextStyle(color: AppColors.prussianBlue, fontWeight: FontWeight.w600)),
-            ),
-          ],
+        SectionHeading(
+          context.l10n.myGoals,
+          trailing: context.l10n.viewAll,
+          onTrailing: () => _push(context, const GoalsScreen()),
         ),
         const SizedBox(height: 12),
         if (finance.goals.isEmpty)
-          SurfaceCard(
-            color: AppColors.mintLight,
+          RecordGroup(
+            color: context.colors.subtleSurface,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(context.l10n.noGoals, style: TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  context.l10n.noGoals,
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 6),
-                Text(context.l10n.createGoalHint, style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                Text(
+                  context.l10n.createGoalHint,
+                  style: TextStyle(fontSize: 12, color: context.colors.muted),
+                ),
                 const SizedBox(height: 12),
                 PrimaryAction(
                   label: context.l10n.createFirstGoal,
@@ -242,12 +289,15 @@ class _GoalsSection extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 8),
               child: TextButton(
                 onPressed: () => _push(context, const GoalsScreen()),
-                child: Text(context.l10n.monthsMoreGoals(finance.goals.length - 2)),
+                child: Text(
+                  context.l10n.monthsMoreGoals(finance.goals.length - 2),
+                ),
               ),
             ),
           const SizedBox(height: 16),
           // AI suggestion card
-          if (finance.goals.isNotEmpty) _AISuggestionCard(goal: finance.goals.first),
+          if (finance.goals.isNotEmpty)
+            _AISuggestionCard(goal: finance.goals.first),
         ],
       ],
     );
@@ -259,7 +309,7 @@ class _GoalCard extends StatelessWidget {
   final SavingsGoal goal;
 
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     onTap: () => _push(context, GoalProgressScreen(goal: goal)),
     padding: const EdgeInsets.all(15),
     child: Column(
@@ -275,24 +325,40 @@ class _GoalCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            Text(context.formatPercent(goal.progressPercent), style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              context.formatPercent(goal.progressPercent),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ],
         ),
         const SizedBox(height: 9),
         ProgressTrack(value: goal.target == 0 ? 0 : goal.saved / goal.target),
         const SizedBox(height: 8),
-        Text('${context.formatTenge(goal.saved)} / ${context.formatTenge(goal.target)} · ${context.l10n.monthsLeft(_monthsLeft(goal.deadline))}', style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          '${context.formatTenge(goal.saved)} / ${context.formatTenge(goal.target)} · ${context.l10n.monthsLeft(_monthsLeft(goal.deadline))}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: 2),
-        Text(context.l10n.onTrack, style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(
+          context.l10n.onTrack,
+          style: TextStyle(
+            color: context.colors.positive,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     ),
   );
-  }
+}
 
-  int _monthsLeft(DateTime deadline) {
-    final now = DateTime.now();
-    return ((deadline.year - now.year) * 12 + deadline.month - now.month).clamp(0, 120);
-  }
+int _monthsLeft(DateTime deadline) {
+  final now = DateTime.now();
+  return ((deadline.year - now.year) * 12 + deadline.month - now.month).clamp(
+    0,
+    120,
+  );
+}
 
 class _AISuggestionCard extends ConsumerWidget {
   const _AISuggestionCard({required this.goal});
@@ -301,25 +367,46 @@ class _AISuggestionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final months = _monthsLeft(goal.deadline).clamp(1, 120).toInt();
-    final monthly = monthlyGoalContribution(targetTenge: goal.target, savedTenge: goal.saved, monthsRemaining: months);
+    final monthly = monthlyGoalContribution(
+      targetTenge: goal.target,
+      savedTenge: goal.saved,
+      monthsRemaining: months,
+    );
 
-    return SurfaceCard(
-      color: AppColors.paleGold,
+    return RecordGroup(
+      color: context.colors.warmSurface,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 20),
-              SizedBox(width: 8),
-              Text(context.l10n.recommendationSmartSave, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: context.colors.warmAccent,
+                foregroundColor: context.colors.onPremium,
+                child: const Icon(Icons.lightbulb_outline, size: 17),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.l10n.recommendationSmartSave,
+                  style: TextStyle(
+                    color: context.colors.onWarmSurface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            'Want to reach "${goal.name}" faster? You need ${context.formatTenge(monthly)}/month. Explore adding money to a deposit or an investment scenario.',
-            style: TextStyle(fontSize: 12, color: AppColors.firefly),
+            context.l10n.goalSuggestion(
+              goal.name,
+              context.formatTenge(monthly),
+            ),
+            style: TextStyle(fontSize: 12, color: context.colors.onWarmSurface),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -327,11 +414,20 @@ class _AISuggestionCard extends ConsumerWidget {
             runSpacing: 12,
             children: [
               OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: context.colors.onWarmSurface,
+                  side: BorderSide(color: context.colors.onWarmSurface),
+                ),
                 onPressed: () => _push(context, const DepositRatesScreen()),
                 child: Text(context.l10n.exploreDeposits),
               ),
               OutlinedButton(
-                onPressed: () => _push(context, const InvestmentIntelligenceScreen()),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: context.colors.onWarmSurface,
+                  side: BorderSide(color: context.colors.onWarmSurface),
+                ),
+                onPressed: () =>
+                    _push(context, const InvestmentIntelligenceScreen()),
                 child: Text(context.l10n.investScenarios),
               ),
             ],
@@ -339,7 +435,7 @@ class _AISuggestionCard extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             context.l10n.accountInvestmentDisclaimer,
-            style: TextStyle(color: AppColors.muted, fontSize: 10),
+            style: TextStyle(color: context.colors.onWarmSurface, fontSize: 10),
           ),
         ],
       ),
@@ -348,25 +444,28 @@ class _AISuggestionCard extends ConsumerWidget {
 
   int _monthsLeft(DateTime deadline) {
     final now = DateTime.now();
-    return ((deadline.year - now.year) * 12 + deadline.month - now.month).clamp(0, 120);
+    return ((deadline.year - now.year) * 12 + deadline.month - now.month).clamp(
+      0,
+      120,
+    );
   }
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow({required this.title, required this.subtitle, required this.icon, required this.onTap});
+  const _SettingRow({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
   final String title, subtitle;
   final IconData icon;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(vertical: 3),
-    leading: Icon(icon, color: AppColors.firefly),
-    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-    subtitle: Text(subtitle, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: onTap,
-  );
+  Widget build(BuildContext context) =>
+      NavigationCell(title: title, detail: subtitle, icon: icon, onTap: onTap);
 }
 
-void _push(BuildContext context, Widget page) => Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+void _push(BuildContext context, Widget page) =>
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));

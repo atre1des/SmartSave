@@ -27,7 +27,7 @@ void main() {
   testWidgets('primary action remains actionable', (tester) async {
     var tapped = false;
     await tester.pumpWidget(MaterialApp(
-      theme: ThemeData(colorScheme: const ColorScheme.light(primary: AppColors.firefly)),
+      theme: buildAppTheme(),
       home: Scaffold(body: PrimaryAction(label: 'Save', onPressed: () => tapped = true)),
     ));
     expect(find.text('Save'), findsOneWidget);

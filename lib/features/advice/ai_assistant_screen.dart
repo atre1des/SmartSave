@@ -16,6 +16,8 @@ import '../../ai/openrouter_provider.dart';
 import '../../ai/streaming_markdown.dart';
 import '../../data/providers.dart';
 import '../../shared/theme.dart';
+import '../../shared/glass.dart';
+import '../../shared/widgets.dart' show RecordGroup;
 import '../invest/investment_intelligence_screen.dart';
 import 'advice_screens.dart';
 import 'assistant_session.dart';
@@ -44,8 +46,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   AssistantMode _mode = AssistantMode.beginner;
   bool _showModeSelector = true;
   SmartSaveAIAssistantService? _assistantService;
-
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // Backend connectivity status
   BackendStatus _backendStatus = BackendStatus.unknown;
@@ -127,7 +127,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
   void _startNewConversation() {
     ref.read(aiConversationsProvider).startNew();
-    _scaffoldKey.currentState?.closeDrawer();
     setState(() {
       _lastError = null;
       _showModeSelector = true;
@@ -136,7 +135,6 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
 
   void _selectConversation(String id) {
     unawaited(ref.read(aiConversationsProvider).select(id));
-    _scaffoldKey.currentState?.closeDrawer();
     setState(() {
       _lastError = null;
       _showModeSelector = false;
@@ -303,145 +301,130 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     _assistantService!.setMode(_mode);
   }
 
-  Widget _buildDrawer(AIConversations conversations) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.firefly,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.auto_awesome, color: AppColors.mint, size: 24),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.l10n.assistant,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          context.l10n.chooseExplore,
-                          style: TextStyle(color: Colors.white70, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Fixed entries
-            ListTile(
-              leading: const Icon(Icons.add_circle_outline),
-              title: Text(context.l10n.newChat),
-              subtitle: Text(context.l10n.startConversation),
-              onTap: conversations.busy || !conversations.ready
-                  ? null
-                  : _startNewConversation,
-            ),
-            ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: Text(context.l10n.thesisReview),
-              subtitle: Text(context.l10n.recordReasoning),
-              onTap: () {
-                _scaffoldKey.currentState?.closeDrawer();
-                _openFeature(const InvestmentIntelligenceScreen());
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.waves_outlined),
-              title: Text(context.l10n.liquidity),
-              subtitle: Text(context.l10n.testOrderSize),
-              onTap: () {
-                _scaffoldKey.currentState?.closeDrawer();
-                _openFeature(const InvestmentIntelligenceScreen());
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.timeline_outlined),
-              title: Text(context.l10n.economicRipple),
-              subtitle: Text(context.l10n.simulateMacro),
-              onTap: () {
-                _scaffoldKey.currentState?.closeDrawer();
-                _openFeature(const InvestmentIntelligenceScreen());
-              },
-            ),
-
-            const Divider(height: 16),
-
-            // Recent Chats
-            if (conversations.entries.isNotEmpty)
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Text(
-                        context.l10n.recentChats,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView(
-                        children: conversations.entries.map((entry) {
-                          final firstUserMsg = entry.value
-                              .where((m) => m.isUser)
-                              .firstOrNull;
-                          final title =
-                              firstUserMsg?.text ?? context.l10n.untitledChat;
-                          final preview = title.length > 30
-                              ? '${title.substring(0, 30)}...'
-                              : title;
-                          return ListTile(
-                            dense: true,
-                            title: Text(
-                              preview,
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 16),
-                              onPressed: conversations.busy
-                                  ? null
-                                  : () {
-                                      conversations.delete(entry.key);
-                                      setState(() => _lastError = null);
-                                    },
-                            ),
-                            onTap: conversations.busy
-                                ? null
-                                : () => _selectConversation(entry.key),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
+  void _openHistory() {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: context.colors.accentSurface(context.colors.highlight),
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: .78,
+        child: Consumer(
+          builder: (context, ref, _) => _buildHistory(
+            ref.watch(aiConversationsProvider),
+            () => Navigator.pop(sheetContext),
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHistory(AIConversations conversations, VoidCallback close) {
+    return SafeArea(
+      top: false,
+      child: ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 26, 20, 16),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                context.l10n.conversationHistory,
+                style: glassTitle(
+                  context,
+                ).copyWith(fontSize: 25, letterSpacing: -.8),
+              ),
+            ),
+          ),
+
+          // Fixed entries
+          ListTile(
+            leading: const Icon(Icons.add_circle_outline),
+            title: Text(context.l10n.newChat),
+            subtitle: Text(context.l10n.startConversation),
+            onTap: conversations.busy || !conversations.ready
+                ? null
+                : () {
+                    close();
+                    _startNewConversation();
+                  },
+          ),
+          ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: Text(context.l10n.thesisReview),
+            subtitle: Text(context.l10n.recordReasoning),
+            onTap: () {
+              close();
+              _openFeature(const InvestmentIntelligenceScreen(initialTab: 1));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.waves_outlined),
+            title: Text(context.l10n.liquidity),
+            subtitle: Text(context.l10n.testOrderSize),
+            onTap: () {
+              close();
+              _openFeature(const InvestmentIntelligenceScreen(initialTab: 2));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.timeline_outlined),
+            title: Text(context.l10n.economicRipple),
+            subtitle: Text(context.l10n.simulateMacro),
+            onTap: () {
+              close();
+              _openFeature(const InvestmentIntelligenceScreen(initialTab: 3));
+            },
+          ),
+
+          const Divider(height: 16),
+
+          // Recent chats
+          if (conversations.entries.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+              child: Text(
+                context.l10n.recentChats,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+          for (final entry in conversations.entries)
+            Builder(
+              builder: (context) {
+                final firstUserMsg = entry.value
+                    .where((m) => m.isUser)
+                    .firstOrNull;
+                final title = firstUserMsg?.text ?? context.l10n.untitledChat;
+                return ListTile(
+                  dense: true,
+                  title: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  trailing: IconButton(
+                    tooltip: context.l10n.delete,
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    onPressed: conversations.busy
+                        ? null
+                        : () {
+                            conversations.delete(entry.key);
+                            setState(() => _lastError = null);
+                          },
+                  ),
+                  onTap: conversations.busy
+                      ? null
+                      : () {
+                          close();
+                          _selectConversation(entry.key);
+                        },
+                );
+              },
+            ),
+        ],
       ),
     );
   }
@@ -468,60 +451,59 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     );
 
     return Scaffold(
-      key: _scaffoldKey,
       appBar: AppBar(
-        title: Text(context.l10n.assistant),
+        toolbarHeight: 70,
+        titleSpacing: 10,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.assistant,
+              style: glassTitle(
+                context,
+              ).copyWith(fontSize: 25, letterSpacing: -.8),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 5),
+            Row(
+              children: [
+                Icon(
+                  isChecking
+                      ? Icons.more_horiz
+                      : isConnected
+                      ? Icons.circle
+                      : Icons.cloud_off_outlined,
+                  size: isConnected ? 7 : 13,
+                  color: isConnected
+                      ? context.colors.action
+                      : context.colors.muted,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    isChecking
+                        ? context.l10n.aiConnecting
+                        : isConnected
+                        ? context.l10n.proxyReachable
+                        : context.l10n.offlineMode,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isConnected
+                          ? context.colors.action
+                          : context.colors.muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          tooltip: context.l10n.conversationHistory,
+          icon: const Icon(Icons.history_rounded, size: 21),
+          onPressed: _openHistory,
         ),
         actions: [
-          // AI status indicator
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isConnected ? AppColors.mintLight : AppColors.paleGold,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isChecking)
-                      const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.gold,
-                        ),
-                      )
-                    else
-                      Icon(
-                        isConnected ? Icons.cloud_done : Icons.cloud_off,
-                        size: 14,
-                        color: isConnected ? AppColors.success : AppColors.gold,
-                      ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isChecking
-                          ? context.l10n.aiConnecting
-                          : isConnected
-                          ? context.l10n.proxyReachable
-                          : context.l10n.offlineMode,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: isConnected ? AppColors.success : AppColors.gold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
           PopupMenuButton<String>(
             tooltip: context.l10n.assistantFeature,
             onSelected: (value) {
@@ -603,8 +585,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
           ),
         ],
       ),
-      drawer: _buildDrawer(conversations),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             if (!_showModeSelector || messages.isNotEmpty)
@@ -658,8 +640,9 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                                     (waitingForFirstChunk ? 1 : 0),
                                 itemBuilder: (context, index) {
                                   if (index == messages.length) {
-                                    return _StreamingBubble(
+                                    return _AssistantTranscript(
                                       content: _streamingContent,
+                                      isStreaming: true,
                                     );
                                   }
                                   return _MessageBubble(
@@ -712,14 +695,14 @@ class _DisclaimerBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
-    color: isConnected ? AppColors.mintLight : AppColors.paleGold,
+    margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
           isConnected ? Icons.info_outline : Icons.warning_amber_rounded,
-          color: isConnected ? AppColors.firefly : AppColors.gold,
+          color: isConnected ? context.colors.text : context.colors.warning,
           size: 18,
         ),
         const SizedBox(width: 8),
@@ -731,9 +714,9 @@ class _DisclaimerBanner extends StatelessWidget {
                 ? context.l10n.aiProxyNotice
                 : context.l10n.aiOfflineNotice,
             style: TextStyle(
-              color: isConnected ? AppColors.firefly : AppColors.gold,
-              fontSize: 10,
-              height: 1.35,
+              color: context.colors.muted,
+              fontSize: 12,
+              height: 1.4,
             ),
           ),
         ),
@@ -760,7 +743,7 @@ class _ModeSelector extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           context.l10n.chooseLevel,
-          style: TextStyle(color: AppColors.muted, fontSize: 12),
+          style: TextStyle(color: context.colors.muted, fontSize: 12),
         ),
         const SizedBox(height: 16),
         Row(
@@ -806,26 +789,36 @@ class _ModeCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(16),
-    child: Container(
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    button: true,
+    child: RecordGroup(
+      onTap: onTap,
+      color: selected
+          ? context.colors.emphasis
+          : context.colors.accentSurface(context.colors.highlight),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: selected ? AppColors.firefly : Colors.white,
-        border: Border.all(
-          color: selected ? AppColors.firefly : AppColors.border,
-          width: selected ? 2 : 1,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 28,
-            color: selected ? Colors.white : AppColors.firefly,
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: selected
+                    ? context.colors.emphasisMuted
+                    : context.colors.action,
+              ),
+              if (selected) ...[
+                const Spacer(),
+                Icon(
+                  Icons.check_circle,
+                  size: 17,
+                  color: context.colors.emphasisMuted,
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 12),
           Text(
@@ -833,7 +826,7 @@ class _ModeCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : AppColors.firefly,
+              color: selected ? context.colors.onEmphasis : context.colors.text,
             ),
           ),
           const SizedBox(height: 6),
@@ -841,7 +834,9 @@ class _ModeCard extends StatelessWidget {
             description,
             style: TextStyle(
               fontSize: 11,
-              color: selected ? Colors.white70 : AppColors.muted,
+              color: selected
+                  ? context.colors.onEmphasis
+                  : context.colors.muted,
               height: 1.3,
             ),
           ),
@@ -891,11 +886,16 @@ class _QuickActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ActionChip(
-    avatar: Icon(_iconForAction(action.type), size: 16),
+    avatar: Icon(
+      _iconForAction(action.type),
+      size: 16,
+      color: context.colors.action,
+    ),
     label: Text(action.title, style: const TextStyle(fontSize: 12)),
     onPressed: onTap,
-    backgroundColor: AppColors.mintLight,
-    side: BorderSide(color: AppColors.border),
+    backgroundColor: context.colors.accentSurface(context.colors.highlight),
+    side: BorderSide.none,
+    shape: const StadiumBorder(),
   );
 
   IconData _iconForAction(QuickActionType type) {
@@ -924,11 +924,7 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
     children: [
-      const Icon(
-        Icons.auto_awesome_rounded,
-        size: 38,
-        color: AppColors.firefly,
-      ),
+      Icon(Icons.auto_awesome_rounded, size: 38, color: context.colors.text),
       const SizedBox(height: 12),
       Text(
         context.l10n.localWelcome,
@@ -937,7 +933,7 @@ class _EmptyState extends StatelessWidget {
       const SizedBox(height: 6),
       Text(
         context.l10n.assistantWelcome,
-        style: TextStyle(color: AppColors.muted, fontSize: 12),
+        style: TextStyle(color: context.colors.muted, fontSize: 12),
       ),
       const SizedBox(height: 20),
       OutlinedButton.icon(
@@ -955,60 +951,37 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kDebugLayout) {
-      debugPrint(
-        '[MessageBubble] build: role=${message.role}, contentLength=${message.text.length}, '
-        'isStreaming=${message.isStreaming}, hasError=${message.error != null}, '
-        'availableWidth=${(MediaQuery.sizeOf(context).width * 0.84).toStringAsFixed(1)}, '
-        'messageEmpty=${message.text.isEmpty}',
+    final colors = context.colors;
+    if (!message.isUser) {
+      return _AssistantTranscript(
+        content: message.text,
+        isStreaming: message.isStreaming,
       );
     }
     return Align(
-      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (kDebugLayout) {
-            debugPrint(
-              '[MessageBubble] layout constraints: maxWidth=${constraints.maxWidth.toStringAsFixed(1)}, '
-              'maxHeight=${constraints.maxHeight.toStringAsFixed(1)}, '
-              'hasBoundedWidth=${constraints.maxWidth.isFinite}, '
-              'hasBoundedHeight=${constraints.maxHeight.isFinite}',
-            );
-          }
-          return Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.sizeOf(context).width * .84,
-              maxHeight: constraints.maxHeight.isFinite
-                  ? constraints.maxHeight
-                  : double.infinity,
-            ),
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: message.isUser ? AppColors.firefly : Colors.white,
-              border: message.isUser
-                  ? null
-                  : Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: message.isUser
-                ? SelectableText(
-                    message.text,
-                    style: TextStyle(
-                      color: message.isUser ? Colors.white : AppColors.firefly,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
-                  )
-                : BufferedStreamingMarkdown(
-                    content: message.text,
-                    isStreaming: message.isStreaming,
-                    selectable: true,
-                    styleSheet: _assistantMarkdownStyleSheet(context),
-                    onTapLink: (url, title, text) {},
-                  ),
-          );
-        },
+      alignment: AlignmentDirectional.centerEnd,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * .82,
+        ),
+        margin: const EdgeInsets.only(bottom: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(
+            colors.action.withValues(alpha: colors.isDark ? .18 : .12),
+            colors.canvas,
+          ),
+          borderRadius: const BorderRadiusDirectional.only(
+            topStart: Radius.circular(23),
+            topEnd: Radius.circular(23),
+            bottomStart: Radius.circular(23),
+            bottomEnd: Radius.circular(7),
+          ),
+        ),
+        child: SelectableText(
+          message.text,
+          style: TextStyle(color: colors.text, fontSize: 15, height: 1.45),
+        ),
       ),
     );
   }
@@ -1018,151 +991,120 @@ MarkdownStyleSheet _assistantMarkdownStyleSheet(BuildContext context) {
   final theme = Theme.of(context);
   return MarkdownStyleSheet.fromTheme(theme).copyWith(
     p: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.firefly,
-      height: 1.5,
-      fontSize: 13,
+      color: context.colors.text,
+      height: 1.53,
+      fontSize: 15,
     ),
     h1: theme.textTheme.headlineSmall?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontWeight: FontWeight.w700,
       fontSize: 18,
     ),
     h2: theme.textTheme.titleLarge?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontWeight: FontWeight.w600,
       fontSize: 16,
     ),
     h3: theme.textTheme.titleMedium?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontWeight: FontWeight.w600,
       fontSize: 14,
     ),
     strong: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontWeight: FontWeight.w700,
     ),
     em: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       fontStyle: FontStyle.italic,
     ),
     listBullet: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.firefly,
+      color: context.colors.text,
       height: 1.5,
       fontSize: 13,
     ),
     listBulletPadding: const EdgeInsets.only(left: 20, top: 2, bottom: 2),
     listIndent: 18,
     blockquote: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.muted,
+      color: context.colors.muted,
       fontStyle: FontStyle.italic,
     ),
     blockquotePadding: const EdgeInsets.only(left: 12, top: 6, bottom: 6),
     blockquoteDecoration: BoxDecoration(
-      border: Border(left: BorderSide(color: AppColors.mint, width: 3)),
+      border: Border(
+        left: BorderSide(color: context.colors.progress, width: 3),
+      ),
     ),
     code: theme.textTheme.bodyMedium?.copyWith(
       fontFamily: 'monospace',
       fontSize: 12,
-      backgroundColor: AppColors.mintLight,
-      color: AppColors.firefly,
+      backgroundColor: context.colors.subtleSurface,
+      color: context.colors.text,
     ),
     codeblockDecoration: BoxDecoration(
-      color: const Color(0xFF1E1E1E),
+      color: context.colors.subtleSurface,
       borderRadius: BorderRadius.circular(8),
     ),
     codeblockPadding: const EdgeInsets.all(12),
     a: theme.textTheme.bodyMedium?.copyWith(
-      color: AppColors.prussianBlue,
+      color: context.colors.action,
       decoration: TextDecoration.underline,
     ),
     horizontalRuleDecoration: BoxDecoration(
-      border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+      border: Border(top: BorderSide(color: context.colors.outline, width: 1)),
     ),
   );
 }
 
-class _StreamingBubble extends StatelessWidget {
-  const _StreamingBubble({required this.content});
+class _AssistantTranscript extends StatelessWidget {
+  const _AssistantTranscript({
+    required this.content,
+    required this.isStreaming,
+  });
+
   final String content;
+  final bool isStreaming;
 
   @override
-  Widget build(BuildContext context) {
-    if (kDebugLayout) {
-      debugPrint(
-        '[StreamingBubble] build: contentLength=${content.length}, '
-        'availableWidth=${(MediaQuery.sizeOf(context).width * 0.84).toStringAsFixed(1)}, '
-        'contentEmpty=${content.isEmpty}',
-      );
-    }
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (kDebugLayout) {
-            debugPrint(
-              '[StreamingBubble] layout constraints: maxWidth=${constraints.maxWidth.toStringAsFixed(1)}, '
-              'maxHeight=${constraints.maxHeight.toStringAsFixed(1)}, '
-              'hasBoundedWidth=${constraints.maxWidth.isFinite}, '
-              'hasBoundedHeight=${constraints.maxHeight.isFinite}',
-            );
-          }
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * .84,
-                maxHeight: constraints.maxHeight.isFinite
-                    ? constraints.maxHeight
-                    : double.infinity,
-              ),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.sizeOf(context).width * .84,
-                ),
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 11,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    BufferedStreamingMarkdown(
-                      content: content,
-                      isStreaming: true,
-                      selectable: true,
-                      styleSheet: _assistantMarkdownStyleSheet(context),
-                      onTapLink: (url, title, text) {},
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.mint,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(4, 8, 6, 24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.auto_awesome, size: 16, color: context.colors.action),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                context.l10n.assistant,
+                style: Theme.of(context).textTheme.titleSmall,
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
+            if (isStreaming) ...[
+              const SizedBox(width: 10),
+              SizedBox.square(
+                dimension: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: context.colors.action,
+                  semanticsLabel: context.l10n.waiting,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        BufferedStreamingMarkdown(
+          content: content,
+          isStreaming: isStreaming,
+          selectable: true,
+          styleSheet: _assistantMarkdownStyleSheet(context),
+          onTapLink: (url, title, text) {},
+        ),
+      ],
+    ),
+  );
 }
 
 class _ErrorBanner extends StatelessWidget {
@@ -1191,16 +1133,16 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
-      color: AppColors.paleRose,
+      color: context.colors.noticeSurface,
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: AppColors.wine, size: 18),
+          Icon(Icons.error_outline, color: context.colors.error, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               displayError,
-              style: const TextStyle(
-                color: AppColors.wine,
+              style: TextStyle(
+                color: context.colors.error,
                 fontSize: 11,
                 height: 1.3,
               ),
@@ -1209,7 +1151,7 @@ class _ErrorBanner extends StatelessWidget {
           TextButton(
             onPressed: onRetry,
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.wine,
+              foregroundColor: context.colors.error,
               padding: EdgeInsets.zero,
               minimumSize: const Size(48, 32),
             ),
@@ -1287,96 +1229,82 @@ class _Composer extends StatelessWidget {
       14,
       12 + MediaQuery.paddingOf(context).bottom,
     ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Mode indicator
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
+    child: GlassSurface(
+      radius: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          IconButton(
+            tooltip: mode == AssistantMode.beginner
+                ? '${context.l10n.switchMode} · ${context.l10n.beginnerMode}'
+                : '${context.l10n.switchMode} · ${context.l10n.experiencedMode}',
+            onPressed: onModeToggle,
+            style: IconButton.styleFrom(
+              backgroundColor: context.colors.accentSurface(
+                context.colors.highlight,
+              ),
+            ),
+            icon: Icon(
               mode == AssistantMode.beginner
-                  ? context.l10n.beginnerMode
-                  : context.l10n.experiencedMode,
-              style: TextStyle(
-                color: AppColors.muted,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
+                  ? Icons.school_outlined
+                  : Icons.analytics_outlined,
+              color: context.colors.action,
+              size: 20,
             ),
-            TextButton(
-              onPressed: onModeToggle,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                context.l10n.switchMode,
-                style: TextStyle(
-                  color: AppColors.prussianBlue,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Focus(
-                canRequestFocus: false,
-                onKeyEvent: _handleKey,
-                child: TextField(
-                  controller: controller,
-                  minLines: 1,
-                  maxLines: 4,
-                  textInputAction: TextInputAction.newline,
-                  readOnly: busy,
-                  decoration: InputDecoration(
-                    hintText: busy
-                        ? context.l10n.waiting
-                        : context.l10n.askSmartSave,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 15,
-                      vertical: 12,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    isDense: true,
+          ),
+          Expanded(
+            child: Focus(
+              canRequestFocus: false,
+              onKeyEvent: _handleKey,
+              child: TextField(
+                controller: controller,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.newline,
+                readOnly: busy,
+                decoration: InputDecoration(
+                  hintText: busy
+                      ? context.l10n.waiting
+                      : context.l10n.askSmartSave,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 3,
+                    vertical: 14,
                   ),
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            SizedBox(
-              height: 48,
-              width: 48,
-              child: IconButton.filled(
-                tooltip: context.l10n.sendQuestion,
-                onPressed: busy ? null : () => onSend(controller.text),
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.firefly,
-                  foregroundColor: Colors.white,
-                ),
-                icon: busy
-                    ? const SizedBox(
-                        width: 17,
-                        height: 17,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.arrow_upward_rounded),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            height: 48,
+            width: 48,
+            child: IconButton.filled(
+              tooltip: context.l10n.sendQuestion,
+              onPressed: busy ? null : () => onSend(controller.text),
+              style: IconButton.styleFrom(
+                backgroundColor: context.colors.primary,
+                foregroundColor: context.colors.onPrimary,
               ),
+              icon: busy
+                  ? SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: context.colors.onPrimary,
+                      ),
+                    )
+                  : const Icon(Icons.arrow_upward_rounded),
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     ),
   );
 }

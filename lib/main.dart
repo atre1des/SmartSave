@@ -15,12 +15,21 @@ import 'l10n/generated/app_localizations.dart';
 import 'services/auth_service.dart';
 import 'services/firebase_service.dart';
 import 'shared/theme.dart';
+import 'shared/appearance.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final prefs = await SharedPreferences.getInstance();
+  final appearance = AppearanceController(prefs);
+
   if (!await firebaseService.initialize()) {
-    runApp(const _SessionApp(_SessionProblem.authentication));
+    runApp(
+      AppearanceScope(
+        controller: appearance,
+        child: const _SessionApp(_SessionProblem.authentication),
+      ),
+    );
     return;
   }
 
@@ -28,10 +37,14 @@ Future<void> main() async {
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: false,
   );
-  final prefs = await SharedPreferences.getInstance();
   final auth = AuthService(prefs);
   await auth.initialize();
-  runApp(_AccountSessions(auth: auth, prefs: prefs));
+  runApp(
+    AppearanceScope(
+      controller: appearance,
+      child: _AccountSessions(auth: auth, prefs: prefs),
+    ),
+  );
 }
 
 class _AccountSessions extends StatefulWidget {
@@ -145,6 +158,9 @@ class _SessionApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
+    theme: buildAppTheme(),
+    darkTheme: buildAppTheme(Brightness.dark),
+    themeMode: AppearanceScope.of(context)?.value ?? ThemeMode.system,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     localeResolutionCallback: AppLocaleController.resolve,
@@ -170,13 +186,15 @@ class SmartSaveApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp(
     locale: ref.watch(appLocaleProvider).locale,
+    theme: buildAppTheme(),
+    darkTheme: buildAppTheme(Brightness.dark),
+    themeMode: AppearanceScope.of(context)?.value ?? ThemeMode.system,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     localeResolutionCallback: AppLocaleController.resolve,
     navigatorKey: appNavigatorKey,
     title: 'SmartSave',
     debugShowCheckedModeBanner: false,
-    theme: buildAppTheme(),
     home: const AppEntry(),
   );
 }
