@@ -56,7 +56,7 @@ class AssistantAccessOverlay extends StatelessWidget {
                       elevation: 0,
                       highlightElevation: 0,
                       shape: const StadiumBorder(),
-                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      icon: const Icon(Icons.auto_awesome),
                       label: Text(context.l10n.askSmartSaveShort),
                     ),
                   ),

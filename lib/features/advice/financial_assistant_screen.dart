@@ -226,7 +226,7 @@ class _Welcome extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
     children: [
       Icon(
-        Icons.chat_bubble_outline_rounded,
+        Icons.auto_awesome,
         size: 38,
         color: context.colors.text,
       ),

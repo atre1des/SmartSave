@@ -284,6 +284,13 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Thesis Autopsy'), findsOneWidget);
         expect(find.text('Price change'), findsNothing);
+        final aiTabIcon = find.descendant(
+          of: find.byType(AppNavigationBar),
+          matching: find.byIcon(Icons.auto_awesome),
+        );
+        final inactiveIcon = tester.widget<Icon>(aiTabIcon);
+        expect(inactiveIcon.size, 24);
+        expect(inactiveIcon.color, tester.element(aiTabIcon).colors.muted);
         await tester.tap(find.text('AI'));
         await tester.pumpAndSettle();
         expect(
@@ -291,6 +298,11 @@ void main() {
               .widget<AppNavigationBar>(find.byType(AppNavigationBar))
               .selectedIndex,
           2,
+        );
+
+        expect(
+          tester.widget<Icon>(aiTabIcon).color,
+          tester.element(aiTabIcon).colors.action,
         );
 
         await tester.tap(find.byTooltip('Conversation History'));

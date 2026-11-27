@@ -588,15 +588,18 @@ class _AppShellState extends ConsumerState<AppShell> {
     const MyAccountScreen(),
   ];
 
-  Widget _buildTabIcon(String assetPath, bool isSelected) => SvgPicture.asset(
-    assetPath,
-    width: 24,
-    height: 24,
-    colorFilter: ColorFilter.mode(
-      isSelected ? context.colors.action : context.colors.muted,
-      BlendMode.srcIn,
-    ),
-  );
+  Widget _buildTabIcon(String? assetPath, bool isSelected) {
+    final color = isSelected ? context.colors.action : context.colors.muted;
+    if (assetPath == null) {
+      return Icon(Icons.auto_awesome, size: 24, color: color);
+    }
+    return SvgPicture.asset(
+      assetPath,
+      width: 24,
+      height: 24,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -604,7 +607,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final tabs = [
       (label: strings.home, asset: 'assets/figma/tab-home.svg'),
       (label: strings.deposits, asset: 'assets/figma/tab-deposits.svg'),
-      (label: strings.ai, asset: 'assets/figma/tab-ai.svg'),
+      (label: strings.ai, asset: null),
       (label: strings.invest, asset: 'assets/figma/tab-invest.svg'),
       (label: strings.myAccount, asset: 'assets/figma/tab-profile.svg'),
     ];
