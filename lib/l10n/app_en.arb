@@ -611,11 +611,11 @@
   "bondsByRisk": "1. Bonds by your risk profile",
   "autoAllocation": "2. Auto-allocation rules",
   "licensedBrokerApproval": "3. Automatic purchase only after your approval through a licensed broker",
-  "investExploreIntro": "SmartSave can help you explore investment options and see how they fit your goals.",
-  "investBasicsIntro": "Learn the basics, ask questions, and build confidence step by step.",
-  "thesisTrackingIntro": "Record your investment reasoning, test assumptions against evidence, and track validity over time.",
-  "liquidityExecutionIntro": "Understand how easily an investment can be sold and what order size means for execution.",
-  "macroImpactIntro": "Simulate how macro shocks like tenge depreciation or oil price changes affect your portfolio.",
+  "investExploreIntro": "Explore investments that fit your goals.",
+  "investBasicsIntro": "Learn the basics and ask questions.",
+  "thesisTrackingIntro": "Record your reasoning and test it against evidence.",
+  "liquidityExecutionIntro": "Assess how easily you can sell at different order sizes.",
+  "macroImpactIntro": "Model currency and oil price shocks.",
   "bondIntro": "Explore government and corporate bonds with verified terms and risk profiles.",
   "createAllocation": "Set an amount, frequency, and goal. SmartSave will create an illustrative allocation plan.",
   "noLiveBonds": "Bond opportunities are not yet connected to live data.",
@@ -791,5 +791,46 @@
     }
   },
   "aiConnecting": "Connecting…",
-  "aiWakingNotice": "Connecting to the AI proxy. A hosted service may need about a minute to wake up."
+  "aiWakingNotice": "Connecting to the AI proxy. A hosted service may need about a minute to wake up.",
+  "appearance": "Appearance",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "themeSaveFailed": "Could not save the appearance setting.",
+  "goalSuggestion": "Want to reach “{goal}” faster? You need {amount}/month. Explore adding money to a deposit or an investment scenario.",
+  "@goalSuggestion": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "authWelcomeBack": "Welcome back",
+  "authSignInSubtitle": "Sign in to pick up where you left off.",
+  "authSignUpSubtitle": "Create an account to start building better money habits.",
+  "authExistingAccount": "Already have an account?",
+  "authNoAccount": "New to SmartSave?",
+  "authResetSubtitle": "Enter your email and we’ll send you a reset link.",
+  "authSendReset": "Send reset link",
+  "authShowPassword": "Show password",
+  "authHidePassword": "Hide password",
+  "chooseAvatar": "Choose avatar",
+  "resetAvatar": "Reset to default",
+  "defaultAvatar": "Default SmartSave avatar",
+  "avatarSaveFailed": "Could not save the avatar. Try again.",
+  "avatarCredits": "Avatar credits",
+  "openMojiAttribution": "Animal avatars by OpenMoji, licensed under CC BY-SA 4.0.",
+  "avatarDog": "Dog",
+  "avatarCat": "Cat",
+  "avatarRabbit": "Rabbit",
+  "avatarBear": "Bear",
+  "avatarPanda": "Panda",
+  "avatarKoala": "Koala",
+  "avatarTiger": "Tiger",
+  "avatarLion": "Lion",
+  "avatarPig": "Pig",
+  "avatarMonkey": "Monkey"
 }

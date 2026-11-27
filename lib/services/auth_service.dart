@@ -336,7 +336,7 @@ class AuthService {
         );
         if (response.statusCode != 204) throw StateError('Cloud deletion could not be confirmed.');
       }, clearPreferences: (removeLegacy) async {
-        for (final name in [..._profilePreferences, 'onboarding_complete', 'risk_profile_complete', 'risk_profile', 'quiz_answers']) {
+        for (final name in [..._profilePreferences, avatarPreferenceName, 'onboarding_complete', 'risk_profile_complete', 'risk_profile', 'quiz_answers']) {
           if (!await _prefs.remove('${name}_${user.uid}')) {
             throw StateError('Local account preferences could not be removed.');
           }
@@ -386,6 +386,8 @@ class AuthService {
       return AuthResult.failure('Failed to update profile.', AuthExceptionCode.unknown);
     }
   }
+
+  static const avatarPreferenceName = 'profile_avatar';
 
   static const _profilePreferences = [
     'profile_country',

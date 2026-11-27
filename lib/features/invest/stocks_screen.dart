@@ -35,7 +35,7 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
     final finance = ref.watch(financeControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: EditorialHeader(
         title: Text(context.l10n.stocksForYou),
         actions: [
           PopupMenuButton<String>(
@@ -62,17 +62,17 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
       ),
       body: SafeArea(
         child: finance.isLoading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.firefly))
+            ? Center(child: CircularProgressIndicator(color: context.colors.text))
             : ListView(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                 children: [
                   // Risk profile badge
-                  SurfaceCard(
-                    color: AppColors.mintLight,
+                  RecordGroup(
+                    color: context.colors.subtleSurface,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     child: Row(
                       children: [
-                        const Icon(Icons.shield_outlined, size: 18, color: AppColors.firefly),
+                        Icon(Icons.shield_outlined, size: 18, color: context.colors.text),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -89,12 +89,12 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
                   const SizedBox(height: 8),
 
                   // Disclaimer
-                  SurfaceCard(
-                    color: AppColors.paleGold,
+                  RecordGroup(
+                    color: context.colors.noticeSurface,
                     padding: EdgeInsets.all(12),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: AppColors.gold, size: 18),
+                        Icon(Icons.info_outline, color: context.colors.warning, size: 18),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -120,7 +120,7 @@ class _StocksScreenState extends ConsumerState<StocksScreen> {
                   const SizedBox(height: 24),
                   Text(
                     context.l10n.fictionalStocks,
-                    style: TextStyle(color: AppColors.muted, fontSize: 11),
+                    style: TextStyle(color: context.colors.muted, fontSize: 11),
                   ),
                 ],
               ),
@@ -158,16 +158,16 @@ class _StockTile extends StatelessWidget {
   final VoidCallback onAskAI;
 
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     onTap: onTap,
     padding: const EdgeInsets.all(12),
     child: Row(
       children: [
         CircleAvatar(
-          backgroundColor: AppColors.mintLight,
+          backgroundColor: context.colors.subtleSurface,
           child: Text(
             stock.$2.substring(0, 2),
-            style: const TextStyle(color: AppColors.firefly, fontWeight: FontWeight.w600),
+            style: TextStyle(color: context.colors.text, fontWeight: FontWeight.w600),
           ),
         ),
         const SizedBox(width: 11),
@@ -176,16 +176,16 @@ class _StockTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(stock.$1, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              Text('${stock.$2} · ${stock.$3} · ${stock.$4} risk', style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+              Text('${stock.$2} · ${stock.$3} · ${stock.$4} risk', style: TextStyle(color: context.colors.muted, fontSize: 11)),
               const SizedBox(height: 4),
               Text(
                 stock.$6 ? context.l10n.fitsProfile : context.l10n.aboveProfile,
-                style: TextStyle(fontSize: 10, color: stock.$6 ? AppColors.success : AppColors.wine),
+                style: TextStyle(fontSize: 10, color: stock.$6 ? context.colors.positive : context.colors.error),
               ),
               const SizedBox(height: 4),
               Text(
                 stock.$5,
-                style: TextStyle(fontSize: 12, color: stock.$5.startsWith('+') ? AppColors.success : AppColors.wine),
+                style: TextStyle(fontSize: 12, color: stock.$5.startsWith('+') ? context.colors.positive : context.colors.error),
               ),
             ],
           ),
@@ -196,18 +196,18 @@ class _StockTile extends StatelessWidget {
             Text(stock.$5, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             Text(
               stock.$6 ? '✓' : '✗',
-              style: const TextStyle(fontSize: 12, color: AppColors.success),
+              style: TextStyle(fontSize: 12, color: context.colors.positive),
             ),
           ],
         ),
         const SizedBox(width: 8),
         IconButton(
           onPressed: onAskAI,
-          icon: const Icon(Icons.psychology_outlined, size: 20, color: AppColors.prussianBlue),
+          icon: Icon(Icons.psychology_outlined, size: 20, color: context.colors.action),
           tooltip: context.l10n.askAboutStock,
           style: IconButton.styleFrom(
-            backgroundColor: AppColors.mintLight,
-            foregroundColor: AppColors.prussianBlue),
+            backgroundColor: context.colors.subtleSurface,
+            foregroundColor: context.colors.action),
         ),
       ],
     ),

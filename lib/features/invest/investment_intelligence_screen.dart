@@ -20,7 +20,7 @@ class InvestmentIntelligenceScreen extends StatelessWidget {
     initialIndex: initialTab,
     length: 4,
     child: Scaffold(
-      appBar: AppBar(
+      appBar: EditorialHeader(
         title: Text(context.l10n.investmentIntelligence),
         bottom: TabBar(
           isScrollable: true,
@@ -55,7 +55,7 @@ class _AIBeginnerTab extends ConsumerWidget {
       const SizedBox(height: 5),
       Text(
         context.l10n.noLiveEducation,
-        style: TextStyle(color: AppColors.muted, fontSize: 11),
+        style: TextStyle(color: context.colors.muted, fontSize: 11),
       ),
       const SizedBox(height: 16),
 
@@ -104,8 +104,8 @@ class _AIBeginnerTab extends ConsumerWidget {
       const SizedBox(height: 20),
 
       // Open AI Assistant
-      SurfaceCard(
-        color: AppColors.firefly,
+      RecordGroup(
+        color: context.colors.emphasis,
         onTap: () {
           Navigator.of(context).push<void>(
             MaterialPageRoute<void>(builder: (_) => const _AIAssistantScreenRoute()),
@@ -113,7 +113,7 @@ class _AIBeginnerTab extends ConsumerWidget {
         },
         child: Row(
           children: [
-            Icon(Icons.auto_awesome, color: AppColors.mint, size: 24),
+            Icon(Icons.auto_awesome, color: context.colors.progress, size: 24),
             SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -122,7 +122,7 @@ class _AIBeginnerTab extends ConsumerWidget {
                   Text(
                     context.l10n.askAi,
                     style: TextStyle(
-                      color: Colors.white,
+                      color: context.colors.onEmphasis,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
@@ -130,19 +130,19 @@ class _AIBeginnerTab extends ConsumerWidget {
                   SizedBox(height: 2),
                   Text(
                     context.l10n.openAiForGuidance,
-                    style: TextStyle(color: Colors.white70, fontSize: 11),
+                    style: TextStyle(color: context.colors.onEmphasis, fontSize: 11),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: Colors.white),
+            Icon(Icons.chevron_right, color: context.colors.onEmphasis),
           ],
         ),
       ),
       const SizedBox(height: 12),
       Text(
         context.l10n.educationRisk,
-        style: TextStyle(color: AppColors.muted, fontSize: 11),
+        style: TextStyle(color: context.colors.muted, fontSize: 11),
       ),
     ],
   );
@@ -203,32 +203,14 @@ class _TopicCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => SurfaceCard(
-    onTap: onTap,
-    padding: const EdgeInsets.all(16),
-    child: Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.mintLight,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: AppColors.firefly, size: 24),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-              const SizedBox(height: 4),
-              Text(description, style: TextStyle(color: AppColors.muted, fontSize: 12)),
-            ],
-          ),
-        ),
-        const Icon(Icons.chevron_right, color: AppColors.muted),
-      ],
+  Widget build(BuildContext context) => RecordGroup(
+    padding: EdgeInsets.zero,
+    child: NavigationCell(
+      icon: icon,
+      title: title,
+      detail: description,
+      accent: context.colors.premium,
+      onTap: onTap,
     ),
   );
 }
@@ -343,7 +325,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
   Widget build(BuildContext context) => FutureBuilder<_ThesisOverview>(
     future: _theses,
     builder: (context, snapshot) {
-      if (snapshot.hasError) return _errorState('Could not load saved theses.');
+      if (snapshot.hasError) return _errorState(context, 'Could not load saved theses.');
       if (!snapshot.hasData) {
         return const Center(child: CircularProgressIndicator());
       }
@@ -378,11 +360,13 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
             overview.latestAssessment == null
                 ? context.l10n.latestAssessmentNone
                 : 'Latest assessment: ${overview.latestAssessment!.toLocal()} · ${overview.changedCount} recent condition change(s)',
-            style: const TextStyle(color: AppColors.muted, fontSize: 10),
+            style: TextStyle(color: context.colors.muted, fontSize: 10),
           ),
           const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
               SectionHeading(context.l10n.yourTheses),
               TextButton.icon(
@@ -393,8 +377,8 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
             ],
           ),
           if (theses.isEmpty)
-            SurfaceCard(
-              color: AppColors.mintLight,
+            RecordGroup(
+              color: context.colors.subtleSurface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -419,7 +403,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
             for (final thesis in theses)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: SurfaceCard(
+                child: RecordGroup(
                   onTap: () async {
                     await Navigator.push<void>(
                       context,
@@ -432,14 +416,14 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
                   child: Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: AppColors.mintLight,
+                        backgroundColor: context.colors.subtleSurface,
                         child: Text(
                           thesis.ticker.substring(
                             0,
                             thesis.ticker.length > 3 ? 3 : thesis.ticker.length,
                           ),
-                          style: const TextStyle(
-                            color: AppColors.firefly,
+                          style: TextStyle(
+                            color: context.colors.text,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -457,8 +441,8 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
                             ),
                             Text(
                               '${thesis.ticker} · ${thesis.exchange} · ${thesis.horizon.isEmpty ? 'Horizon not set' : thesis.horizon}',
-                              style: const TextStyle(
-                                color: AppColors.muted,
+                              style: TextStyle(
+                                color: context.colors.muted,
                                 fontSize: 11,
                               ),
                             ),
@@ -474,7 +458,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right, color: AppColors.muted),
+                      Icon(Icons.chevron_right, color: context.colors.muted),
                     ],
                   ),
                 ),
@@ -482,7 +466,7 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
           const SizedBox(height: 8),
           Text(
             context.l10n.thesisLocalOnly,
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
+            style: TextStyle(color: context.colors.muted, fontSize: 11),
           ),
         ],
       );
@@ -493,12 +477,12 @@ class _ThesisTabState extends ConsumerState<_ThesisTab> {
 class _SourceBanner extends StatelessWidget {
   const _SourceBanner();
   @override
-  Widget build(BuildContext context) => SurfaceCard(
-    color: AppColors.firefly,
+  Widget build(BuildContext context) => RecordGroup(
+    color: context.colors.emphasis,
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.shield_outlined, color: AppColors.mint, size: 22),
+        Icon(Icons.shield_outlined, color: context.colors.progress, size: 22),
         SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -507,14 +491,14 @@ class _SourceBanner extends StatelessWidget {
               Text(
                 context.l10n.kzMarketUnconnected,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: context.colors.onEmphasis,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               SizedBox(height: 5),
               Text(
                 context.l10n.evidenceUserProvided,
-                style: TextStyle(color: Colors.white70, fontSize: 11),
+                style: TextStyle(color: context.colors.onEmphasis, fontSize: 11),
               ),
             ],
           ),
@@ -534,11 +518,11 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     padding: const EdgeInsets.all(12),
     child: Row(
       children: [
-        Icon(icon, color: AppColors.firefly, size: 19),
+        Icon(icon, color: context.colors.text, size: 19),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -547,7 +531,7 @@ class _MetricCard extends StatelessWidget {
               Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
               Text(
                 label,
-                style: const TextStyle(color: AppColors.muted, fontSize: 10),
+                style: TextStyle(color: context.colors.muted, fontSize: 10),
               ),
             ],
           ),
@@ -632,7 +616,7 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: EditorialHeader(
       title: Text(
         widget.thesis == null ? context.l10n.newInvestmentThesis : context.l10n.editThesis,
       ),
@@ -645,7 +629,7 @@ class _ThesisFormScreenState extends ConsumerState<_ThesisFormScreen> {
           children: [
             Text(
               context.l10n.captureThesis,
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
+              style: TextStyle(color: context.colors.muted, fontSize: 12),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -804,7 +788,7 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: EditorialHeader(
       title: Text(widget.thesis.ticker),
       actions: [
         IconButton(
@@ -827,7 +811,7 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
         future: _detail,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return _errorState('Could not load this thesis.');
+            return _errorState(context, 'Could not load this thesis.');
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -844,14 +828,14 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
               ),
               Text(
                 '${widget.thesis.ticker} · ${widget.thesis.exchange}${widget.thesis.identifier.isEmpty ? '' : ' · ${widget.thesis.identifier}'}',
-                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: context.colors.muted, fontSize: 12),
               ),
               const SizedBox(height: 14),
-              _textCard('Your rationale', widget.thesis.rationale),
-              _textCard('Horizon', widget.thesis.horizon),
-              _textCard('Assumptions', widget.thesis.assumptions),
-              _textCard('Recognized risks', widget.thesis.risks),
-              _textCard('Reconsider if', widget.thesis.invalidationConditions),
+              _textCard(context, 'Your rationale', widget.thesis.rationale),
+              _textCard(context, 'Horizon', widget.thesis.horizon),
+              _textCard(context, 'Assumptions', widget.thesis.assumptions),
+              _textCard(context, 'Recognized risks', widget.thesis.risks),
+              _textCard(context, 'Reconsider if', widget.thesis.invalidationConditions),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -865,10 +849,10 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
                 ],
               ),
               if (conditions.isEmpty)
-                SurfaceCard(
+                RecordGroup(
                   child: Text(
                     context.l10n.noConditions,
-                    style: TextStyle(color: AppColors.muted, fontSize: 12),
+                    style: TextStyle(color: context.colors.muted, fontSize: 12),
                   ),
                 )
               else
@@ -889,16 +873,16 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
                 padding: EdgeInsets.only(top: 8),
                 child: Text(
                   context.l10n.evidenceLocalRules,
-                  style: TextStyle(color: AppColors.muted, fontSize: 11),
+                  style: TextStyle(color: context.colors.muted, fontSize: 11),
                 ),
               ),
               const SizedBox(height: 18),
               SectionHeading(context.l10n.bearCase),
               if (latest == null)
-                SurfaceCard(
+                RecordGroup(
                   child: Text(
                     context.l10n.runAssessment,
-                    style: TextStyle(color: AppColors.muted, fontSize: 12),
+                    style: TextStyle(color: context.colors.muted, fontSize: 12),
                   ),
                 )
               else
@@ -908,7 +892,7 @@ class _ThesisDetailScreenState extends ConsumerState<_ThesisDetailScreen> {
               if (history.isEmpty)
                 Text(
                   context.l10n.noAssessments,
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: context.colors.muted, fontSize: 12),
                 )
               else
                 for (final assessment in history)
@@ -1005,7 +989,7 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: EditorialHeader(
       title: Text(
         widget.condition == null ? context.l10n.addCondition : context.l10n.editCondition,
       ),
@@ -1117,7 +1101,7 @@ class _ConditionFormScreenState extends ConsumerState<_ConditionFormScreen> {
           const SizedBox(height: 10),
           Text(
             context.l10n.qualitativeDisclaimer,
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
+            style: TextStyle(color: context.colors.muted, fontSize: 11),
           ),
           const SizedBox(height: 18),
           PrimaryAction(
@@ -1144,7 +1128,7 @@ class _ConditionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: SurfaceCard(
+    child: RecordGroup(
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1165,7 +1149,7 @@ class _ConditionCard extends StatelessWidget {
           if (condition.isNumeric)
             Text(
               '${condition.metric.isEmpty ? 'Metric' : condition.metric}: ${condition.comparator == ConditionComparator.atLeast ? '≥' : '≤'} ${condition.threshold}',
-              style: const TextStyle(fontSize: 11, color: AppColors.muted),
+              style: TextStyle(fontSize: 11, color: context.colors.muted),
             ),
           if (assessment != null) ...[
             const SizedBox(height: 6),
@@ -1173,11 +1157,11 @@ class _ConditionCard extends StatelessWidget {
             if (assessment!.source.isNotEmpty)
               Text(
                 'Source: ${assessment!.source} · ${assessment!.reportingPeriod}',
-                style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                style: TextStyle(fontSize: 10, color: context.colors.muted),
               ),
             Text(
               'Evidence: ${assessment!.evidence}',
-              style: const TextStyle(fontSize: 10, color: AppColors.muted),
+              style: TextStyle(fontSize: 10, color: context.colors.muted),
             ),
           ],
         ],
@@ -1195,38 +1179,38 @@ class _AssessmentCard extends StatelessWidget {
       _listCard(
         'Arguments in support',
         assessment.supportingArguments,
-        AppColors.mintLight,
+        context.colors.subtleSurface,
       ),
       _listCard(
         'Strongest counterarguments',
         assessment.counterarguments,
-        AppColors.paleRose,
+        context.colors.noticeSurface,
       ),
       _listCard(
         'Unverified assumptions',
         assessment.unverifiedAssumptions,
-        Colors.white,
+        context.colors.surface,
       ),
       _listCard(
         'Risks to investigate',
         assessment.overlookedRisks,
-        Colors.white,
+        context.colors.surface,
       ),
       _listCard(
         'Reconsideration triggers',
         assessment.reconsiderationTriggers,
-        Colors.white,
+        context.colors.surface,
       ),
       _listCard(
         'Information needed',
         assessment.additionalInformation,
-        Colors.white,
+        context.colors.surface,
       ),
       Align(
         alignment: Alignment.centerLeft,
         child: Text(
           'Assessed ${assessment.assessedAt.toLocal()}',
-          style: const TextStyle(color: AppColors.muted, fontSize: 10),
+          style: TextStyle(color: context.colors.muted, fontSize: 10),
         ),
       ),
     ],
@@ -1254,7 +1238,7 @@ class _HistoryCard extends StatelessWidget {
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: SurfaceCard(
+      child: RecordGroup(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1265,7 +1249,7 @@ class _HistoryCard extends StatelessWidget {
             ),
             Text(
               '${assessment.conditions.length} conditions · ${assessment.conditions.where((item) => item.status == EvidenceStatus.insufficient).length} insufficient evidence',
-              style: const TextStyle(color: AppColors.muted, fontSize: 10),
+              style: TextStyle(color: context.colors.muted, fontSize: 10),
             ),
             if (changes.isNotEmpty) ...[
               const SizedBox(height: 4),
@@ -1292,10 +1276,10 @@ class _StatusChip extends StatelessWidget {
       EvidenceStatus.notEvaluated => context.l10n.evidenceNotEvaluated,
     };
     final color = status == EvidenceStatus.supported
-        ? AppColors.success
+        ? context.colors.positive
         : status == EvidenceStatus.contradicted
-        ? AppColors.wine
-        : AppColors.muted;
+        ? context.colors.error
+        : context.colors.muted;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -1366,7 +1350,7 @@ class _LiquidityTabState extends ConsumerState<_LiquidityTab> {
         const SizedBox(height: 5),
         Text(
           context.l10n.noLiveLiquidity,
-          style: TextStyle(color: AppColors.muted, fontSize: 11),
+          style: TextStyle(color: context.colors.muted, fontSize: 11),
         ),
         const SizedBox(height: 16),
         FutureBuilder<List<InvestmentThesis>>(
@@ -1435,10 +1419,10 @@ class _LiquidityTabState extends ConsumerState<_LiquidityTab> {
         ),
         const SizedBox(height: 8),
         if (analysis == null)
-          SurfaceCard(
+          RecordGroup(
             child: Text(
               context.l10n.enterHistoricalOrder,
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
+              style: TextStyle(color: context.colors.muted, fontSize: 12),
             ),
           )
         else
@@ -1450,7 +1434,7 @@ class _LiquidityTabState extends ConsumerState<_LiquidityTab> {
         const SizedBox(height: 12),
         Text(
           context.l10n.liquidityDisclaimer,
-          style: TextStyle(color: AppColors.muted, fontSize: 11),
+          style: TextStyle(color: context.colors.muted, fontSize: 11),
         ),
       ],
     );
@@ -1467,10 +1451,10 @@ class _LiquidityResult extends StatelessWidget {
   final String source;
   final String date;
   @override
-  Widget build(BuildContext context) => SurfaceCard(
+  Widget build(BuildContext context) => RecordGroup(
     color: analysis.status == 'scenario'
-        ? AppColors.mintLight
-        : AppColors.paleGold,
+        ? context.colors.subtleSurface
+        : context.colors.noticeSurface,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1492,7 +1476,7 @@ class _LiquidityResult extends StatelessWidget {
           ),
           Text(
             'Observation: $date · $source',
-            style: const TextStyle(fontSize: 10, color: AppColors.muted),
+            style: TextStyle(fontSize: 10, color: context.colors.muted),
           ),
         ],
       ],
@@ -1543,7 +1527,7 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
     future: _data,
     builder: (context, snapshot) {
       if (snapshot.hasError) {
-        return _errorState('Could not load portfolio assumptions.');
+        return _errorState(context, 'Could not load portfolio assumptions.');
       }
       if (!snapshot.hasData) {
         return const Center(child: CircularProgressIndicator());
@@ -1581,11 +1565,13 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
           const SizedBox(height: 5),
           Text(
             context.l10n.macroDisclaimer,
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
+            style: TextStyle(color: context.colors.muted, fontSize: 11),
           ),
           const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
               SectionHeading(context.l10n.portfolioHoldings),
               TextButton.icon(
@@ -1596,17 +1582,17 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
             ],
           ),
           if (holdings.isEmpty)
-            SurfaceCard(
+            RecordGroup(
               child: Text(
                 context.l10n.holdingStart,
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+                style: TextStyle(color: context.colors.muted, fontSize: 12),
               ),
             )
           else
             for (final holding in holdings)
               Padding(
                 padding: const EdgeInsets.only(bottom: 7),
-                child: SurfaceCard(
+                child: RecordGroup(
                   padding: const EdgeInsets.all(11),
                   child: Row(
                     children: [
@@ -1623,8 +1609,8 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
                             ),
                             Text(
                               '${context.formatTenge(holding.marketValueKzt)} · user-entered value',
-                              style: const TextStyle(
-                                color: AppColors.muted,
+                              style: TextStyle(
+                                color: context.colors.muted,
                                 fontSize: 10,
                               ),
                             ),
@@ -1647,20 +1633,30 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
               ),
           const SizedBox(height: 10),
           DropdownButtonFormField<EconomicScenario>(
+            isExpanded: true,
             initialValue: _scenario,
             decoration: InputDecoration(labelText: context.l10n.scenario),
             items: [
               DropdownMenuItem(
                 value: EconomicScenario.tengeDepreciation,
-                child: Text(context.l10n.tengeDepreciation),
+                child: Text(
+                  context.l10n.tengeDepreciation,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               DropdownMenuItem(
                 value: EconomicScenario.oilPriceDecrease,
-                child: Text(context.l10n.oilPriceDrop),
+                child: Text(
+                  context.l10n.oilPriceDrop,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               DropdownMenuItem(
                 value: EconomicScenario.interestRateIncrease,
-                child: Text(context.l10n.interestIncrease),
+                child: Text(
+                  context.l10n.interestIncrease,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
             onChanged: (value) {
@@ -1705,7 +1701,7 @@ class _RippleTabState extends ConsumerState<_RippleTab> {
           const SizedBox(height: 12),
           Text(
             context.l10n.macroFormula,
-            style: TextStyle(color: AppColors.muted, fontSize: 10),
+            style: TextStyle(color: context.colors.muted, fontSize: 10),
           ),
         ],
       );
@@ -1720,35 +1716,35 @@ class _RippleResults extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      SurfaceCard(
-        color: AppColors.firefly,
+      RecordGroup(
+        color: context.colors.emphasis,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               context.l10n.scenarioComparison,
               style: TextStyle(
-                color: Colors.white,
+                color: context.colors.onEmphasis,
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 7),
             Text(
               'Before  ${context.formatTenge(result.beforeKzt)}',
-              style: const TextStyle(color: Colors.white, fontSize: 12),
+              style: TextStyle(color: context.colors.onEmphasis, fontSize: 12),
             ),
             Text(
               result.afterKzt == null
                   ? context.l10n.notEstimatedAfter
                   : 'After  ${context.formatTenge(result.afterKzt!)}',
-              style: const TextStyle(color: Colors.white, fontSize: 12),
+              style: TextStyle(color: context.colors.onEmphasis, fontSize: 12),
             ),
             Text(
               result.changeKzt == null
                   ? context.l10n.portfolioUnknownNotice
                   : 'Change  ${context.formatTenge(result.changeKzt!)}',
-              style: const TextStyle(
-                color: AppColors.mint,
+              style: TextStyle(
+                color: context.colors.progress,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
@@ -1760,7 +1756,7 @@ class _RippleResults extends StatelessWidget {
       for (final item in result.holdings)
         Padding(
           padding: const EdgeInsets.only(bottom: 7),
-          child: SurfaceCard(
+          child: RecordGroup(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
@@ -1779,15 +1775,15 @@ class _RippleResults extends StatelessWidget {
                         item.returnPercent == null
                             ? context.l10n.sensitivityMissing
                             : 'Assumed impact ${item.returnPercent!.toStringAsFixed(2)}% · ${context.formatTenge(item.changeKzt!)}',
-                        style: const TextStyle(
-                          color: AppColors.muted,
+                        style: TextStyle(
+                          color: context.colors.muted,
                           fontSize: 10,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.tune, size: 18, color: AppColors.muted),
+                Icon(Icons.tune, size: 18, color: context.colors.muted),
               ],
             ),
           ),
@@ -1922,7 +1918,7 @@ class _HoldingFormState extends ConsumerState<_HoldingForm> {
         const SizedBox(height: 12),
         Text(
           context.l10n.sensitivityNotice,
-          style: TextStyle(color: AppColors.muted, fontSize: 10),
+          style: TextStyle(color: context.colors.muted, fontSize: 10),
         ),
         const SizedBox(height: 12),
         PrimaryAction(label: context.l10n.saveHolding, onPressed: _save),
@@ -1931,9 +1927,9 @@ class _HoldingFormState extends ConsumerState<_HoldingForm> {
   );
 }
 
-Widget _textCard(String title, String text) => Padding(
+Widget _textCard(BuildContext context, String title, String text) => Padding(
   padding: const EdgeInsets.only(bottom: 7),
-  child: SurfaceCard(
+  child: RecordGroup(
     padding: const EdgeInsets.all(12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1946,7 +1942,7 @@ Widget _textCard(String title, String text) => Padding(
         Text(
           text.isEmpty ? 'Not recorded.' : text,
           style: TextStyle(
-            color: text.isEmpty ? AppColors.muted : AppColors.firefly,
+            color: text.isEmpty ? context.colors.muted : context.colors.text,
             fontSize: 12,
           ),
         ),
@@ -1957,7 +1953,7 @@ Widget _textCard(String title, String text) => Padding(
 
 Widget _listCard(String title, List<String> lines, Color color) => Padding(
   padding: const EdgeInsets.only(bottom: 7),
-  child: SurfaceCard(
+  child: RecordGroup(
     color: color,
     padding: const EdgeInsets.all(12),
     child: Column(
@@ -1989,19 +1985,19 @@ Widget _numberField(
   onChanged: (_) => onChanged(),
 );
 
-Widget _errorState(String message) => Center(
+Widget _errorState(BuildContext context, String message) => Center(
   child: Padding(
     padding: const EdgeInsets.all(24),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.error_outline, color: AppColors.wine),
+        Icon(Icons.error_outline, color: context.colors.error),
         const SizedBox(height: 8),
         Text(message),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Try leaving and reopening this section.',
-          style: TextStyle(color: AppColors.muted, fontSize: 12),
+          style: TextStyle(color: context.colors.muted, fontSize: 12),
         ),
       ],
     ),

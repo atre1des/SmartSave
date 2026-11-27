@@ -1,3 +1,5 @@
+import '../shared/theme.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -86,49 +88,49 @@ class _StreamingMarkdownState extends State<StreamingMarkdown> {
     final theme = Theme.of(context);
     return MarkdownStyleSheet.fromTheme(theme).copyWith(
       p: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF1A1A2E), // AppColors.firefly equivalent
+        color: context.colors.text, // AppColors.firefly equivalent
         height: 1.5,
         fontSize: 14,
       ),
       h1: theme.textTheme.headlineSmall?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontWeight: FontWeight.w700,
         fontSize: 20,
       ),
       h2: theme.textTheme.titleLarge?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontWeight: FontWeight.w600,
         fontSize: 18,
       ),
       h3: theme.textTheme.titleMedium?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontWeight: FontWeight.w600,
         fontSize: 16,
       ),
       strong: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontWeight: FontWeight.w700,
       ),
       em: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontStyle: FontStyle.italic,
       ),
       listBullet: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         height: 1.5,
         fontSize: 14,
       ),
       listBulletPadding: const EdgeInsets.only(left: 24, top: 4, bottom: 4),
       listIndent: 24,
       blockquote: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF6B7280), // Muted color
+        color: context.colors.muted, // Muted color
         fontStyle: FontStyle.italic,
       ),
       blockquotePadding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
       blockquoteDecoration: BoxDecoration(
         border: Border(
           left: BorderSide(
-            color: const Color(0xFF00BFA6), // AppColors.mint equivalent
+            color: context.colors.action, // AppColors.mint equivalent
             width: 4,
           ),
         ),
@@ -136,21 +138,21 @@ class _StreamingMarkdownState extends State<StreamingMarkdown> {
       code: theme.textTheme.bodyMedium?.copyWith(
         fontFamily: 'monospace',
         fontSize: 13,
-        backgroundColor: const Color(0xFFF3F4F6),
-        color: const Color(0xFF1A1A2E),
+        backgroundColor: context.colors.subtleSurface,
+        color: context.colors.text,
       ),
       codeblockDecoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: context.colors.text,
         borderRadius: BorderRadius.circular(8),
       ),
       codeblockPadding: const EdgeInsets.all(16),
       a: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF00BFA6),
+        color: context.colors.action,
         decoration: TextDecoration.underline,
       ),
       horizontalRuleDecoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: const Color(0xFFE5E7EB), width: 1),
+          top: BorderSide(color: context.colors.outline, width: 1),
         ),
       ),
     );
@@ -323,68 +325,68 @@ class _BufferedStreamingMarkdownState extends State<BufferedStreamingMarkdown> {
     final theme = Theme.of(context);
     return MarkdownStyleSheet.fromTheme(theme).copyWith(
       p: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         height: 1.5,
         fontSize: 14,
       ),
       h1: theme.textTheme.headlineSmall?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontWeight: FontWeight.w700,
         fontSize: 20,
       ),
       h2: theme.textTheme.titleLarge?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontWeight: FontWeight.w600,
         fontSize: 18,
       ),
       h3: theme.textTheme.titleMedium?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontWeight: FontWeight.w600,
         fontSize: 16,
       ),
       strong: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontWeight: FontWeight.w700,
       ),
       em: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         fontStyle: FontStyle.italic,
       ),
       listBullet: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF1A1A2E),
+        color: context.colors.text,
         height: 1.5,
         fontSize: 14,
       ),
       listBulletPadding: const EdgeInsets.only(left: 24, top: 4, bottom: 4),
       listIndent: 24,
       blockquote: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF6B7280),
+        color: context.colors.muted,
         fontStyle: FontStyle.italic,
       ),
       blockquotePadding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
       blockquoteDecoration: BoxDecoration(
         border: Border(
-          left: BorderSide(color: const Color(0xFF00BFA6), width: 4),
+          left: BorderSide(color: context.colors.action, width: 4),
         ),
       ),
       code: theme.textTheme.bodyMedium?.copyWith(
         fontFamily: 'monospace',
         fontSize: 13,
-        backgroundColor: const Color(0xFFF3F4F6),
-        color: const Color(0xFF1A1A2E),
+        backgroundColor: context.colors.subtleSurface,
+        color: context.colors.text,
       ),
       codeblockDecoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: context.colors.text,
         borderRadius: BorderRadius.circular(8),
       ),
       codeblockPadding: const EdgeInsets.all(16),
       a: theme.textTheme.bodyMedium?.copyWith(
-        color: const Color(0xFF00BFA6),
+        color: context.colors.action,
         decoration: TextDecoration.underline,
       ),
       horizontalRuleDecoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: const Color(0xFFE5E7EB), width: 1),
+          top: BorderSide(color: context.colors.outline, width: 1),
         ),
       ),
     );

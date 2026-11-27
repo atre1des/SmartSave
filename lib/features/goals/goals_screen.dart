@@ -16,15 +16,15 @@ class GoalsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final finance = ref.watch(financeControllerProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: EditorialHeader(
         leading: BackButton(),
         title: Text(context.l10n.myGoals),
       ),
       body: SafeArea(child: finance.isLoading
-        ? const Center(child: CircularProgressIndicator(color: AppColors.firefly))
+        ? Center(child: CircularProgressIndicator(color: context.colors.text))
         : ListView(padding: const EdgeInsets.fromLTRB(24, 0, 24, 24), children: [
             const SizedBox(height: 10),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: AppColors.mintLight, borderRadius: BorderRadius.circular(24)), child: Text('●  ${context.l10n.monthlyFreeCash(context.formatTenge((52000 - (finance.monthlySpend - 312400)).clamp(0, 52000)))}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: context.colors.subtleSurface, borderRadius: BorderRadius.circular(24)), child: Text('●  ${context.l10n.monthlyFreeCash(context.formatTenge((52000 - (finance.monthlySpend - 312400)).clamp(0, 52000)))}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
             const SizedBox(height: 16),
             if (finance.goals.isEmpty) const _EmptyGoals() else for (final goal in finance.goals) ...[
               GoalCard(goal: goal, onTap: () => _push(context, GoalProgressScreen(goal: goal))),
@@ -40,14 +40,21 @@ class GoalCard extends StatelessWidget {
   final SavingsGoal goal;
   final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => SurfaceCard(padding: const EdgeInsets.all(15), onTap: onTap, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget build(BuildContext context) => RecordGroup(
+    color: context.colors.accentSurface(
+      goal.progressPercent >= 100 ? context.colors.premium : context.colors.highlight,
+    ),
+    padding: const EdgeInsets.all(15), onTap: onTap, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [Expanded(child: Text(goal.name, style: Theme.of(context).textTheme.titleMedium)), Text(context.formatPercent(goal.progressPercent), style: Theme.of(context).textTheme.titleMedium)]),
         const SizedBox(height: 9),
-        ProgressTrack(value: goal.target == 0 ? 0 : goal.saved / goal.target),
+        ProgressTrack(
+          value: goal.target == 0 ? 0 : goal.saved / goal.target,
+          color: goal.progressPercent >= 100 ? context.colors.premium : context.colors.positive,
+        ),
         const SizedBox(height: 8),
         Text('${context.formatTenge(goal.saved)} / ${context.formatTenge(goal.target)} · ${context.l10n.monthsLeft(_monthsLeft(goal.deadline))}', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 2),
-        Text(context.l10n.onTrack, style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(context.l10n.onTrack, style: TextStyle(color: context.colors.positive, fontSize: 11, fontWeight: FontWeight.w600)),
       ]));
 }
 
@@ -60,31 +67,36 @@ class GoalProgressScreen extends ConsumerWidget {
     final current = ref.watch(financeControllerProvider).goals.where((item) => item.id == goal.id).firstOrNull ?? goal;
     final months = _monthsLeft(current.deadline).clamp(1, 120).toInt();
     final monthly = monthlyGoalContribution(targetTenge: current.target, savedTenge: current.saved, monthsRemaining: months);
-    return Scaffold(appBar: AppBar(title: Text(current.name)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
-      Center(child: Column(children: [Text(context.formatPercent(current.progressPercent), style: const TextStyle(fontSize: 44, fontWeight: FontWeight.w700)), const SizedBox(height: 12), ProgressTrack(value: current.target == 0 ? 0 : current.saved / current.target, height: 14), const SizedBox(height: 10), Text(context.l10n.amountSaved(context.formatTenge(current.saved)), style: const TextStyle(color: AppColors.muted))])),
+    return Scaffold(appBar: EditorialHeader(title: Text(current.name)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+      FinancialFigure(
+        context.formatPercent(current.progressPercent),
+        label: context.l10n.amountSaved(context.formatTenge(current.saved)),
+      ),
+      const SizedBox(height: 12),
+      ProgressTrack(value: current.target == 0 ? 0 : current.saved / current.target, height: 8),
       const SizedBox(height: 20),
-      SurfaceCard(child: Column(children: [LabeledValue(label: context.l10n.saved, value: context.formatTenge(current.saved)), const Divider(height: 1), LabeledValue(label: context.l10n.left, value: context.formatTenge(current.remaining)), const Divider(height: 1), LabeledValue(label: context.l10n.perMonth, value: context.formatTenge(monthly))])),
+      RecordGroup(child: Column(children: [LabeledValue(label: context.l10n.saved, value: context.formatTenge(current.saved)), const Divider(height: 1), LabeledValue(label: context.l10n.left, value: context.formatTenge(current.remaining)), const Divider(height: 1), LabeledValue(label: context.l10n.perMonth, value: context.formatTenge(monthly))])),
       const SizedBox(height: 18),
       SectionHeading(context.l10n.monthlyReminder),
-      SurfaceCard(child: Text(context.l10n.reminderFirst, style: TextStyle(color: AppColors.muted))),
+      RecordGroup(child: Text(context.l10n.reminderFirst, style: TextStyle(color: context.colors.muted))),
       const SizedBox(height: 18),
       SectionHeading(context.l10n.milestones),
-      SurfaceCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${current.progressPercent >= 50 ? '✓ ' : '○ '}50% reached'), const SizedBox(height: 12), Text('${current.progressPercent >= 75 ? '✓ ' : '○ '}75% · ${context.formatShortDate(current.deadline)}'), const SizedBox(height: 12), Text('${current.progressPercent == 100 ? '✓ ' : '○ '}Goal · ${context.formatShortDate(current.deadline)}')])),
+      RecordGroup(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${current.progressPercent >= 50 ? '✓ ' : '○ '}50% reached'), const SizedBox(height: 12), Text('${current.progressPercent >= 75 ? '✓ ' : '○ '}75% · ${context.formatShortDate(current.deadline)}'), const SizedBox(height: 12), Text('${current.progressPercent == 100 ? '✓ ' : '○ '}Goal · ${context.formatShortDate(current.deadline)}')])),
       const SizedBox(height: 18),
       ListTile(contentPadding: EdgeInsets.zero, title: Text(context.l10n.autoSaveLater), subtitle: Text(context.l10n.noTransfers), trailing: const Icon(Icons.chevron_right), onTap: () => _push(context, const AutoSaveScreen())),
       const SizedBox(height: 10),
       PrimaryAction(label: context.l10n.addMoney, onPressed: () => _contribute(context, ref, current)),
       const SizedBox(height: 10),
       OutlinedButton(onPressed: () => _push(context, GoalEditorScreen(goal: current)), child: Text(context.l10n.editGoal)),
-      TextButton(onPressed: () => showDialog<void>(context: context, builder: (dialogContext) => AlertDialog(title: Text(context.l10n.deleteGoalQuestion), content: Text(context.l10n.deleteGoalNotice), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(context.l10n.cancel)), TextButton(onPressed: () async { Navigator.pop(dialogContext); await ref.read(financeControllerProvider).deleteGoal(current.id!); if (context.mounted) Navigator.pop(context); }, child: Text(context.l10n.delete))])), child: Text(context.l10n.deleteGoal, style: TextStyle(color: AppColors.wine))),
+      TextButton(onPressed: () => showDialog<void>(context: context, builder: (dialogContext) => AlertDialog(title: Text(context.l10n.deleteGoalQuestion), content: Text(context.l10n.deleteGoalNotice), actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(context.l10n.cancel)), TextButton(onPressed: () async { Navigator.pop(dialogContext); await ref.read(financeControllerProvider).deleteGoal(current.id!); if (context.mounted) Navigator.pop(context); }, child: Text(context.l10n.delete))])), child: Text(context.l10n.deleteGoal, style: TextStyle(color: context.colors.error))),
     ])));
   }
 
   Future<void> _contribute(BuildContext context, WidgetRef ref, SavingsGoal goal) async {
     var input = '';
-    final amount = await showDialog<int>(
+    final amount = await showEditorSheet<int>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => EditorSheet(
         title: Text(context.l10n.addMoneyGoal),
         content: TextField(
           onChanged: (value) => input = value,
@@ -140,7 +152,7 @@ class _GoalEditorScreenState extends ConsumerState<GoalEditorScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(widget.goal == null ? context.l10n.newGoal : context.l10n.editGoal)), body: SafeArea(child: Form(key: _formKey, child: ListView(padding: const EdgeInsets.all(24), children: [
+  Widget build(BuildContext context) => Scaffold(appBar: EditorialHeader(title: Text(widget.goal == null ? context.l10n.newGoal : context.l10n.editGoal)), body: SafeArea(child: Form(key: _formKey, child: ListView(padding: const EdgeInsets.all(24), children: [
     TextFormField(controller: _name, decoration: InputDecoration(labelText: context.l10n.goalName), validator: (value) => value == null || value.trim().isEmpty ? 'Enter a goal name.' : null),
     const SizedBox(height: 16),
     TextFormField(controller: _target, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: context.l10n.target, suffixText: '₸'), validator: (value) { final amount = int.tryParse(value?.replaceAll(RegExp(r'[^0-9]'), '') ?? ''); return amount == null || amount <= 0 ? 'Enter a positive target.' : null; }),
@@ -149,7 +161,7 @@ class _GoalEditorScreenState extends ConsumerState<GoalEditorScreen> {
     const SizedBox(height: 12),
     DropdownButtonFormField<String>(initialValue: _purpose, decoration: InputDecoration(labelText: context.l10n.purpose), items: const ['Purchase', 'Travel', 'Car', 'Education', 'Safety cushion'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: (value) => setState(() => _purpose = value ?? 'Purchase')),
     const SizedBox(height: 18),
-    SurfaceCard(color: AppColors.mintLight, child: Text(context.l10n.goalDeadlineExplainer, style: TextStyle(fontSize: 12))),
+    RecordGroup(color: context.colors.subtleSurface, child: Text(context.l10n.goalDeadlineExplainer, style: TextStyle(fontSize: 12))),
     const SizedBox(height: 22),
     PrimaryAction(label: context.l10n.saveGoal, onPressed: _save),
     if (widget.goal != null) TextButton(onPressed: () => _push(context, SavingsPlanScreen(goal: widget.goal!)), child: Text(context.l10n.savingsPlanLink)),
@@ -163,14 +175,14 @@ class SavingsPlanScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final months = _monthsLeft(goal.deadline).clamp(1, 120).toInt();
     final monthly = monthlyGoalContribution(targetTenge: goal.target, savedTenge: goal.saved, monthsRemaining: months);
-    return Scaffold(appBar: AppBar(title: Text(context.l10n.savingsPlan)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
+    return Scaffold(appBar: EditorialHeader(title: Text(context.l10n.savingsPlan)), body: SafeArea(child: ListView(padding: const EdgeInsets.all(24), children: [
       Text(goal.name, style: Theme.of(context).textTheme.headlineMedium),
       const SizedBox(height: 12),
-      SurfaceCard(child: Column(children: [LabeledValue(label: context.l10n.target, value: context.formatTenge(goal.target)), LabeledValue(label: context.l10n.deadline, value: context.formatShortDate(goal.deadline)), LabeledValue(label: context.l10n.saveEveryMonth, value: context.formatTenge(monthly))])),
+      RecordGroup(child: Column(children: [LabeledValue(label: context.l10n.target, value: context.formatTenge(goal.target)), LabeledValue(label: context.l10n.deadline, value: context.formatShortDate(goal.deadline)), LabeledValue(label: context.l10n.saveEveryMonth, value: context.formatTenge(monthly))])),
       const SizedBox(height: 18),
       SectionHeading(context.l10n.projectedSavings),
       for (var step = 0; step <= months && step < 6; step++) ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text(step == 0 ? context.l10n.now : context.l10n.goalMonth(step)), trailing: Text(context.formatTenge((goal.saved + monthly * step).clamp(0, goal.target)))),
-      SurfaceCard(color: AppColors.paleGold, child: Text(context.l10n.goalEstimateExplainer, style: TextStyle(fontSize: 12))),
+      RecordGroup(color: context.colors.noticeSurface, child: Text(context.l10n.goalEstimateExplainer, style: TextStyle(fontSize: 12))),
       const SizedBox(height: 20),
       PrimaryAction(label: context.l10n.saveGoal, onPressed: () => Navigator.pop(context)),
       TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.adjust)),
@@ -181,7 +193,7 @@ class SavingsPlanScreen extends StatelessWidget {
 class _EmptyGoals extends StatelessWidget {
   const _EmptyGoals();
   @override
-  Widget build(BuildContext context) => Padding(padding: EdgeInsets.symmetric(vertical: 50), child: Column(children: [Icon(Icons.flag_outlined, size: 48, color: AppColors.muted), SizedBox(height: 12), Text(context.l10n.noGoals), Text(context.l10n.createGoalProgress, style: TextStyle(color: AppColors.muted))]));
+  Widget build(BuildContext context) => Padding(padding: EdgeInsets.symmetric(vertical: 50), child: Column(children: [Icon(Icons.flag_outlined, size: 48, color: context.colors.muted), SizedBox(height: 12), Text(context.l10n.noGoals), Text(context.l10n.createGoalProgress, style: TextStyle(color: context.colors.muted))]));
 }
 
 int _monthsLeft(DateTime deadline) { final now = DateTime.now(); return ((deadline.year - now.year) * 12 + deadline.month - now.month).clamp(0, 120); }
