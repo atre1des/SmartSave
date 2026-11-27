@@ -5,7 +5,7 @@ name: CI
 
 on:
   push:
-    branches: [main, development, experimental/ui-v2, experimental/ui-v3-liquid-glass]
+    branches: [main, development, experimental/ui-v2, experimental/ui-v3-liquid-glass, stage-11/ios-compatibility]
   pull_request:
     branches: [main, development]
 
@@ -110,7 +110,7 @@ jobs:
   build-ios:
     name: Build iOS (No Codesign)
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: [analyze, test]
     steps:
       - name: Checkout repository
@@ -128,6 +128,18 @@ jobs:
 
       - name: Build iOS (no codesign)
         run: flutter build ios --release --no-codesign
+
+      - name: Build iOS Simulator (Stage 11A)
+        if: github.ref == 'refs/heads/stage-11/ios-compatibility'
+        run: flutter build ios --simulator --debug --no-codesign
+
+      - name: Verify Firebase plist in the simulator app
+        if: github.ref == 'refs/heads/stage-11/ios-compatibility'
+        run: |
+          app=build/ios/iphonesimulator/Runner.app
+          firebase_bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' "$app/GoogleService-Info.plist")
+          runner_bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")
+          test "$firebase_bundle_id" = "$runner_bundle_id"
 
   # Security check - ensure no secrets in code
   security:
