@@ -14,7 +14,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Shared tests run on Linux, matching the existing regression CI host.
+  # macOS is reserved for the native simulator build.
+  flutter-checks:
+    name: Flutter analysis and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out selected ref
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.7'
+          channel: stable
+          cache: true
+
+      - name: Get Dart dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Analyze Flutter code
+        run: flutter analyze --no-pub
+
+      - name: Test Flutter code
+        run: flutter test --no-pub --concurrency=1
+
   simulator:
+    needs: flutter-checks
     name: Build and package unsigned simulator app
     runs-on: macos-15
     timeout-minutes: 45
@@ -45,12 +74,6 @@ jobs:
 
       - name: Get Dart dependencies
         run: flutter pub get --enforce-lockfile
-
-      - name: Analyze Flutter code
-        run: flutter analyze --no-pub
-
-      - name: Test Flutter code
-        run: flutter test --no-pub --concurrency=1
 
       - name: Resolve native dependencies
         # Flutter prepares Generated.xcconfig and runs CocoaPods before returning.

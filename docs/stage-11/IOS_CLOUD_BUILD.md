@@ -1,6 +1,6 @@
 # SmartSave iOS Simulator builds from Windows
 
-The workflow builds on GitHub's `macos-15` runner, with Flutter **3.41.7 stable** and the runner's preinstalled Xcode and CocoaPods. Each run prints the exact host architecture, Xcode, simulator SDK, and CocoaPods versions. The output is an unsigned simulator bundle. Apple Developer Program membership and distribution signing are unnecessary for this workflow.
+The required Flutter analysis and full test suite run on GitHub’s Ubuntu runner, matching the repository’s regression CI. After they pass, the workflow builds on GitHub's `macos-15` runner, with Flutter **3.41.7 stable** and the runner's preinstalled Xcode and CocoaPods. Each run prints the exact host architecture, Xcode, simulator SDK, and CocoaPods versions. The output is an unsigned simulator bundle. Apple Developer Program membership and distribution signing are unnecessary for this workflow.
 
 ## Start or find a build
 
