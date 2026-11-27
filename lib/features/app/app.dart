@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -200,7 +201,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     setState(() => _busy = false);
 
     if (!result.success) {
-      showMessage(context, _authError(context, result.errorCode));
+      final message = _authError(context, result.errorCode);
+      final diagnostic = result.debugDiagnostic;
+      showMessage(
+        context,
+        kDebugMode && diagnostic != null ? '$message\n[$diagnostic]' : message,
+      );
     }
   }
 

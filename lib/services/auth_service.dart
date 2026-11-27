@@ -27,12 +27,14 @@ class AuthResult {
   final UserCredential? credential;
   final String? errorMessage;
   final AuthExceptionCode? errorCode;
+  final String? debugDiagnostic;
 
   const AuthResult._({
     required this.success,
     this.credential,
     this.errorMessage,
     this.errorCode,
+    this.debugDiagnostic,
   });
 
   factory AuthResult.success(UserCredential credential) => AuthResult._(
@@ -138,9 +140,10 @@ String _getAuthErrorMessage(AuthExceptionCode code) {
 
 /// Auth Service for managing Firebase Authentication
 class AuthService {
-  AuthService(this._prefs);
+  AuthService(this._prefs, {FirebaseAuth? auth})
+    : _auth = auth ?? FirebaseAuth.instance;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth;
   final SharedPreferences _prefs;
 
   /// Expose FirebaseAuth instance for Firestore initialization
@@ -213,22 +216,84 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    var operation = 'signInWithEmailAndPassword';
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
 
-      // Reload user to get latest email verification status
-      await credential.user!.reload();
+      if (kDebugMode) {
+        debugPrint('[FirebaseAuth] ${defaultTargetPlatform.name} $operation succeeded');
+      }
+      operation = 'reloadAfterSignIn';
+      final user = credential.user;
+      if (user == null) {
+        return _signInFailure(operation, 'missing-user');
+      }
+      await user.reload();
 
+      if (kDebugMode) {
+        debugPrint('[FirebaseAuth] ${defaultTargetPlatform.name} $operation succeeded');
+      }
       return AuthResult.success(credential);
-    } on FirebaseAuthException catch (e) {
-      final code = _mapFirebaseAuthException(e);
-      return AuthResult.failure(_getAuthErrorMessage(code), code);
-    } catch (e) {
-      return AuthResult.failure('Sign in failed. Please try again.', AuthExceptionCode.unknown);
+    } on FirebaseAuthException catch (error) {
+      return _signInFailure(
+        operation,
+        _safeSignInCode(error.code),
+        _mapFirebaseAuthException(error),
+      );
+    } catch (_) {
+      return _signInFailure(operation, 'unexpected-error');
     }
+  }
+
+  AuthResult _signInFailure(
+    String operation,
+    String diagnosticCode, [
+    AuthExceptionCode category = AuthExceptionCode.unknown,
+  ]) {
+    final diagnostic = '$operation / $diagnosticCode';
+    if (kDebugMode) {
+      debugPrint('[FirebaseAuth] ${defaultTargetPlatform.name} $diagnostic');
+    }
+    return AuthResult._(
+      success: false,
+      errorMessage: _getAuthErrorMessage(category),
+      errorCode: category,
+      debugDiagnostic: kDebugMode ? diagnostic : null,
+    );
+  }
+
+  // Only emit known SDK identifiers. Exception messages and details may include
+  // the email address, native response data, or credentials.
+  static String _safeSignInCode(String code) {
+    const knownCodes = {
+      'api-key-not-valid',
+      'app-not-authorized',
+      'app-not-verified',
+      'captcha-check-failed',
+      'configuration-not-found',
+      'internal-error',
+      'invalid-api-key',
+      'invalid-app-credential',
+      'invalid-credential',
+      'invalid-email',
+      'invalid-user-token',
+      'keychain-error',
+      'missing-app-credential',
+      'network-request-failed',
+      'operation-not-allowed',
+      'quota-exceeded',
+      'requires-recent-login',
+      'too-many-requests',
+      'user-disabled',
+      'user-not-found',
+      'user-token-expired',
+      'web-internal-error',
+      'wrong-password',
+    };
+    return knownCodes.contains(code) ? code : 'unrecognized-firebase-code';
   }
 
   /// Sign out
