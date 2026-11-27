@@ -8,6 +8,50 @@ import 'package:smart_save/services/auth_service.dart';
 import 'package:smart_save/shared/theme.dart';
 
 void main() {
+  testWidgets(
+    'iOS auth keeps controls below the notch and supports edge back',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.padding = const FakeViewPadding(top: 54, bottom: 34);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: buildAppTheme().copyWith(platform: TargetPlatform.iOS),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            home: const WelcomeScreen(),
+          ),
+        ),
+      );
+      final strings = lookupAppLocalizations(const Locale('en'));
+      await tester.tap(find.text(strings.haveAccount));
+      await tester.pumpAndSettle();
+      final back = find.byType(BackButtonIcon);
+      expect(tester.getTopLeft(back).dy, greaterThanOrEqualTo(54));
+
+      final password = find.byType(TextFormField).last;
+      await tester.enterText(password, 'example-password');
+      tester.view.viewInsets = const FakeViewPadding(bottom: 315);
+      await tester.pumpAndSettle();
+      final submit = find.widgetWithText(FilledButton, strings.signIn);
+      await tester.ensureVisible(submit);
+      await tester.pumpAndSettle();
+      expect(tester.getBottomRight(submit).dy, lessThanOrEqualTo(844 - 315));
+      expect(tester.takeException(), isNull);
+
+      tester.view.resetViewInsets();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.dragFrom(const Offset(1, 350), const Offset(350, 0));
+      await tester.pumpAndSettle();
+      expect(find.byType(WelcomeScreen), findsOneWidget);
+      expect(find.byType(AuthScreen), findsNothing);
+    },
+  );
+
   for (final locale in [
     const Locale('en'),
     const Locale('kk'),
