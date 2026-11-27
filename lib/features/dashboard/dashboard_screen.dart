@@ -11,6 +11,7 @@ import '../../shared/glass.dart';
 import '../../shared/widgets.dart';
 import '../goals/goals_screen.dart';
 import '../invest/investment_intelligence_screen.dart';
+import '../profile/account_avatar.dart';
 import '../transactions/transactions_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -104,13 +105,7 @@ class DashboardScreen extends ConsumerWidget {
                                       .read(selectedTabIndexProvider.notifier)
                                       .state =
                                   4,
-                          icon: CircleAvatar(
-                            backgroundColor: context.colors.accentSurface(
-                              context.colors.highlight,
-                            ),
-                            foregroundColor: context.colors.text,
-                            child: const Icon(Icons.person_outline_rounded),
-                          ),
+                          icon: const AccountAvatar(diameter: 40),
                         ),
                       ],
                     ),

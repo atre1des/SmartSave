@@ -688,5 +688,21 @@
   "authResetSubtitle": "Электрондық поштаңызды енгізіңіз. Біз құпиясөзді қалпына келтіру сілтемесін жібереміз.",
   "authSendReset": "Қалпына келтіру сілтемесін жіберу",
   "authShowPassword": "Құпиясөзді көрсету",
-  "authHidePassword": "Құпиясөзді жасыру"
+  "authHidePassword": "Құпиясөзді жасыру",
+  "chooseAvatar": "Аватарды таңдау",
+  "resetAvatar": "Әдепкі аватарға қайтару",
+  "defaultAvatar": "Әдепкі SmartSave аватары",
+  "avatarSaveFailed": "Аватар сақталмады. Қайта көріңіз.",
+  "avatarCredits": "Аватар авторлары",
+  "openMojiAttribution": "Жануар аватарларын OpenMoji жасаған. Лицензиясы — CC BY-SA 4.0.",
+  "avatarDog": "Ит",
+  "avatarCat": "Мысық",
+  "avatarRabbit": "Қоян",
+  "avatarBear": "Аю",
+  "avatarPanda": "Панда",
+  "avatarKoala": "Коала",
+  "avatarTiger": "Жолбарыс",
+  "avatarLion": "Арыстан",
+  "avatarPig": "Шошқа",
+  "avatarMonkey": "Маймыл"
 }

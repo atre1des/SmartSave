@@ -688,5 +688,21 @@
   "authResetSubtitle": "Введите свою электронную почту. Мы отправим ссылку для сброса пароля.",
   "authSendReset": "Отправить ссылку для сброса",
   "authShowPassword": "Показать пароль",
-  "authHidePassword": "Скрыть пароль"
+  "authHidePassword": "Скрыть пароль",
+  "chooseAvatar": "Выбрать аватар",
+  "resetAvatar": "Вернуть аватар по умолчанию",
+  "defaultAvatar": "Аватар SmartSave по умолчанию",
+  "avatarSaveFailed": "Не удалось сохранить аватар. Попробуйте ещё раз.",
+  "avatarCredits": "Авторы аватаров",
+  "openMojiAttribution": "Аватары животных созданы OpenMoji. Лицензия — CC BY-SA 4.0.",
+  "avatarDog": "Собака",
+  "avatarCat": "Кошка",
+  "avatarRabbit": "Кролик",
+  "avatarBear": "Медведь",
+  "avatarPanda": "Панда",
+  "avatarKoala": "Коала",
+  "avatarTiger": "Тигр",
+  "avatarLion": "Лев",
+  "avatarPig": "Свинья",
+  "avatarMonkey": "Обезьяна"
 }

@@ -816,5 +816,21 @@
   "authResetSubtitle": "Enter your email and we’ll send you a reset link.",
   "authSendReset": "Send reset link",
   "authShowPassword": "Show password",
-  "authHidePassword": "Hide password"
+  "authHidePassword": "Hide password",
+  "chooseAvatar": "Choose avatar",
+  "resetAvatar": "Reset to default",
+  "defaultAvatar": "Default SmartSave avatar",
+  "avatarSaveFailed": "Could not save the avatar. Try again.",
+  "avatarCredits": "Avatar credits",
+  "openMojiAttribution": "Animal avatars by OpenMoji, licensed under CC BY-SA 4.0.",
+  "avatarDog": "Dog",
+  "avatarCat": "Cat",
+  "avatarRabbit": "Rabbit",
+  "avatarBear": "Bear",
+  "avatarPanda": "Panda",
+  "avatarKoala": "Koala",
+  "avatarTiger": "Tiger",
+  "avatarLion": "Lion",
+  "avatarPig": "Pig",
+  "avatarMonkey": "Monkey"
 }
